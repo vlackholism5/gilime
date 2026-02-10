@@ -1,0 +1,210 @@
+<?php
+declare(strict_types=1);
+
+require_once __DIR__ . '/../../app/inc/auth.php';
+require_admin();
+
+$pdo = pdo();
+
+$onlyRisky = (int)($_GET['only_risky'] ?? 1);
+$limitParam = (int)($_GET['limit'] ?? 50);
+$limitParam = max(10, min(200, $limitParam));
+
+// doc별 최신 PARSE_MATCH job (1쿼리)
+$latestJobStmt = $pdo->query("
+  SELECT j.source_doc_id, j.id AS job_id, j.updated_at
+  FROM shuttle_doc_job_log j
+  INNER JOIN (
+    SELECT source_doc_id, MAX(id) AS mid
+    FROM shuttle_doc_job_log
+    WHERE job_type = 'PARSE_MATCH' AND job_status = 'success'
+    GROUP BY source_doc_id
+  ) t ON j.source_doc_id = t.source_doc_id AND j.id = t.mid
+  WHERE j.job_type = 'PARSE_MATCH' AND j.job_status = 'success'
+");
+$latestByDoc = $latestJobStmt->fetchAll(PDO::FETCH_ASSOC);
+if ($latestByDoc === []) {
+  $queueSummary = [];
+  $topCandidates = [];
+} else {
+  $pairs = [];
+  foreach ($latestByDoc as $row) {
+    $pairs[] = '(' . (int)$row['source_doc_id'] . ',' . (int)$row['job_id'] . ')';
+  }
+  $pairList = implode(',', $pairs);
+
+  // Queue Summary: doc_id, route_label, pending_total, pending_low, pending_none, pending_risky, last_review_at
+  $summarySql = "
+    SELECT c.source_doc_id AS doc_id, c.route_label,
+      COUNT(*) AS pending_total,
+      SUM(CASE WHEN c.match_method = 'like_prefix' THEN 1 ELSE 0 END) AS pending_low,
+      SUM(CASE WHEN c.match_method IS NULL THEN 1 ELSE 0 END) AS pending_none,
+      MAX(l.updated_at) AS last_review_at
+    FROM shuttle_stop_candidate c
+    INNER JOIN (
+      SELECT j.source_doc_id, j.id AS job_id, j.updated_at
+      FROM shuttle_doc_job_log j
+      INNER JOIN (
+        SELECT source_doc_id, MAX(id) AS mid
+        FROM shuttle_doc_job_log
+        WHERE job_type = 'PARSE_MATCH' AND job_status = 'success'
+        GROUP BY source_doc_id
+      ) t ON j.source_doc_id = t.source_doc_id AND j.id = t.mid
+      WHERE j.job_type = 'PARSE_MATCH' AND j.job_status = 'success'
+    ) l ON c.source_doc_id = l.source_doc_id AND c.created_job_id = l.job_id
+    WHERE c.status = 'pending'
+    GROUP BY c.source_doc_id, c.route_label
+    ORDER BY (SUM(CASE WHEN c.match_method = 'like_prefix' THEN 1 ELSE 0 END) + SUM(CASE WHEN c.match_method IS NULL THEN 1 ELSE 0 END)) DESC,
+      COUNT(*) DESC, MAX(l.updated_at) ASC
+  ";
+  $queueSummary = $pdo->query($summarySql)->fetchAll(PDO::FETCH_ASSOC);
+  foreach ($queueSummary as &$row) {
+    $row['pending_risky'] = (int)$row['pending_low'] + (int)$row['pending_none'];
+  }
+  unset($row);
+
+  // Top N Candidates: NONE 우선, LOW 다음, score ASC NULL last, id ASC
+  $topSql = "
+    SELECT c.id, c.source_doc_id AS doc_id, c.route_label, c.raw_stop_name, c.matched_stop_name, c.match_method, c.match_score
+    FROM shuttle_stop_candidate c
+    INNER JOIN (
+      SELECT source_doc_id, MAX(id) AS mid
+      FROM shuttle_doc_job_log
+      WHERE job_type = 'PARSE_MATCH' AND job_status = 'success'
+      GROUP BY source_doc_id
+    ) t ON c.source_doc_id = t.source_doc_id AND c.created_job_id = t.mid
+    WHERE c.status = 'pending'
+  ";
+  if ($onlyRisky) {
+    $topSql .= " AND (c.match_method = 'like_prefix' OR c.match_method IS NULL)";
+  }
+  $topSql .= "
+    ORDER BY (c.match_method IS NULL) DESC, (c.match_method = 'like_prefix') DESC,
+      c.match_score ASC, c.id ASC
+    LIMIT " . $limitParam;
+  $topCandidates = $pdo->query($topSql)->fetchAll(PDO::FETCH_ASSOC);
+}
+
+function matchConfidenceLabel(?string $matchMethod): string {
+  if ($matchMethod === null || $matchMethod === '') return 'NONE';
+  if (in_array($matchMethod, ['exact', 'alias_live_rematch', 'alias_exact'], true)) return 'HIGH';
+  if (in_array($matchMethod, ['normalized', 'alias_normalized'], true)) return 'MED';
+  if ($matchMethod === 'like_prefix') return 'LOW';
+  return 'NONE';
+}
+
+function normalizeStopNameDisplay(string $s): string {
+  return trim(preg_replace('/\s+/', ' ', $s));
+}
+
+function h(string $s): string {
+  return htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
+}
+
+$urlBase = APP_BASE . '/admin/review_queue.php';
+$urlOnlyRiskyOn = $urlBase . '?only_risky=1&limit=' . $limitParam;
+$urlOnlyRiskyOff = $urlBase . '?only_risky=0&limit=' . $limitParam;
+?>
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <title>Admin - Review Queue</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:24px;background:#f9fafb;}
+    a{color:#0b57d0;text-decoration:none;}
+    a:hover{text-decoration:underline;}
+    table{border-collapse:collapse;width:100%;margin-top:10px;background:#fff;}
+    th,td{border-bottom:1px solid #eee;padding:10px;text-align:left;font-size:13px;}
+    th{background:#f7f8fa;font-weight:600;}
+    .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+    .muted{color:#666;font-size:12px;}
+    .card{margin-bottom:20px;}
+  </style>
+</head>
+<body>
+  <div class="top">
+    <div>
+      <a href="<?= APP_BASE ?>/admin/index.php">Docs</a>
+      <span class="muted"> / Review Queue</span>
+    </div>
+    <a href="<?= APP_BASE ?>/admin/logout.php">Logout</a>
+  </div>
+
+  <h2>Review Queue</h2>
+  <p class="muted" style="margin:0 0 12px;">
+    <?php if ($onlyRisky): ?>
+    <a href="<?= h($urlOnlyRiskyOff) ?>">전체 pending 보기</a>
+    <?php else: ?>
+    <a href="<?= h($urlOnlyRiskyOn) ?>">리스크(LOW/NONE)만 보기</a>
+    <?php endif; ?>
+    | limit=<?= (int)$limitParam ?> (10~200)
+  </p>
+
+  <h3 class="card">Queue Summary (risky first)</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>doc_id</th>
+        <th>route_label</th>
+        <th>pending_total</th>
+        <th>pending_low</th>
+        <th>pending_none</th>
+        <th>pending_risky</th>
+        <th>last_review_at</th>
+      </tr>
+    </thead>
+    <tbody>
+      <?php if ($queueSummary): ?>
+        <?php foreach ($queueSummary as $s): ?>
+        <tr>
+          <td><a href="<?= APP_BASE ?>/admin/doc.php?id=<?= (int)$s['doc_id'] ?>"><?= (int)$s['doc_id'] ?></a></td>
+          <td><a href="<?= APP_BASE ?>/admin/route_review.php?source_doc_id=<?= (int)$s['doc_id'] ?>&route_label=<?= urlencode((string)$s['route_label']) ?>&quick_mode=1&show_advanced=0"><?= h((string)$s['route_label']) ?></a></td>
+          <td><?= (int)$s['pending_total'] ?></td>
+          <td><?= (int)$s['pending_low'] ?></td>
+          <td><?= (int)$s['pending_none'] ?></td>
+          <td><?= (int)$s['pending_risky'] ?></td>
+          <td><?= $s['last_review_at'] !== null ? h((string)$s['last_review_at']) : '—' ?></td>
+        </tr>
+        <?php endforeach; ?>
+      <?php else: ?>
+        <tr><td colspan="7" class="muted">no pending (Run Parse/Match 후 확인)</td></tr>
+      <?php endif; ?>
+    </tbody>
+  </table>
+
+  <h3 class="card">Top <?= (int)$limitParam ?> Candidates (LOW/NONE first)</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>doc_id</th>
+        <th>route_label</th>
+        <th>원문</th>
+        <th>정규화</th>
+        <th>match_method</th>
+        <th>score</th>
+        <th>신뢰도</th>
+        <th>링크</th>
+      </tr>
+    </thead>
+    <tbody>
+      <?php if ($topCandidates): ?>
+        <?php foreach ($topCandidates as $tc): ?>
+        <tr>
+          <td><a href="<?= APP_BASE ?>/admin/doc.php?id=<?= (int)$tc['doc_id'] ?>"><?= (int)$tc['doc_id'] ?></a></td>
+          <td><a href="<?= APP_BASE ?>/admin/route_review.php?source_doc_id=<?= (int)$tc['doc_id'] ?>&route_label=<?= urlencode((string)$tc['route_label']) ?>&quick_mode=1&show_advanced=0"><?= h((string)$tc['route_label']) ?></a></td>
+          <td><?= h((string)($tc['raw_stop_name'] ?? '')) ?></td>
+          <td><?= h(normalizeStopNameDisplay((string)($tc['raw_stop_name'] ?? ''))) ?></td>
+          <td><?= $tc['match_method'] !== null && $tc['match_method'] !== '' ? h((string)$tc['match_method']) : '—' ?></td>
+          <td><?= isset($tc['match_score']) && $tc['match_score'] !== null && $tc['match_score'] !== '' ? h((string)$tc['match_score']) : '—' ?></td>
+          <td><?= h(matchConfidenceLabel($tc['match_method'] ?? null)) ?></td>
+          <td><a href="<?= APP_BASE ?>/admin/route_review.php?source_doc_id=<?= (int)$tc['doc_id'] ?>&route_label=<?= urlencode((string)$tc['route_label']) ?>&quick_mode=1&show_advanced=0">검수</a></td>
+        </tr>
+        <?php endforeach; ?>
+      <?php else: ?>
+        <tr><td colspan="8" class="muted">no candidates</td></tr>
+      <?php endif; ?>
+    </tbody>
+  </table>
+</body>
+</html>

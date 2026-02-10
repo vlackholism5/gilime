@@ -35,7 +35,10 @@ $routeStmt = pdo()->prepare("
 <body>
   <div class="top">
     <h2>Source Docs</h2>
-    <a href="<?= APP_BASE ?>/admin/logout.php">Logout</a>
+    <div>
+      <a href="<?= APP_BASE ?>/admin/review_queue.php?only_risky=1" style="margin-right:12px;">Review Queue</a>
+      <a href="<?= APP_BASE ?>/admin/logout.php">Logout</a>
+    </div>
   </div>
 
   <table>

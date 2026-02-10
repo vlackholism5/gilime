@@ -437,6 +437,7 @@ function normalizeStopNameDisplay(string $s): string {
   <p style="margin:0 0 8px;">
     <a class="btn" href="<?= APP_BASE ?>/admin/route_review.php?source_doc_id=<?= (int)$id ?>&route_label=<?= urlencode($startRouteLabel) ?>&quick_mode=1&show_advanced=0">오늘 작업 시작</a>
     <span class="muted" style="margin-left:8px;">pending_risky 가장 많은 노선(<?= h($startRouteLabel) ?>)으로 이동</span>
+    | <a href="<?= APP_BASE ?>/admin/review_queue.php?only_risky=1">Queue로 이동</a>
   </p>
   <?php endif; ?>
   <p style="margin:0 0 8px;">
