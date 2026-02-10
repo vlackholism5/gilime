@@ -44,6 +44,12 @@ PARSE_MATCH(job) 실행 시 후보(candidates) 생성하면서 **서울시 정�
 - **only_unmatched에서만 계산:** 전체 보기(only_unmatched=0)에서는 추천 canonical 컬럼·placeholder 모두 "—"/"정식 명칭" 고정. 매칭 실패만 보기일 때만 stop_master 조회.
 - **요청 단위 캐시:** 동일 raw_stop_name(정규화 키)당 DB 조회 1회. hits/misses는 meta에 "추천 canonical 계산: ON/OFF, cache hits=X, misses=Y"로 표시(전체 보기 시 OFF, 0/0). SoT·approve/reject/promote/alias_live_rematch 로직 불변.
 
+## v0.6-18 매칭 신뢰도 표시 + summary 집계
+
+- **매칭 신뢰도 컬럼:** route_review Candidates에 표시 전용. exact/alias_live_rematch/alias_exact → HIGH, normalized/alias_normalized → MED, like_prefix → LOW, 그 외/NULL → NONE (텍스트만, 신규 CSS 없음).
+- **summary 4개 카운트:** latest 스냅샷 기준 auto_matched_cnt, low_confidence_cnt(like_prefix), none_matched_cnt, alias_used_cnt. promote 전 모호매칭 비중 파악용. only_unmatched=1일 때도 동일 latest 기준으로 표시.
+- **검증:** sql/v0.6-18_validation.sql 에 검증 쿼리 7개(주석 블록). 매칭 로직/SoT 변경 없음.
+
 ## 폴더 구조(확정)
 - /public/admin : 웹에서 접근하는 관리자 페이지(실제 URL은 /admin 로 유지)
 - /app/inc      : PHP 공통 코드(config/db/auth)
@@ -51,10 +57,15 @@ PARSE_MATCH(job) 실행 시 후보(candidates) 생성하면서 **서울시 정�
 - /tools        : 배치 스크립트(웹 직접 접근 차단)
 - /sql          : 스키마/시드(웹 직접 접근 차단)
 
+## 로컬 설정 (DB 비밀값)
+
+- DB 비밀값은 코드에 넣지 않음. `app/inc/config.local.php.example` 를 복사해 `config.local.php` 로 만들고, `DB_HOST`/`DB_USER`/`DB_PASS` 등 실제 값 입력. (`config.local.php` 는 .gitignore 대상.)
+
 ## XAMPP(htdocs)에서 실행
 1) `C:\xampp\htdocs\gilime_mvp_01\` 에 이 폴더를 그대로 복사
-2) Apache 재시작
-3) 접속
+2) 위 로컬 설정으로 `config.local.php` 생성
+3) Apache 재시작
+4) 접속
    - http://localhost/gilime_mvp_01/admin/login.php
 
 ## 왜 /public/admin 인데 URL은 /admin 인가?

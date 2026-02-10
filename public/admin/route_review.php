@@ -317,7 +317,7 @@ $promoHistory = $promoHistStmt->fetchAll();
 
 // summary counts (latest snapshot 기준, 없으면 active fallback)
 if ($latestParseJobId > 0) {
-  // HY093 방지: placeholder 재사용 금지
+  // HY093 방지: placeholder 재사용 금지. v0.6-18: auto_matched/low_confidence/none_matched/alias_used 추가
   $sumStmt = $pdo->prepare("
     SELECT
       (SELECT COUNT(*)
@@ -334,13 +334,33 @@ if ($latestParseJobId > 0) {
 
       (SELECT COUNT(*)
          FROM shuttle_route_stop
-        WHERE source_doc_id=:doc4 AND route_label=:rl4 AND is_active=1) AS route_stop_cnt
+        WHERE source_doc_id=:doc4 AND route_label=:rl4 AND is_active=1) AS route_stop_cnt,
+
+      (SELECT COUNT(*)
+         FROM shuttle_stop_candidate
+        WHERE source_doc_id=:doc5 AND route_label=:rl5 AND created_job_id=:jid5 AND match_method IS NOT NULL) AS auto_matched_cnt,
+
+      (SELECT COUNT(*)
+         FROM shuttle_stop_candidate
+        WHERE source_doc_id=:doc6 AND route_label=:rl6 AND created_job_id=:jid6 AND match_method='like_prefix') AS low_confidence_cnt,
+
+      (SELECT COUNT(*)
+         FROM shuttle_stop_candidate
+        WHERE source_doc_id=:doc7 AND route_label=:rl7 AND created_job_id=:jid7 AND (matched_stop_id IS NULL OR matched_stop_id='')) AS none_matched_cnt,
+
+      (SELECT COUNT(*)
+         FROM shuttle_stop_candidate
+        WHERE source_doc_id=:doc8 AND route_label=:rl8 AND created_job_id=:jid8 AND match_method IN ('alias_exact','alias_normalized','alias_live_rematch')) AS alias_used_cnt
   ");
   $sumStmt->execute([
     ':doc1' => $sourceDocId, ':rl1' => $routeLabel, ':jid1' => $latestParseJobId,
     ':doc2' => $sourceDocId, ':rl2' => $routeLabel, ':jid2' => $latestParseJobId,
     ':doc3' => $sourceDocId, ':rl3' => $routeLabel, ':jid3' => $latestParseJobId,
     ':doc4' => $sourceDocId, ':rl4' => $routeLabel,
+    ':doc5' => $sourceDocId, ':rl5' => $routeLabel, ':jid5' => $latestParseJobId,
+    ':doc6' => $sourceDocId, ':rl6' => $routeLabel, ':jid6' => $latestParseJobId,
+    ':doc7' => $sourceDocId, ':rl7' => $routeLabel, ':jid7' => $latestParseJobId,
+    ':doc8' => $sourceDocId, ':rl8' => $routeLabel, ':jid8' => $latestParseJobId,
   ]);
 } else {
   $sumStmt = $pdo->prepare("
@@ -369,7 +389,20 @@ if ($latestParseJobId > 0) {
   ]);
 }
 
-$sum = $sumStmt->fetch() ?: ['cand_total'=>0,'cand_approved'=>0,'cand_pending'=>0,'route_stop_cnt'=>0];
+$sumRow = $sumStmt->fetch();
+$sum = $sumRow ?: ['cand_total'=>0,'cand_approved'=>0,'cand_pending'=>0,'route_stop_cnt'=>0];
+// v0.6-18: latest 없을 때 4개 카운트 0
+if ($latestParseJobId <= 0) {
+  $sum['auto_matched_cnt'] = 0;
+  $sum['low_confidence_cnt'] = 0;
+  $sum['none_matched_cnt'] = 0;
+  $sum['alias_used_cnt'] = 0;
+} else {
+  $sum['auto_matched_cnt'] = (int)($sumRow['auto_matched_cnt'] ?? 0);
+  $sum['low_confidence_cnt'] = (int)($sumRow['low_confidence_cnt'] ?? 0);
+  $sum['none_matched_cnt'] = (int)($sumRow['none_matched_cnt'] ?? 0);
+  $sum['alias_used_cnt'] = (int)($sumRow['alias_used_cnt'] ?? 0);
+}
 
 // v0.6-7: approved 후보 중 matched_stop_id 빈 값/NULL 개수 (승격 전 실수 방지)
 $emptyStopStmt = $pdo->prepare("
@@ -421,6 +454,15 @@ if ($onlyUnmatched) {
       $recMiss++;
     }
   }
+}
+
+/** v0.6-18: 매칭 신뢰도 표시 전용 (텍스트만) */
+function matchConfidenceLabel(?string $matchMethod): string {
+  if ($matchMethod === null || $matchMethod === '') return 'NONE';
+  if (in_array($matchMethod, ['exact', 'alias_live_rematch', 'alias_exact'], true)) return 'HIGH';
+  if (in_array($matchMethod, ['normalized', 'alias_normalized'], true)) return 'MED';
+  if ($matchMethod === 'like_prefix') return 'LOW';
+  return 'NONE';
 }
 
 function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8'); }
@@ -488,6 +530,12 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8')
       approved=<?= (int)$sum['cand_approved'] ?> /
       pending=<?= (int)$sum['cand_pending'] ?> /
       route_stop=<?= (int)$sum['route_stop_cnt'] ?>
+      <?php if ($latestParseJobId > 0): ?>
+        <br><span class="muted">auto_matched=<?= (int)$sum['auto_matched_cnt'] ?> /
+        low_confidence(like_prefix)=<?= (int)$sum['low_confidence_cnt'] ?> /
+        none_matched=<?= (int)$sum['none_matched_cnt'] ?> /
+        alias_used=<?= (int)$sum['alias_used_cnt'] ?></span>
+      <?php endif; ?>
     </div>
     <div class="k">추천 canonical</div>
     <div class="muted" style="font-size:0.85em;">추천 canonical 계산: <?= $onlyUnmatched ? 'ON' : 'OFF' ?>, cache hits=<?= $recHit ?>, misses=<?= $recMiss ?></div>
@@ -538,6 +586,7 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8')
             <th>추천 canonical</th>
             <th>normalized_name</th>
             <th>status</th>
+            <th>매칭 신뢰도</th>
             <th>matched_stop_id</th>
             <th>match_method</th>
             <th>match_score</th>
@@ -556,6 +605,7 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8')
             <td><?= $recommendedCanonical !== '' ? h($recommendedCanonical) : '<span class="muted">—</span>' ?></td>
             <td><?= h(normalizeStopNameDisplay((string)($c['raw_stop_name'] ?? ''))) ?></td>
             <td><?= h((string)$c['status']) ?></td>
+            <td><?= h(matchConfidenceLabel($c['match_method'] ?? null)) ?></td>
             <td><?= h((string)($c['matched_stop_id'] ?? '')) ?></td>
             <td><?= h((string)($c['match_method'] ?? '')) ?></td>
             <td><?= isset($c['match_score']) ? h((string)$c['match_score']) : '' ?></td>
@@ -594,7 +644,7 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8')
           </tr>
           <?php endforeach; ?>
           <?php if (!$cands): ?>
-          <tr><td colspan="10" class="muted">no candidates</td></tr>
+          <tr><td colspan="11" class="muted">no candidates</td></tr>
           <?php endif; ?>
         </tbody>
       </table>

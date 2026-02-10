@@ -1,7 +1,9 @@
 # 원본 데이터 — 커밋 제외 (SoT: data/README_DATA_DIRS.md)
 data/inbound/
 
-# 로컬/환경
+# 로컬/환경 (비밀값 포함, 절대 커밋 금지)
 .env
 .env.local
+app/inc/config.local.php
+app/inc/config.safe.php
 *.log
