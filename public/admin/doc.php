@@ -480,7 +480,7 @@ function normalizeStopNameDisplay(string $s): string {
         $score = isset($tc['match_score']) ? (string)$tc['match_score'] : '';
       ?>
       <tr>
-        <td><a href="<?= APP_BASE ?>/admin/route_review.php?source_doc_id=<?= (int)$id ?>&route_label=<?= urlencode($tcRl) ?>&show_advanced=0"><?= h($tcRl) ?></a></td>
+        <td><a href="<?= APP_BASE ?>/admin/route_review.php?source_doc_id=<?= (int)$id ?>&route_label=<?= urlencode($tcRl) ?>&quick_mode=1&show_advanced=0"><?= h($tcRl) ?></a></td>
         <td><?= h((string)($tc['raw_stop_name'] ?? '')) ?></td>
         <td><?= h(normalizeStopNameDisplay((string)($tc['raw_stop_name'] ?? ''))) ?></td>
         <td><?= $matchedName !== '' ? h($matchedName) : '—' ?></td>

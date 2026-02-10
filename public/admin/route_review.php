@@ -98,7 +98,7 @@ function lookupStopMasterByCanonical(PDO $pdo, string $canonical): ?array {
 function build_route_review_redirect_query(): string {
   global $sourceDocId, $routeLabel;
   $parts = ['source_doc_id=' . (int)$sourceDocId, 'route_label=' . urlencode($routeLabel)];
-  $keep = ['only_unmatched', 'only_low', 'only_risky', 'top', 'show_reco', 'show_qs', 'quick_mode', 'rec_limit', 'q', 'show_advanced'];
+  $keep = ['only_unmatched', 'only_low', 'only_risky', 'top', 'show_reco', 'show_qs', 'quick_mode', 'rec_limit', 'q', 'show_advanced', 'jump_next'];
   foreach ($keep as $k) {
     if (isset($_GET[$k]) && (string)$_GET[$k] !== '') {
       $parts[] = $k . '=' . urlencode((string)$_GET[$k]);
@@ -235,6 +235,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           ]);
 
           $_SESSION['flash'] = 'approved: candidate #' . $candId;
+          $jumpNext = (int)($_GET['jump_next'] ?? 0);
+          if ($jumpNext === 1 && $latestParseJobId > 0) {
+            $nextStmt = $pdo->prepare("SELECT route_label FROM shuttle_stop_candidate WHERE source_doc_id=:doc AND created_job_id=:jid AND status='pending' GROUP BY route_label ORDER BY route_label ASC");
+            $nextStmt->execute([':doc' => $sourceDocId, ':jid' => $latestParseJobId]);
+            $pendingRls = $nextStmt->fetchAll(PDO::FETCH_COLUMN, 0);
+            $nextRl = null;
+            if ($pendingRls !== []) {
+              foreach ($pendingRls as $rl) {
+                if (strcmp($rl, $routeLabel) > 0) { $nextRl = $rl; break; }
+              }
+              if ($nextRl === null) $nextRl = $pendingRls[0];
+            }
+            if ($nextRl !== null && $nextRl !== $routeLabel) {
+              header('Location: ' . APP_BASE . '/admin/route_review.php?source_doc_id=' . (int)$sourceDocId . '&route_label=' . urlencode($nextRl) . '&quick_mode=1&show_advanced=0&jump_next=1');
+              exit;
+            }
+          }
           header('Location: ' . APP_BASE . '/admin/route_review.php?' . build_route_review_redirect_query());
           exit;
         }
@@ -261,6 +278,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ]);
 
         $_SESSION['flash'] = 'rejected: candidate #' . $candId;
+        $jumpNext = (int)($_GET['jump_next'] ?? 0);
+        if ($jumpNext === 1 && $latestParseJobId > 0) {
+          $nextStmt = $pdo->prepare("SELECT route_label FROM shuttle_stop_candidate WHERE source_doc_id=:doc AND created_job_id=:jid AND status='pending' GROUP BY route_label ORDER BY route_label ASC");
+          $nextStmt->execute([':doc' => $sourceDocId, ':jid' => $latestParseJobId]);
+          $pendingRls = $nextStmt->fetchAll(PDO::FETCH_COLUMN, 0);
+          $nextRl = null;
+          if ($pendingRls !== []) {
+            foreach ($pendingRls as $rl) {
+              if (strcmp($rl, $routeLabel) > 0) { $nextRl = $rl; break; }
+            }
+            if ($nextRl === null) $nextRl = $pendingRls[0];
+          }
+          if ($nextRl !== null && $nextRl !== $routeLabel) {
+            header('Location: ' . APP_BASE . '/admin/route_review.php?source_doc_id=' . (int)$sourceDocId . '&route_label=' . urlencode($nextRl) . '&quick_mode=1&show_advanced=0&jump_next=1');
+            exit;
+          }
+        }
         header('Location: ' . APP_BASE . '/admin/route_review.php?' . build_route_review_redirect_query());
         exit;
 
@@ -721,6 +755,12 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8')
   if ($quickMode) $urlAdvancedOff .= '&quick_mode=1';
   $showRecoSuffix = $showReco ? '&show_reco=1' : '';
   $showQsSuffix = $showQs ? '&show_qs=1' : '';
+  $toggleGet = array_intersect_key($_GET, array_flip(['source_doc_id', 'route_label', 'only_unmatched', 'only_low', 'only_risky', 'top', 'show_reco', 'show_qs', 'quick_mode', 'rec_limit', 'q', 'show_advanced', 'jump_next']));
+  $toggleGet['jump_next'] = 1;
+  $urlJumpNextOn = APP_BASE . '/admin/route_review.php?' . http_build_query($toggleGet);
+  unset($toggleGet['jump_next']);
+  $urlJumpNextOff = APP_BASE . '/admin/route_review.php?' . http_build_query($toggleGet);
+  $jumpNextActive = (int)($_GET['jump_next'] ?? 0) === 1;
   ?>
   <div class="card" style="margin-bottom:16px;">
     <h3 style="margin:0 0 8px;">필터 / Quick Search</h3>
@@ -731,6 +771,8 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8')
       <a href="<?= APP_BASE ?>/admin/route_review.php?source_doc_id=<?= (int)$sourceDocId ?>&route_label=<?= urlencode($routeLabel) ?>">전체 보기</a>
       &nbsp;|&nbsp;
       <a href="<?= APP_BASE ?>/admin/route_review.php?source_doc_id=<?= (int)$sourceDocId ?>&route_label=<?= urlencode($routeLabel) ?>&only_risky=1&top=30&only_unmatched=1&show_reco=1">빠른 시작: 리스크 Top30 + 추천 ON</a>
+      &nbsp;|&nbsp;
+      <?php if ($jumpNextActive): ?><a href="<?= h($urlJumpNextOff) ?>">검수 후 다음 노선 자동 해제</a><?php else: ?><a href="<?= h($urlJumpNextOn) ?>">검수 후 다음 노선 자동</a><?php endif; ?>
       &nbsp;|&nbsp;
       <?php endif; ?>
       <?php if (!$showAdvanced): ?>
@@ -758,6 +800,8 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8')
       &nbsp;|&nbsp;
       <?php else: ?>
       <a href="<?= APP_BASE ?>/admin/route_review.php?source_doc_id=<?= (int)$sourceDocId ?>&route_label=<?= urlencode($routeLabel) ?>&show_advanced=0">전체 보기</a>
+      &nbsp;|&nbsp;
+      <?php if ($jumpNextActive): ?><a href="<?= h($urlJumpNextOff) ?>">검수 후 다음 노선 자동 해제</a><?php else: ?><a href="<?= h($urlJumpNextOn) ?>">검수 후 다음 노선 자동</a><?php endif; ?>
       &nbsp;|&nbsp;
       <a href="<?= h($urlQuickModeRecoQs) ?>">초단축: 추천+검색 포함</a>
       &nbsp;|&nbsp;
@@ -843,6 +887,9 @@ if ($showReco && $onlyUnmatched) {
   echo 'OFF, cache hits=0 / misses=0';
 }
 ?></p>
+      <?php if ((int)$sum['cand_pending'] > 0 && count($cands) === 0): ?>
+      <p class="muted" style="margin:0 0 8px; font-size:12px;">현재 필터로 숨겨진 pending 후보가 있습니다. '전체 보기'를 눌러 확인하세요.</p>
+      <?php endif; ?>
       <table>
         <thead>
           <tr>
