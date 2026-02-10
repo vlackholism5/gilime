@@ -281,6 +281,15 @@ if ($onlyUnmatched && $latestParseJobId > 0) {
   }));
 }
 
+// v0.6-19: LOW(like_prefix)만 보기 (latest 스냅샷 기준만)
+$onlyLow = (int)($_GET['only_low'] ?? 0);
+if ($onlyLow && $latestParseJobId > 0) {
+  $cands = array_values(array_filter($cands, function ($c) {
+    $method = (string)($c['match_method'] ?? '');
+    return $method === 'like_prefix';
+  }));
+}
+
 // route_stop list (is_active=1만 표시)
 $routeStmt = $pdo->prepare("
   SELECT source_doc_id, route_label, stop_order, stop_id, stop_name, created_job_id
@@ -602,6 +611,7 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8')
       <input type="hidden" name="source_doc_id" value="<?= (int)$sourceDocId ?>" />
       <input type="hidden" name="route_label" value="<?= h($routeLabel) ?>" />
       <?php if ($onlyUnmatched): ?><input type="hidden" name="only_unmatched" value="1" /><?php endif; ?>
+      <?php if ($onlyLow): ?><input type="hidden" name="only_low" value="1" /><?php endif; ?>
       <input type="text" name="q" value="<?= h($searchQuery) ?>" placeholder="stop_name" size="20" />
       <button type="submit">Search</button>
     </form>
@@ -623,12 +633,27 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8')
   <div class="grid2">
     <div class="card">
       <h3 style="margin:0 0 8px;">Candidates</h3>
-      <p style="margin:0 0 8px;">
+      <p style="margin:0 0 12px; display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
+        <?php
+        // 현재 필터 상태 기준 URL 빌더
+        $baseUrl = APP_BASE . '/admin/route_review.php?source_doc_id=' . (int)$sourceDocId . '&route_label=' . urlencode($routeLabel);
+        if ($searchQuery !== '') $baseUrl .= '&q=' . urlencode($searchQuery);
+        ?>
+        
         <?php if ($onlyUnmatched): ?>
-        <a href="<?= APP_BASE ?>/admin/route_review.php?source_doc_id=<?= (int)$sourceDocId ?>&route_label=<?= urlencode($routeLabel) ?><?= $searchQuery !== '' ? '&q=' . urlencode($searchQuery) : '' ?>">전체 보기</a>
-        <span class="muted"> (매칭 실패만 표시 중)</span>
+        <a href="<?= $baseUrl ?><?= $onlyLow ? '&only_low=1' : '' ?>">매칭 실패 해제</a>
+        <span class="muted">(매칭 실패만 표시 중)</span>
         <?php else: ?>
-        <a href="<?= APP_BASE ?>/admin/route_review.php?source_doc_id=<?= (int)$sourceDocId ?>&route_label=<?= urlencode($routeLabel) ?>&only_unmatched=1<?= $searchQuery !== '' ? '&q=' . urlencode($searchQuery) : '' ?>">매칭 실패만 보기</a>
+        <a href="<?= $baseUrl ?>&only_unmatched=1<?= $onlyLow ? '&only_low=1' : '' ?>">매칭 실패만 보기</a>
+        <?php endif; ?>
+        
+        <span class="muted">|</span>
+        
+        <?php if ($onlyLow): ?>
+        <a href="<?= $baseUrl ?><?= $onlyUnmatched ? '&only_unmatched=1' : '' ?>">LOW 해제</a>
+        <span class="muted">(LOW만 표시 중)</span>
+        <?php else: ?>
+        <a href="<?= $baseUrl ?>&only_low=1<?= $onlyUnmatched ? '&only_unmatched=1' : '' ?>">LOW만 보기</a>
         <?php endif; ?>
       </p>
       <table>
@@ -703,6 +728,28 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8')
       </table>
 
       <div style="margin-top:12px;">
+        <?php
+        // v0.6-19: Promote 전 LOW 비중 경고
+        $showLowWarning = false;
+        if ($latestParseJobId > 0) {
+          $lowCnt = (int)$sum['low_confidence_cnt'];
+          $autoCnt = (int)$sum['auto_matched_cnt'];
+          if ($lowCnt > 0 && $autoCnt > 0) {
+            $lowRatio = $lowCnt / $autoCnt;
+            if ($lowRatio >= 0.30) {
+              $showLowWarning = true;
+            }
+          }
+        }
+        ?>
+        
+        <?php if ($showLowWarning): ?>
+        <div style="padding:12px; background:#fff4e5; border:1px solid #ffcc80; border-radius:8px; margin-bottom:12px;">
+          <strong style="color:#b56b00;">⚠️ 주의:</strong> 
+          <span style="color:#b56b00;">like_prefix(LOW) 비중이 높습니다 (<?= (int)$sum['low_confidence_cnt'] ?>건 / <?= (int)$sum['auto_matched_cnt'] ?>건 자동매칭). Promote 전 후보를 재검토하세요.</span>
+        </div>
+        <?php endif; ?>
+        
         <form method="post" action="<?= APP_BASE ?>/admin/promote.php" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <input type="hidden" name="source_doc_id" value="<?= (int)$sourceDocId ?>" />
           <input type="hidden" name="route_label" value="<?= h($routeLabel) ?>" />
