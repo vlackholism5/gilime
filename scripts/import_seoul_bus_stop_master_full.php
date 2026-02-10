@@ -63,11 +63,11 @@ foreach ($colMap as $field => $colName) {
     if ($idx === false) {
         // 대체 컬럼명 시도
         $altNames = [
-            'stop_id' => ['STOP_ID', 'arsId', 'ARS_ID', 'stationId'],
-            'stop_name' => ['STOP_NAME', 'stationNm', 'stNm'],
+            'stop_id' => ['정류장_ID', 'STOP_ID', 'arsId', 'ARS_ID', 'stationId'],
+            'stop_name' => ['정류장_명칭', 'STOP_NAME', 'stationNm', 'stNm'],
             'district_code' => ['DISTRICT_CODE', 'districtCd'],
-            'lat' => ['LAT', 'latitude', 'gpsY', 'posY'],
-            'lng' => ['LNG', 'longitude', 'gpsX', 'posX'],
+            'lat' => ['위도', 'LAT', 'latitude', 'gpsY', 'posY'],
+            'lng' => ['경도', 'LNG', 'longitude', 'gpsX', 'posX'],
         ];
         
         if (isset($altNames[$field])) {
