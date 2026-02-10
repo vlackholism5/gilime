@@ -94,6 +94,19 @@ function lookupStopMasterByCanonical(PDO $pdo, string $canonical): ?array {
   return null;
 }
 
+/** v0.6-36: approve/reject/alias 후 redirect 시 GET 파라미터 유지 (action/candidate_id 등 제외) */
+function build_route_review_redirect_query(): string {
+  global $sourceDocId, $routeLabel;
+  $parts = ['source_doc_id=' . (int)$sourceDocId, 'route_label=' . urlencode($routeLabel)];
+  $keep = ['only_unmatched', 'only_low', 'only_risky', 'top', 'show_reco', 'show_qs', 'quick_mode', 'rec_limit', 'q', 'show_advanced'];
+  foreach ($keep as $k) {
+    if (isset($_GET[$k]) && (string)$_GET[$k] !== '') {
+      $parts[] = $k . '=' . urlencode((string)$_GET[$k]);
+    }
+  }
+  return implode('&', $parts);
+}
+
 // POST: approve/reject/register_alias
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $action = (string)($_POST['action'] ?? '');
@@ -155,7 +168,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'candidate를 찾을 수 없습니다.';
       }
       if (!$error) {
-        header('Location: ' . APP_BASE . '/admin/route_review.php?source_doc_id=' . $sourceDocId . '&route_label=' . urlencode($routeLabel));
+        header('Location: ' . APP_BASE . '/admin/route_review.php?' . build_route_review_redirect_query());
         exit;
       }
     }
@@ -222,7 +235,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           ]);
 
           $_SESSION['flash'] = 'approved: candidate #' . $candId;
-          header('Location: ' . APP_BASE . '/admin/route_review.php?source_doc_id=' . $sourceDocId . '&route_label=' . urlencode($routeLabel));
+          header('Location: ' . APP_BASE . '/admin/route_review.php?' . build_route_review_redirect_query());
           exit;
         }
 
@@ -248,7 +261,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ]);
 
         $_SESSION['flash'] = 'rejected: candidate #' . $candId;
-        header('Location: ' . APP_BASE . '/admin/route_review.php?source_doc_id=' . $sourceDocId . '&route_label=' . urlencode($routeLabel));
+        header('Location: ' . APP_BASE . '/admin/route_review.php?' . build_route_review_redirect_query());
         exit;
 
       } else {
@@ -312,6 +325,32 @@ if ($onlyLow && $latestParseJobId > 0) {
     $method = (string)($c['match_method'] ?? '');
     return $method === 'like_prefix';
   }));
+}
+
+// v0.6-32: risky(LOW/NONE) pending만 보기 (latest 스냅샷 기준만)
+$onlyRisky = (int)($_GET['only_risky'] ?? 0);
+
+// v0.6-35: 초단축 모드 — quick_mode=1이면 명시되지 않은 파라미터만 기본값으로 강제
+$quickMode = (int)($_GET['quick_mode'] ?? 0);
+if ($quickMode) {
+  if (!array_key_exists('only_risky', $_GET)) $onlyRisky = 1;
+  if (!array_key_exists('only_unmatched', $_GET)) $onlyUnmatched = 1;
+}
+
+if ($onlyRisky && $latestParseJobId > 0) {
+  $cands = array_values(array_filter($cands, function ($c) {
+    $status = (string)($c['status'] ?? '');
+    $method = $c['match_method'] ?? null;
+    return $status === 'pending' && ($method === 'like_prefix' || $method === null || $method === '');
+  }));
+}
+
+// v0.6-33: top 파라미터 — 최종 필터링 후 상위 N건만 표시 (10~300 clamp)
+$topParam = (int)($_GET['top'] ?? 0);
+if ($quickMode && !array_key_exists('top', $_GET)) $topParam = 30;
+if ($topParam > 0) {
+  $topParam = max(10, min(300, $topParam));
+  $cands = array_slice($cands, 0, $topParam);
 }
 
 // route_stop list (is_active=1만 표시)
@@ -460,20 +499,39 @@ else if ((int)$sum['cand_pending'] > 0) $promoteBlockReason = 'pending 후보가
 else if ((int)$sum['cand_approved'] <= 0) $promoteBlockReason = 'approved 후보가 없어 승격할 수 없습니다.';
 else if ($approvedEmptyStopCnt > 0) $promoteBlockReason = 'approved 후보 중 matched_stop_id가 비어 있는 항목이 있어 승격할 수 없습니다.';
 
-// v0.6-15: Stop Master Quick Search (GET q)
+// v0.6-34: Lazy render 옵션 (기본 OFF)
+$showReco = (int)($_GET['show_reco'] ?? 0);
+$showQs = (int)($_GET['show_qs'] ?? 0);
+// v0.6-36: quick_mode 기본은 경량(show_reco=0, show_qs=0); 필요 시 토글로 켬
+if ($quickMode) {
+  if (!array_key_exists('show_reco', $_GET)) $showReco = 0;
+  if (!array_key_exists('show_qs', $_GET)) $showQs = 0;
+}
+
+// v0.6-37: 고급 옵션(필터 링크) 기본 숨김
+$showAdvanced = (int)($_GET['show_advanced'] ?? 0);
+
+// v0.6-15: Stop Master Quick Search (GET q) — show_qs=1일 때만 실행
 $searchQuery = trim((string)($_GET['q'] ?? ''));
 $stopMasterSearchResults = [];
-if ($searchQuery !== '') {
+if ($showQs && $searchQuery !== '') {
   $stopMasterSearchResults = searchStopMasterQuick($pdo, $searchQuery);
 }
 
-// v0.6-17: 추천 canonical 요청 단위 캐시 — only_unmatched=1일 때만 계산
+// v0.6-17 / v0.6-33 / v0.6-34: 추천 canonical — show_reco=1 AND only_unmatched=1일 때만 Top N 계산
 $recCache = [];
 $recHit = 0;
 $recMiss = 0;
+$recSkipped = 0;
+$recSkippedDisplay = '0';
+$recLimitParam = (int)($_GET['rec_limit'] ?? 30);
+$recLimitParam = max(10, min(100, $recLimitParam));
 $recommendedByCandId = [];
-if ($onlyUnmatched) {
-  foreach ($cands as $c) {
+if ($showReco && $onlyUnmatched) {
+  $candsForRec = array_slice($cands, 0, $recLimitParam);
+  $recSkipped = count($cands) - count($candsForRec);
+  $recSkippedDisplay = (string)$recSkipped;
+  foreach ($candsForRec as $c) {
     $raw = (string)($c['raw_stop_name'] ?? '');
     $cacheKey = normalizeStopNameDisplay($raw);
     if (array_key_exists($cacheKey, $recCache)) {
@@ -488,6 +546,8 @@ if ($onlyUnmatched) {
       $recMiss++;
     }
   }
+} elseif (!$showReco) {
+  $recSkippedDisplay = 'all';
 }
 
 /** v0.6-18: 매칭 신뢰도 표시 전용 (텍스트만) */
@@ -566,6 +626,7 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8')
   <?php if ($flash): ?><div class="flash"><?= h((string)$flash) ?></div><?php endif; ?>
   <?php if ($error): ?><div class="err"><?= h((string)$error) ?></div><?php endif; ?>
 
+  <!-- A. 상단: 상태 요약(카드) -->
   <div class="meta">
     <div class="k">title</div><div><?= h((string)$doc['title']) ?></div>
     <div class="k">file_path</div><div><?= h((string)$doc['file_path']) ?></div>
@@ -578,7 +639,7 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8')
     <div class="k">updated</div><div><?= h((string)$doc['updated_at']) ?></div>
     <div class="k">latest_parse_job_id</div><div><?= (int)$latestParseJobId ?></div>
     <div class="k">스냅샷 비교</div>
-    <div>Candidate 스냅샷: parse_job_id=<?= (int)$latestParseJobId ?> &nbsp;|&nbsp; Active route_stop 스냅샷: PROMOTE job_id (created_job_id)=<?= $activePromoteJobId ?></div>
+    <div>Candidate 스냅샷: parse_job_id=<?= (int)$latestParseJobId ?> | Active route_stop: PROMOTE job_id=<?= $activePromoteJobId ?></div>
   </div>
 
   <div class="summary-grid">
@@ -621,24 +682,138 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8')
   </div>
   <?php endif; ?>
 
-  <div class="meta">
-    <div class="k">스냅샷 비교</div>
-    <div>Candidate 스냅샷: parse_job_id=<?= (int)$latestParseJobId ?> &nbsp;|&nbsp; Active route_stop 스냅샷: PROMOTE job_id (created_job_id)=<?= $activePromoteJobId ?></div>
-    <div class="k">추천 canonical</div>
-    <div class="muted" style="font-size:0.85em;">추천 canonical 계산: <?= $onlyUnmatched ? 'ON' : 'OFF' ?>, cache hits=<?= $recHit ?>, misses=<?= $recMiss ?></div>
-  </div>
-
+  <!-- B. 중단: 필터/검색 -->
+  <?php
+  $baseUrl = APP_BASE . '/admin/route_review.php?source_doc_id=' . (int)$sourceDocId . '&route_label=' . urlencode($routeLabel);
+  if ($searchQuery !== '' && $showQs) $baseUrl .= '&q=' . urlencode($searchQuery);
+  if ($showReco) $baseUrl .= '&show_reco=1';
+  if ($showQs) $baseUrl .= '&show_qs=1';
+  if ($quickMode) $baseUrl .= '&quick_mode=1';
+  if ($showAdvanced) $baseUrl .= '&show_advanced=1';
+  // v0.6-36: 초단축 2종 — 빠른 검수(경량) / 추천+검색 포함
+  $urlQuickModeFast = APP_BASE . '/admin/route_review.php?source_doc_id=' . (int)$sourceDocId . '&route_label=' . urlencode($routeLabel) . '&quick_mode=1';
+  $urlQuickModeRecoQs = APP_BASE . '/admin/route_review.php?source_doc_id=' . (int)$sourceDocId . '&route_label=' . urlencode($routeLabel) . '&quick_mode=1&show_reco=1&show_qs=1';
+  // v0.6-38: show_advanced=0일 때 문구 축약
+  if (!$showAdvanced) {
+    $filterState = '기본(고급숨김)';
+  } else {
+    $filterState = $onlyUnmatched ? '매칭 실패만' : '전체';
+    if ($onlyLow) $filterState .= ' + LOW만';
+    if (!empty($onlyRisky)) $filterState .= ' + 리스크';
+    if ($topParam > 0) $filterState .= ' + Top' . $topParam;
+    if ($showReco) $filterState .= ' + 추천ON';
+    if ($showQs) $filterState .= ' + 검색ON';
+    if ($quickMode) $filterState .= ' + 초단축';
+  }
+  $riskySuffix = !empty($onlyRisky) ? '&only_risky=1' : '';
+  $topSuffix = $topParam > 0 ? '&top=' . $topParam : '';
+  $urlQuickModeOff = APP_BASE . '/admin/route_review.php?source_doc_id=' . (int)$sourceDocId . '&route_label=' . urlencode($routeLabel);
+  if ($searchQuery !== '' && $showQs) $urlQuickModeOff .= '&q=' . urlencode($searchQuery);
+  if ($showReco) $urlQuickModeOff .= '&show_reco=1';
+  if ($showQs) $urlQuickModeOff .= '&show_qs=1';
+  $urlQuickModeOff .= $riskySuffix . $topSuffix . ($onlyUnmatched ? '&only_unmatched=1' : '') . ($onlyLow ? '&only_low=1' : '');
+  $urlAdvancedOn = $baseUrl . $riskySuffix . $topSuffix . ($onlyUnmatched ? '&only_unmatched=1' : '') . ($onlyLow ? '&only_low=1' : '') . '&show_advanced=1';
+  $urlAdvancedOff = APP_BASE . '/admin/route_review.php?source_doc_id=' . (int)$sourceDocId . '&route_label=' . urlencode($routeLabel);
+  if ($searchQuery !== '' && $showQs) $urlAdvancedOff .= '&q=' . urlencode($searchQuery);
+  if ($showReco) $urlAdvancedOff .= '&show_reco=1';
+  if ($showQs) $urlAdvancedOff .= '&show_qs=1';
+  $urlAdvancedOff .= $riskySuffix . $topSuffix . ($onlyUnmatched ? '&only_unmatched=1' : '') . ($onlyLow ? '&only_low=1' : '');
+  if ($quickMode) $urlAdvancedOff .= '&quick_mode=1';
+  $showRecoSuffix = $showReco ? '&show_reco=1' : '';
+  $showQsSuffix = $showQs ? '&show_qs=1' : '';
+  ?>
   <div class="card" style="margin-bottom:16px;">
-    <h3 style="margin:0 0 8px;">Stop Master Quick Search</h3>
-    <p class="muted" style="margin:0 0 8px;font-size:0.9em;">alias canonical_text 입력 전 stop_master 존재 여부 확인용 (exact → normalized → like_prefix, 2글자 이하는 like_prefix 미적용)</p>
+    <h3 style="margin:0 0 8px;">필터 / Quick Search</h3>
+    <p style="margin:0 0 6px;">
+      <?php if ($showAdvanced): ?>
+      <a href="<?= h($urlAdvancedOff) ?>">고급 옵션 숨기기</a>
+      &nbsp;|&nbsp;
+      <a href="<?= APP_BASE ?>/admin/route_review.php?source_doc_id=<?= (int)$sourceDocId ?>&route_label=<?= urlencode($routeLabel) ?>">전체 보기</a>
+      &nbsp;|&nbsp;
+      <a href="<?= APP_BASE ?>/admin/route_review.php?source_doc_id=<?= (int)$sourceDocId ?>&route_label=<?= urlencode($routeLabel) ?>&only_risky=1&top=30&only_unmatched=1&show_reco=1">빠른 시작: 리스크 Top30 + 추천 ON</a>
+      &nbsp;|&nbsp;
+      <?php endif; ?>
+      <?php if (!$showAdvanced): ?>
+      <a href="<?= h($urlQuickModeFast) ?>">초단축: 빠른 검수</a>
+      &nbsp;|&nbsp;
+      <?php if ($onlyUnmatched): ?>
+      <a href="<?= $baseUrl ?><?= $riskySuffix ?><?= $topSuffix ?><?= $onlyLow ? '&only_low=1' : '' ?>">매칭 실패 해제</a>
+      <?php else: ?>
+      <a href="<?= $baseUrl ?><?= $riskySuffix ?><?= $topSuffix ?>&only_unmatched=1<?= $onlyLow ? '&only_low=1' : '' ?>">매칭 실패만 보기</a>
+      <?php endif; ?>
+      &nbsp;|&nbsp;
+      <?php endif; ?>
+      <?php if ($showAdvanced): ?>
+      <a href="<?= h($urlQuickModeFast) ?>">초단축: 빠른 검수</a>
+      &nbsp;|&nbsp;
+      <a href="<?= h($urlQuickModeRecoQs) ?>">초단축: 추천+검색 포함</a>
+      &nbsp;|&nbsp;
+      <a href="<?= h($urlQuickModeOff) ?>">초단축 모드 OFF</a>
+      &nbsp;|&nbsp;
+      <?php if ($onlyUnmatched): ?>
+      <a href="<?= $baseUrl ?><?= $riskySuffix ?><?= $topSuffix ?><?= $onlyLow ? '&only_low=1' : '' ?>">매칭 실패 해제</a>
+      <?php else: ?>
+      <a href="<?= $baseUrl ?><?= $riskySuffix ?><?= $topSuffix ?>&only_unmatched=1<?= $onlyLow ? '&only_low=1' : '' ?>">매칭 실패만 보기</a>
+      <?php endif; ?>
+      &nbsp;|&nbsp;
+      <?php else: ?>
+      <a href="<?= APP_BASE ?>/admin/route_review.php?source_doc_id=<?= (int)$sourceDocId ?>&route_label=<?= urlencode($routeLabel) ?>&show_advanced=0">전체 보기</a>
+      &nbsp;|&nbsp;
+      <a href="<?= h($urlQuickModeRecoQs) ?>">초단축: 추천+검색 포함</a>
+      &nbsp;|&nbsp;
+      <a href="<?= h($urlQuickModeOff) ?>">초단축 모드 OFF</a>
+      &nbsp;|&nbsp;
+      <?php endif; ?>
+      <?php if ($showAdvanced): ?>
+      &nbsp;|&nbsp;
+      <?php if ($onlyLow): ?>
+      <a href="<?= $baseUrl ?><?= $riskySuffix ?><?= $topSuffix ?><?= $onlyUnmatched ? '&only_unmatched=1' : '' ?>">LOW 해제</a>
+      <?php else: ?>
+      <a href="<?= $baseUrl ?><?= $riskySuffix ?><?= $topSuffix ?>&only_low=1<?= $onlyUnmatched ? '&only_unmatched=1' : '' ?>">LOW만 보기</a>
+      <?php endif; ?>
+      &nbsp;|&nbsp;
+      <?php if (!empty($onlyRisky)): ?>
+      <a href="<?= $baseUrl ?><?= $topSuffix ?><?= $onlyUnmatched ? '&only_unmatched=1' : '' ?><?= $onlyLow ? '&only_low=1' : '' ?>">리스크 해제</a>
+      <?php else: ?>
+      <a href="<?= $baseUrl ?>&only_risky=1<?= $onlyUnmatched ? '&only_unmatched=1' : '' ?><?= $onlyLow ? '&only_low=1' : '' ?>">리스크 후보만 보기</a>
+      <?php endif; ?>
+      &nbsp;|&nbsp;
+      <a href="<?= $baseUrl ?>&only_risky=1&top=30<?= $onlyUnmatched ? '&only_unmatched=1' : '' ?><?= $onlyLow ? '&only_low=1' : '' ?>">리스크 Top30</a>
+      &nbsp;|&nbsp;
+      <a href="<?= $baseUrl ?>&only_risky=1&top=100<?= $onlyUnmatched ? '&only_unmatched=1' : '' ?><?= $onlyLow ? '&only_low=1' : '' ?>">리스크 Top100</a>
+      <?php if (!$showQs): ?>
+      &nbsp;|&nbsp;
+      <?php $qsOnUrl = APP_BASE . '/admin/route_review.php?source_doc_id=' . (int)$sourceDocId . '&route_label=' . urlencode($routeLabel) . '&show_qs=1'; ?>
+      <?php if ($onlyUnmatched): $qsOnUrl .= '&only_unmatched=1'; endif; ?>
+      <?php if ($onlyLow): $qsOnUrl .= '&only_low=1'; endif; ?>
+      <?php if (!empty($onlyRisky)): $qsOnUrl .= '&only_risky=1'; endif; ?>
+      <?php if ($topParam > 0): $qsOnUrl .= '&top=' . $topParam; endif; ?>
+      <?php if ($showReco): $qsOnUrl .= '&show_reco=1'; endif; ?>
+      <?php if ($showAdvanced): $qsOnUrl .= '&show_advanced=1'; endif; ?>
+      <a href="<?= $qsOnUrl ?>">Quick Search 표시</a>
+      <?php endif; ?>
+      <?php endif; ?>
+      <?php if (!$showAdvanced): ?>
+      &nbsp;|&nbsp;
+      <a href="<?= h($urlAdvancedOn) ?>">고급 옵션 보기</a>
+      <?php endif; ?>
+    </p>
+    <p class="muted" style="margin:0 0 10px; font-size:12px;">현재: <?= h($filterState) ?></p>
+    <?php if ($showQs): ?>
     <form method="get" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
       <input type="hidden" name="source_doc_id" value="<?= (int)$sourceDocId ?>" />
       <input type="hidden" name="route_label" value="<?= h($routeLabel) ?>" />
+      <?php if ($quickMode): ?><input type="hidden" name="quick_mode" value="1" /><?php endif; ?>
+      <?php if ($showAdvanced): ?><input type="hidden" name="show_advanced" value="1" /><?php endif; ?>
       <?php if ($onlyUnmatched): ?><input type="hidden" name="only_unmatched" value="1" /><?php endif; ?>
       <?php if ($onlyLow): ?><input type="hidden" name="only_low" value="1" /><?php endif; ?>
-      <input type="text" name="q" value="<?= h($searchQuery) ?>" placeholder="stop_name" size="20" />
+      <?php if (!empty($onlyRisky)): ?><input type="hidden" name="only_risky" value="1" /><?php endif; ?>
+      <?php if ($topParam > 0): ?><input type="hidden" name="top" value="<?= (int)$topParam ?>" /><?php endif; ?>
+      <?php if ($showReco): ?><input type="hidden" name="show_reco" value="1" /><?php endif; ?>
+      <input type="text" name="q" value="<?= h($searchQuery) ?>" placeholder="stop_name 검색" size="20" />
       <button type="submit">Search</button>
     </form>
+    <p class="muted" style="margin:4px 0 0; font-size:11px;">alias 입력 전 stop_master 존재 확인용 (exact → normalized → like_prefix)</p>
     <?php if ($searchQuery !== ''): ?>
     <table style="margin-top:10px;">
       <thead><tr><th>stop_id</th><th>stop_name</th><th>match_type</th></tr></thead>
@@ -647,59 +822,46 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8')
         <tr><td><?= h($r['stop_id']) ?></td><td><?= h($r['stop_name']) ?></td><td><?= h($r['match_type']) ?></td></tr>
         <?php endforeach; ?>
         <?php if (!$stopMasterSearchResults): ?>
-        <tr><td colspan="3" class="muted">no results (2글자 이하 검색어는 like_prefix 미적용)</td></tr>
+        <tr><td colspan="3" class="muted">no results</td></tr>
         <?php endif; ?>
       </tbody>
     </table>
     <?php endif; ?>
+    <?php endif; ?>
   </div>
 
+  <!-- C. 하단: Candidates 테이블 + Actions -->
   <div class="grid2">
     <div class="card">
       <h3 style="margin:0 0 8px;">Candidates</h3>
-      <p style="margin:0 0 12px; display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
-        <?php
-        // 현재 필터 상태 기준 URL 빌더
-        $baseUrl = APP_BASE . '/admin/route_review.php?source_doc_id=' . (int)$sourceDocId . '&route_label=' . urlencode($routeLabel);
-        if ($searchQuery !== '') $baseUrl .= '&q=' . urlencode($searchQuery);
-        ?>
-        
-        <?php if ($onlyUnmatched): ?>
-        <a href="<?= $baseUrl ?><?= $onlyLow ? '&only_low=1' : '' ?>">매칭 실패 해제</a>
-        <span class="muted">(매칭 실패만 표시 중)</span>
-        <?php else: ?>
-        <a href="<?= $baseUrl ?>&only_unmatched=1<?= $onlyLow ? '&only_low=1' : '' ?>">매칭 실패만 보기</a>
-        <?php endif; ?>
-        
-        <span class="muted">|</span>
-        
-        <?php if ($onlyLow): ?>
-        <a href="<?= $baseUrl ?><?= $onlyUnmatched ? '&only_unmatched=1' : '' ?>">LOW 해제</a>
-        <span class="muted">(LOW만 표시 중)</span>
-        <?php else: ?>
-        <a href="<?= $baseUrl ?>&only_low=1<?= $onlyUnmatched ? '&only_unmatched=1' : '' ?>">LOW만 보기</a>
-        <?php endif; ?>
-      </p>
+      <p class="muted" style="margin:0 0 12px; font-size:12px;">추천 canonical 계산: <?php
+if ($showReco && $onlyUnmatched) {
+  echo 'ON (limit=' . (int)$recLimitParam . '), cache hits=' . $recHit . ', misses=' . $recMiss . ', skipped=' . $recSkippedDisplay;
+} elseif (!$showReco) {
+  echo 'OFF (show_reco=0), cache hits=0, misses=0, skipped=' . $recSkippedDisplay;
+} else {
+  echo 'OFF, cache hits=0 / misses=0';
+}
+?></p>
       <table>
         <thead>
           <tr>
             <th>#</th>
             <th>seq</th>
-            <th>raw_stop_name</th>
+            <th>원문 정류장명</th>
             <th>추천 canonical</th>
-            <th>normalized_name</th>
+            <th>정규화</th>
             <th>status</th>
-            <th>매칭 신뢰도</th>
-            <th>matched_stop_id</th>
-            <th>match_method</th>
-            <th>match_score</th>
+            <th>신뢰도</th>
+            <th>매칭 결과</th>
+            <th>근거</th>
             <th>action</th>
           </tr>
         </thead>
         <tbody>
           <?php foreach ($cands as $c):
             $recommendedCanonical = (string)($recommendedByCandId[(int)$c['id']] ?? '');
-            $canonPlaceholder = ($onlyUnmatched && $recommendedCanonical !== '') ? $recommendedCanonical : '정식 명칭';
+            $canonPlaceholder = ($showReco && $onlyUnmatched && $recommendedCanonical !== '') ? $recommendedCanonical : '정식 명칭';
           ?>
           <tr>
             <td><?= (int)$c['id'] ?></td>
@@ -709,9 +871,8 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8')
             <td><?= h(normalizeStopNameDisplay((string)($c['raw_stop_name'] ?? ''))) ?></td>
             <td><span class="badge <?= h((string)$c['status']) ?>"><?= h((string)$c['status']) ?></span></td>
             <td><span class="badge <?= h(matchConfidenceLabel($c['match_method'] ?? null)) ?>"><?= h(matchConfidenceLabel($c['match_method'] ?? null)) ?></span></td>
-            <td><?= h((string)($c['matched_stop_id'] ?? '')) ?></td>
-            <td><?= h((string)($c['match_method'] ?? '')) ?></td>
-            <td><?= isset($c['match_score']) ? h((string)$c['match_score']) : '' ?></td>
+            <td><?= h((string)($c['matched_stop_id'] ?? '')) ?><?= (string)($c['matched_stop_name'] ?? '') !== '' ? ' ' . h((string)$c['matched_stop_name']) : '' ?></td>
+            <td><?= h((string)($c['match_method'] ?? '')) ?><?= isset($c['match_score']) ? ' (' . h((string)$c['match_score']) . ')' : '' ?></td>
             <td>
               <div class="row-actions">
                 <?php
@@ -728,19 +889,19 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8')
                       LOW(like_prefix) 확인함
                     </label>
                     <?php endif; ?>
-                    <button type="submit">✓ Approve</button>
+                    <button type="submit">Approve</button>
                   </form>
                   <form method="post">
                     <input type="hidden" name="action" value="reject" />
                     <input type="hidden" name="candidate_id" value="<?= (int)$c['id'] ?>" />
                     <input type="text" name="rejected_reason" value="manual reject" placeholder="reason" style="flex:1;" />
-                    <button type="submit" class="secondary">✗ Reject</button>
+                    <button type="submit" class="secondary">Reject</button>
                   </form>
                   <form method="post">
                     <input type="hidden" name="action" value="register_alias" />
                     <input type="hidden" name="candidate_id" value="<?= (int)$c['id'] ?>" />
                     <input type="text" name="canonical_text" value="<?= h((string)($c['matched_stop_name'] ?? '')) ?>" placeholder="<?= h($canonPlaceholder) ?>" title="stop_master 정식 정류장명" style="flex:1;" />
-                    <button type="submit" class="secondary">🔖 alias 등록</button>
+                    <button type="submit" class="secondary">alias 등록</button>
                   </form>
                 <?php elseif ((string)$c['status'] === 'pending' && !$isLatestSnapshot): ?>
                   <span class="muted">stale (이전 스냅샷, 승인/거절 불가)</span>
@@ -752,7 +913,7 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8')
           </tr>
           <?php endforeach; ?>
           <?php if (!$cands): ?>
-          <tr><td colspan="11" class="muted">no candidates</td></tr>
+          <tr><td colspan="10" class="muted">no candidates</td></tr>
           <?php endif; ?>
         </tbody>
       </table>
@@ -775,8 +936,8 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8')
         
         <?php if ($showLowWarning): ?>
         <div style="padding:12px; background:#fff4e5; border:1px solid #ffcc80; border-radius:8px; margin-bottom:12px;">
-          <strong style="color:#b56b00;">⚠️ 주의:</strong> 
-          <span style="color:#b56b00;">like_prefix(LOW) 비중이 높습니다 (<?= (int)$sum['low_confidence_cnt'] ?>건 / <?= (int)$sum['auto_matched_cnt'] ?>건 자동매칭). Promote 전 후보를 재검토하세요.</span>
+          <strong style="color:#b56b00;">주의:</strong>
+          <span style="color:#b56b00;">like_prefix(LOW) 비중이 높습니다 (<?= (int)$sum['low_confidence_cnt'] ?> / <?= (int)$sum['auto_matched_cnt'] ?> 자동매칭). Promote 전 후보 재검토 권장.</span>
         </div>
         <?php endif; ?>
         
@@ -869,5 +1030,17 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8')
   <p class="muted" style="margin-top:14px;">
     운영 기준: PARSE_MATCH(job_id 스냅샷) → candidate 승인 → promote로 route_stop 반영 → job_log로 추적.
   </p>
+
+  <?php
+  // v0.6-32 체크리스트: 리스크 토글/only_risky URL/게이트 동일 동작.
+  // v0.6-33 체크리스트: 추천 TopN, 리스크 Top30/100, 게이트 동일.
+  // v0.6-34 체크리스트:
+  // 1) 기본 진입(파라미터 없음): 추천/Quick Search 기본 숨김, v0.6-33과 동일 체감.
+  // 2) show_qs=0일 때 Quick Search 미표시, "Quick Search 표시" 링크만.
+  // 3) show_qs=1일 때 Quick Search 기존처럼 동작.
+  // 4) show_reco=0일 때 추천 전부 "—", placeholder "정식 명칭", meta OFF(show_reco=0), skipped=all.
+  // 5) show_reco=1+only_unmatched=1일 때만 추천 TopN 계산 및 meta hit/miss/skipped.
+  // 6) LOW 승인 체크/alias 검증/stale 차단/promote 게이트 동일.
+  ?>
 </body>
 </html>
