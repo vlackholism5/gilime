@@ -932,6 +932,7 @@ if ($showReco && $onlyUnmatched) {
       <p class="muted" style="margin:0 0 8px; font-size:12px;">현재 필터로 숨겨진 pending 후보가 있습니다. '전체 보기'를 눌러 확인하세요.</p>
       <?php endif; ?>
       <p class="muted" style="margin:0 0 8px; font-size:12px;">단축키: a=Approve, r=Reject, n=다음 노선, t=자동점프 토글, j/k=행이동</p>
+      <p class="muted" style="margin:0 0 8px; font-size:12px;" id="shortcut-hint"></p>
       <table>
         <thead>
           <tr>
@@ -1126,6 +1127,7 @@ if ($showReco && $onlyUnmatched) {
     if (!rows.length) return;
 
     var selectedRow = null;
+    var hintEl = document.getElementById('shortcut-hint');
 
     function setSelected(row) {
       if (selectedRow === row) return;
@@ -1136,6 +1138,7 @@ if ($showReco && $onlyUnmatched) {
       if (selectedRow) {
         selectedRow.classList.add('cand-selected');
       }
+      if (hintEl) hintEl.textContent = '';
     }
 
     function getFocusCandId() {
@@ -1163,10 +1166,16 @@ if ($showReco && $onlyUnmatched) {
       });
     });
 
+    var submitLockUntil = 0;
+
     function submitActionOnSelected(action, event) {
-      if (!selectedRow) return;
       var active = document.activeElement;
       if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT')) {
+        return;
+      }
+      if (Date.now() < submitLockUntil) return;
+      if (!selectedRow) {
+        if (hintEl) { hintEl.textContent = '행을 먼저 선택하세요.'; }
         return;
       }
       var forms = selectedRow.querySelectorAll('form');
@@ -1176,8 +1185,10 @@ if ($showReco && $onlyUnmatched) {
         if (actionInput && actionInput.value === action) {
           var btn = f.querySelector('button[type="submit"]');
           if (btn) {
+            submitLockUntil = Date.now() + 800;
             btn.click();
           } else if (typeof f.submit === 'function') {
+            submitLockUntil = Date.now() + 800;
             f.submit();
           }
           if (event && typeof event.preventDefault === 'function') {
