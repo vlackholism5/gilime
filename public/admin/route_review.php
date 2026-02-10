@@ -110,6 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $cRec = $cRow->fetch();
       if ($cRec) {
         $aliasText = normalizeStopNameDisplay((string)$cRec['raw_stop_name']);
+        
         if ($aliasText !== '') {
           $insAlias = $pdo->prepare("
             INSERT INTO shuttle_stop_alias (alias_text, canonical_text, rule_version, is_active, created_at, updated_at)
@@ -473,23 +474,44 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8')
   <meta charset="utf-8" />
   <title>Admin - Route Review</title>
   <style>
-    body{font-family:system-ui, -apple-system, Segoe UI, Roboto, sans-serif; padding:24px;}
+    body{font-family:system-ui, -apple-system, Segoe UI, Roboto, sans-serif; padding:24px; background:#f9fafb; max-width:1800px; margin:0 auto;}
     a{color:#0b57d0;text-decoration:none;}
-    .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
-    .meta{display:grid;grid-template-columns:160px 1fr;gap:8px;margin:10px 0 18px;}
-    .k{color:#666;}
-    table{border-collapse:collapse;width:100%;margin-top:10px;}
-    th,td{border-bottom:1px solid #eee;padding:8px;text-align:left;font-size:13px;vertical-align:top;}
-    th{background:#fafafa;}
-    .badge{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid #ddd;font-size:12px;}
-    .row-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
-    input[type=text]{padding:6px 8px;border:1px solid #ddd;border-radius:8px;}
-    button{padding:6px 10px;border:1px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;}
-    .err{color:#b00020;margin:10px 0;}
-    .flash{margin:10px 0;padding:10px 12px;border:1px solid #e6e6e6;border-radius:10px;background:#fafafa;}
+    a:hover{text-decoration:underline;}
+    .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px; padding:16px; background:#fff; border-radius:12px; box-shadow:0 1px 3px rgba(0,0,0,0.08);}
+    .top h2{margin:4px 0 0; font-size:22px; font-weight:600;}
+    .meta{display:grid;grid-template-columns:160px 1fr;gap:12px;margin:0 0 16px; padding:16px; background:#fff; border-radius:12px; box-shadow:0 1px 3px rgba(0,0,0,0.08);}
+    .k{color:#666; font-weight:500;}
+    table{border-collapse:collapse;width:100%;margin-top:10px; background:#fff;}
+    th,td{border-bottom:1px solid #eee;padding:10px;text-align:left;font-size:13px;vertical-align:top;}
+    th{background:#f7f8fa; font-weight:600; color:#444;}
+    .badge{display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px; font-weight:500; text-transform:uppercase;}
+    .badge.pending{background:#fff4e5; color:#b56b00; border:1px solid #ffcc80;}
+    .badge.approved{background:#e7f5e9; color:#1b7a3b; border:1px solid #81c784;}
+    .badge.rejected{background:#fee; color:#c62828; border:1px solid #ef5350;}
+    .badge.HIGH{background:#e7f5e9; color:#1b7a3b; border:1px solid #81c784;}
+    .badge.MED{background:#e3f2fd; color:#1565c0; border:1px solid #64b5f6;}
+    .badge.LOW{background:#fff4e5; color:#b56b00; border:1px solid #ffcc80;}
+    .badge.NONE{background:#f5f5f5; color:#757575; border:1px solid #ccc;}
+    .row-actions{display:flex;gap:8px;align-items:flex-start;flex-direction:column; padding:8px 0;}
+    .row-actions form{display:flex;gap:6px;align-items:center; background:#fafafa; padding:8px; border-radius:8px; width:100%;}
+    input[type=text]{padding:7px 10px;border:1px solid #ddd;border-radius:6px; font-size:13px;}
+    button{padding:7px 12px;border:1px solid #0b57d0;border-radius:6px;background:#0b57d0; color:#fff; cursor:pointer; font-weight:500; font-size:12px;}
+    button:hover{background:#094bbd;}
+    button:disabled{opacity:.5; cursor:not-allowed; background:#ccc; border-color:#ccc;}
+    button.secondary{background:#fff; color:#0b57d0; border:1px solid #0b57d0;}
+    button.secondary:hover{background:#f0f4ff;}
+    .err{color:#b00020;margin:10px 0; padding:12px; background:#fee; border-radius:8px; border:1px solid #ef5350;}
+    .flash{margin:10px 0;padding:12px 16px;border:1px solid #81c784;border-radius:8px;background:#e7f5e9; color:#1b7a3b;}
     .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
-    .card{border:1px solid #eee;border-radius:12px;padding:12px;}
+    .card{border:1px solid #e0e0e0;border-radius:12px;padding:16px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.08);}
+    .card h3{margin:0 0 12px; font-size:16px; font-weight:600; color:#333;}
     .muted{color:#666;font-size:12px;}
+    .summary-grid{display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; margin-bottom:16px;}
+    .summary-item{padding:12px; background:#fff; border:1px solid #e0e0e0; border-radius:8px; text-align:center;}
+    .summary-item .label{font-size:11px; color:#666; text-transform:uppercase; margin-bottom:4px;}
+    .summary-item .value{font-size:20px; font-weight:600; color:#333;}
+    .summary-item.warn .value{color:#b56b00;}
+    .summary-item.ok .value{color:#1b7a3b;}
   </style>
 </head>
 <body>
@@ -524,19 +546,51 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8')
     <div class="k">latest_parse_job_id</div><div><?= (int)$latestParseJobId ?></div>
     <div class="k">스냅샷 비교</div>
     <div>Candidate 스냅샷: parse_job_id=<?= (int)$latestParseJobId ?> &nbsp;|&nbsp; Active route_stop 스냅샷: PROMOTE job_id (created_job_id)=<?= $activePromoteJobId ?></div>
-    <div class="k">summary</div>
-    <div>
-      cand_total=<?= (int)$sum['cand_total'] ?> /
-      approved=<?= (int)$sum['cand_approved'] ?> /
-      pending=<?= (int)$sum['cand_pending'] ?> /
-      route_stop=<?= (int)$sum['route_stop_cnt'] ?>
-      <?php if ($latestParseJobId > 0): ?>
-        <br><span class="muted">auto_matched=<?= (int)$sum['auto_matched_cnt'] ?> /
-        low_confidence(like_prefix)=<?= (int)$sum['low_confidence_cnt'] ?> /
-        none_matched=<?= (int)$sum['none_matched_cnt'] ?> /
-        alias_used=<?= (int)$sum['alias_used_cnt'] ?></span>
-      <?php endif; ?>
+  </div>
+
+  <div class="summary-grid">
+    <div class="summary-item">
+      <div class="label">Total</div>
+      <div class="value"><?= (int)$sum['cand_total'] ?></div>
     </div>
+    <div class="summary-item <?= (int)$sum['cand_approved'] > 0 ? 'ok' : '' ?>">
+      <div class="label">Approved</div>
+      <div class="value"><?= (int)$sum['cand_approved'] ?></div>
+    </div>
+    <div class="summary-item <?= (int)$sum['cand_pending'] > 0 ? 'warn' : '' ?>">
+      <div class="label">Pending</div>
+      <div class="value"><?= (int)$sum['cand_pending'] ?></div>
+    </div>
+    <div class="summary-item">
+      <div class="label">Route Stops</div>
+      <div class="value"><?= (int)$sum['route_stop_cnt'] ?></div>
+    </div>
+  </div>
+
+  <?php if ($latestParseJobId > 0): ?>
+  <div class="summary-grid">
+    <div class="summary-item ok">
+      <div class="label">Auto Matched</div>
+      <div class="value"><?= (int)$sum['auto_matched_cnt'] ?></div>
+    </div>
+    <div class="summary-item warn">
+      <div class="label">Low Confidence</div>
+      <div class="value"><?= (int)$sum['low_confidence_cnt'] ?></div>
+    </div>
+    <div class="summary-item">
+      <div class="label">None Matched</div>
+      <div class="value"><?= (int)$sum['none_matched_cnt'] ?></div>
+    </div>
+    <div class="summary-item">
+      <div class="label">Alias Used</div>
+      <div class="value"><?= (int)$sum['alias_used_cnt'] ?></div>
+    </div>
+  </div>
+  <?php endif; ?>
+
+  <div class="meta">
+    <div class="k">스냅샷 비교</div>
+    <div>Candidate 스냅샷: parse_job_id=<?= (int)$latestParseJobId ?> &nbsp;|&nbsp; Active route_stop 스냅샷: PROMOTE job_id (created_job_id)=<?= $activePromoteJobId ?></div>
     <div class="k">추천 canonical</div>
     <div class="muted" style="font-size:0.85em;">추천 canonical 계산: <?= $onlyUnmatched ? 'ON' : 'OFF' ?>, cache hits=<?= $recHit ?>, misses=<?= $recMiss ?></div>
   </div>
@@ -604,8 +658,8 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8')
             <td><input type="text" readonly value="<?= h((string)($c['raw_stop_name'] ?? '')) ?>" style="width:100%;max-width:180px;box-sizing:border-box;" title="선택 후 복사" /></td>
             <td><?= $recommendedCanonical !== '' ? h($recommendedCanonical) : '<span class="muted">—</span>' ?></td>
             <td><?= h(normalizeStopNameDisplay((string)($c['raw_stop_name'] ?? ''))) ?></td>
-            <td><?= h((string)$c['status']) ?></td>
-            <td><?= h(matchConfidenceLabel($c['match_method'] ?? null)) ?></td>
+            <td><span class="badge <?= h((string)$c['status']) ?>"><?= h((string)$c['status']) ?></span></td>
+            <td><span class="badge <?= h(matchConfidenceLabel($c['match_method'] ?? null)) ?>"><?= h(matchConfidenceLabel($c['match_method'] ?? null)) ?></span></td>
             <td><?= h((string)($c['matched_stop_id'] ?? '')) ?></td>
             <td><?= h((string)($c['match_method'] ?? '')) ?></td>
             <td><?= isset($c['match_score']) ? h((string)$c['match_score']) : '' ?></td>
@@ -615,24 +669,23 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8')
                 $isLatestSnapshot = ((int)($c['created_job_id'] ?? 0) === $latestParseJobId);
                 if ((string)$c['status'] === 'pending' && $isLatestSnapshot):
                 ?>
-                  <form method="post" style="display:flex;gap:6px;align-items:center;">
+                  <form method="post">
                     <input type="hidden" name="action" value="approve" />
                     <input type="hidden" name="candidate_id" value="<?= (int)$c['id'] ?>" />
-                    <input type="text" name="matched_stop_id" value="<?= h((string)($c['matched_stop_id'] ?? '')) ?>" placeholder="ex) ST0001" />
-                    <button type="submit">Approve</button>
+                    <input type="text" name="matched_stop_id" value="<?= h((string)($c['matched_stop_id'] ?? '')) ?>" placeholder="stop_id (ex: ST0001)" style="flex:1;" />
+                    <button type="submit">✓ Approve</button>
                   </form>
-                  <form method="post" style="display:flex;gap:6px;align-items:center;">
+                  <form method="post">
                     <input type="hidden" name="action" value="reject" />
                     <input type="hidden" name="candidate_id" value="<?= (int)$c['id'] ?>" />
-                    <input type="text" name="rejected_reason" value="manual reject" />
-                    <button type="submit">Reject</button>
+                    <input type="text" name="rejected_reason" value="manual reject" placeholder="reason" style="flex:1;" />
+                    <button type="submit" class="secondary">✗ Reject</button>
                   </form>
-                  <form method="post" style="display:inline;">
+                  <form method="post">
                     <input type="hidden" name="action" value="register_alias" />
                     <input type="hidden" name="candidate_id" value="<?= (int)$c['id'] ?>" />
-                    <input type="text" name="canonical_text" value="<?= h((string)($c['matched_stop_name'] ?? '')) ?>" placeholder="<?= h($canonPlaceholder) ?>" size="14" title="stop_master에 존재하는 정식 정류장명. 추천값은 placeholder 참고." />
-                    <button type="submit">alias 등록</button>
-                    <span class="muted" style="font-size:0.85em;">stop_master 정식 명칭(placeholder 참고)</span>
+                    <input type="text" name="canonical_text" value="<?= h((string)($c['matched_stop_name'] ?? '')) ?>" placeholder="<?= h($canonPlaceholder) ?>" title="stop_master 정식 정류장명" style="flex:1;" />
+                    <button type="submit" class="secondary">🔖 alias 등록</button>
                   </form>
                 <?php elseif ((string)$c['status'] === 'pending' && !$isLatestSnapshot): ?>
                   <span class="muted">stale (이전 스냅샷, 승인/거절 불가)</span>

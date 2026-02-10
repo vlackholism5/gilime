@@ -1,4 +1,5 @@
 -- v0.6-18: 매칭 신뢰도 표시 + summary 집계 검증 (Workbench에서 주석 해제 후 :doc/:rl/:latest_job_id 치환 실행)
+-- GPT 대화에서 검증할 때: 사용자가 이 파일의 쿼리를 실행한 뒤, 실행 결과(행 수/표/에러)를 GPT 대화창에 붙여넣으면 GPT가 다음 지시를 줌. (GPT는 SQL 직접 실행 불가)
 
 -- (1) latest PARSE_MATCH job id 확인
 -- SELECT id, source_doc_id, job_type, job_status, created_at
