@@ -1,0 +1,15 @@
+# Gilaime v0.6-4: "public/" 구조 흉내내기 (XAMPP 기본: 프로젝트 루트가 webroot)
+# - URL은 /admin/* 그대로 유지
+# - 실제 파일은 /public/admin/*
+
+Options -Indexes
+
+# 1) 민감 폴더 직접 접근 차단
+RewriteEngine On
+RewriteRule ^(app|storage|tools|sql)/ - [F,L]
+
+# 2) /admin/* -> /public/admin/*
+RewriteRule ^admin/(.*)$ public/admin/$1 [L]
+
+# 3) /admin -> /public/admin/index.php
+RewriteRule ^admin$ public/admin/index.php [L]

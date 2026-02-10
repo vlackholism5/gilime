@@ -1,0 +1,7 @@
+# 원본 데이터 — 커밋 제외 (SoT: data/README_DATA_DIRS.md)
+data/inbound/
+
+# 로컬/환경
+.env
+.env.local
+*.log

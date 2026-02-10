@@ -1,0 +1,13 @@
+{
+  "name": "gilaime_mvp_01",
+  "version": "v0.6-4",
+  "structure": "public-app-storage",
+  "entrypoints": {
+    "admin_login": "/admin/login.php",
+    "admin_index": "/admin/index.php"
+  },
+  "notes": [
+    "XAMPP 기본(webroot=프로젝트 루트) 환경을 위해 .htaccess로 /admin -> /public/admin rewrite 적용",
+    "/app,/storage,/tools,/sql 은 .htaccess로 직접 접근 차단"
+  ]
+}
