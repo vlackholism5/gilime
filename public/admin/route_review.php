@@ -111,7 +111,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       if ($cRec) {
         $aliasText = normalizeStopNameDisplay((string)$cRec['raw_stop_name']);
         
-        if ($aliasText !== '') {
+        // v0.6-21: alias 등록 검증 강화
+        if ($aliasText === '') {
+          $error = 'raw_stop_name이 비어 있어 alias로 등록할 수 없습니다.';
+        } elseif (mb_strlen($aliasText) <= 2) {
+          $error = 'alias blocked: alias_text too short (<=2). raw_stop_name="' . htmlspecialchars($aliasText, ENT_QUOTES, 'UTF-8') . '"';
+        } else {
+          // canonical이 stop_master에 존재하는지 확인 (저장 전 필수)
+          $match = lookupStopMasterByCanonical($pdo, $canonicalText);
+          if (!$match) {
+            $error = 'alias blocked: canonical not found in stop_master. canonical_text="' . htmlspecialchars($canonicalText, ENT_QUOTES, 'UTF-8') . '"';
+          }
+        }
+        
+        // 검증 통과 시에만 alias 저장 + live rematch
+        if (!$error) {
           $insAlias = $pdo->prepare("
             INSERT INTO shuttle_stop_alias (alias_text, canonical_text, rule_version, is_active, created_at, updated_at)
             VALUES (:alias, :canonical, 'v0.6-12', 1, NOW(), NOW())
@@ -120,7 +134,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           $insAlias->execute([':alias' => $aliasText, ':canonical' => $canonicalText]);
 
           // v0.6-13: canonical으로 stop_master 조회 후 해당 candidate 1건 즉시 재매칭 (latest 스냅샷만)
-          $match = lookupStopMasterByCanonical($pdo, $canonicalText);
           $candJobId = (int)($cRec['created_job_id'] ?? 0);
           $isLatest = ($latestParseJobId > 0 && $candJobId === $latestParseJobId);
           if ($match && $isLatest) {
@@ -136,11 +149,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['flash'] = 'alias saved + candidate rematched (id=' . $candId . ', stop_id=' . $match['stop_id'] . ')';
           } elseif ($match && !$isLatest) {
             $_SESSION['flash'] = 'alias 등록: "' . htmlspecialchars($aliasText, ENT_QUOTES, 'UTF-8') . '" → "' . htmlspecialchars($canonicalText, ENT_QUOTES, 'UTF-8') . '" (stale candidate라 rematch 생략)';
-          } else {
-            $_SESSION['flash'] = 'alias saved but canonical not found in master';
           }
-        } else {
-          $error = 'raw_stop_name이 비어 있어 alias로 등록할 수 없습니다.';
         }
       } else {
         $error = 'candidate를 찾을 수 없습니다.';
@@ -174,33 +183,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $matchedStopId = trim((string)($_POST['matched_stop_id'] ?? ''));
         if ($matchedStopId === '') $matchedStopId = 'MANUAL';
 
-        $stmt = $pdo->prepare("
-          UPDATE shuttle_stop_candidate
-          SET status='approved',
-              approved_by=:uid,
-              approved_at=NOW(),
-              matched_stop_id=:msid,
-              matched_stop_name=raw_stop_name,
-              match_score=0.900,
-              match_method='manual_approve',
-              updated_at=NOW()
-          WHERE id=:id
-            AND source_doc_id=:doc
-            AND route_label=:rl
-            AND created_job_id=:jid
-        ");
-        $stmt->execute([
-          ':uid' => (int)($_SESSION['user_id'] ?? 0),
-          ':msid' => $matchedStopId,
-          ':id' => $candId,
-          ':doc' => $sourceDocId,
-          ':rl' => $routeLabel,
-          ':jid' => $latestParseJobId,
-        ]);
+        // v0.6-21: LOW(like_prefix) 승인 게이트 — 체크 강제
+        $candDetailStmt = $pdo->prepare("SELECT match_method FROM shuttle_stop_candidate WHERE id=:id LIMIT 1");
+        $candDetailStmt->execute([':id' => $candId]);
+        $candDetail = $candDetailStmt->fetch();
+        $candMethod = (string)($candDetail['match_method'] ?? '');
+        
+        if ($candMethod === 'like_prefix') {
+          $confirmLow = (string)($_POST['confirm_low'] ?? '');
+          if ($confirmLow !== '1') {
+            $error = 'LOW(like_prefix) 매칭은 확인 체크 후 승인할 수 있습니다.';
+          }
+        }
+        
+        if (!$error) {
+          $stmt = $pdo->prepare("
+            UPDATE shuttle_stop_candidate
+            SET status='approved',
+                approved_by=:uid,
+                approved_at=NOW(),
+                matched_stop_id=:msid,
+                matched_stop_name=raw_stop_name,
+                match_score=0.900,
+                match_method='manual_approve',
+                updated_at=NOW()
+            WHERE id=:id
+              AND source_doc_id=:doc
+              AND route_label=:rl
+              AND created_job_id=:jid
+          ");
+          $stmt->execute([
+            ':uid' => (int)($_SESSION['user_id'] ?? 0),
+            ':msid' => $matchedStopId,
+            ':id' => $candId,
+            ':doc' => $sourceDocId,
+            ':rl' => $routeLabel,
+            ':jid' => $latestParseJobId,
+          ]);
 
-        $_SESSION['flash'] = 'approved: candidate #' . $candId;
-        header('Location: ' . APP_BASE . '/admin/route_review.php?source_doc_id=' . $sourceDocId . '&route_label=' . urlencode($routeLabel));
-        exit;
+          $_SESSION['flash'] = 'approved: candidate #' . $candId;
+          header('Location: ' . APP_BASE . '/admin/route_review.php?source_doc_id=' . $sourceDocId . '&route_label=' . urlencode($routeLabel));
+          exit;
+        }
 
       } elseif ($action === 'reject') {
         $reason = trim((string)($_POST['rejected_reason'] ?? 'manual reject'));
@@ -698,6 +722,12 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8')
                     <input type="hidden" name="action" value="approve" />
                     <input type="hidden" name="candidate_id" value="<?= (int)$c['id'] ?>" />
                     <input type="text" name="matched_stop_id" value="<?= h((string)($c['matched_stop_id'] ?? '')) ?>" placeholder="stop_id (ex: ST0001)" style="flex:1;" />
+                    <?php if ((string)($c['match_method'] ?? '') === 'like_prefix'): ?>
+                    <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:#b56b00;">
+                      <input type="checkbox" name="confirm_low" value="1" />
+                      LOW(like_prefix) 확인함
+                    </label>
+                    <?php endif; ?>
                     <button type="submit">✓ Approve</button>
                   </form>
                   <form method="post">
