@@ -772,7 +772,7 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8')
       &nbsp;|&nbsp;
       <a href="<?= APP_BASE ?>/admin/route_review.php?source_doc_id=<?= (int)$sourceDocId ?>&route_label=<?= urlencode($routeLabel) ?>&only_risky=1&top=30&only_unmatched=1&show_reco=1">빠른 시작: 리스크 Top30 + 추천 ON</a>
       &nbsp;|&nbsp;
-      <?php if ($jumpNextActive): ?><a href="<?= h($urlJumpNextOff) ?>">검수 후 다음 노선 자동 해제</a><?php else: ?><a href="<?= h($urlJumpNextOn) ?>">검수 후 다음 노선 자동</a><?php endif; ?>
+      <?php if ($jumpNextActive): ?><a href="<?= h($urlJumpNextOff) ?>" data-jump-next-toggle="1">검수 후 다음 노선 자동 해제</a><?php else: ?><a href="<?= h($urlJumpNextOn) ?>" data-jump-next-toggle="1">검수 후 다음 노선 자동</a><?php endif; ?>
       &nbsp;|&nbsp;
       <?php endif; ?>
       <?php if (!$showAdvanced): ?>
@@ -801,7 +801,7 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8')
       <?php else: ?>
       <a href="<?= APP_BASE ?>/admin/route_review.php?source_doc_id=<?= (int)$sourceDocId ?>&route_label=<?= urlencode($routeLabel) ?>&show_advanced=0">전체 보기</a>
       &nbsp;|&nbsp;
-      <?php if ($jumpNextActive): ?><a href="<?= h($urlJumpNextOff) ?>">검수 후 다음 노선 자동 해제</a><?php else: ?><a href="<?= h($urlJumpNextOn) ?>">검수 후 다음 노선 자동</a><?php endif; ?>
+      <?php if ($jumpNextActive): ?><a href="<?= h($urlJumpNextOff) ?>" data-jump-next-toggle="1">검수 후 다음 노선 자동 해제</a><?php else: ?><a href="<?= h($urlJumpNextOn) ?>" data-jump-next-toggle="1">검수 후 다음 노선 자동</a><?php endif; ?>
       &nbsp;|&nbsp;
       <a href="<?= h($urlQuickModeRecoQs) ?>">초단축: 추천+검색 포함</a>
       &nbsp;|&nbsp;
@@ -890,6 +890,7 @@ if ($showReco && $onlyUnmatched) {
       <?php if ((int)$sum['cand_pending'] > 0 && count($cands) === 0): ?>
       <p class="muted" style="margin:0 0 8px; font-size:12px;">현재 필터로 숨겨진 pending 후보가 있습니다. '전체 보기'를 눌러 확인하세요.</p>
       <?php endif; ?>
+      <p class="muted" style="margin:0 0 8px; font-size:12px;">단축키: a=Approve, r=Reject, n=다음 노선</p>
       <table>
         <thead>
           <tr>
@@ -910,7 +911,7 @@ if ($showReco && $onlyUnmatched) {
             $recommendedCanonical = (string)($recommendedByCandId[(int)$c['id']] ?? '');
             $canonPlaceholder = ($showReco && $onlyUnmatched && $recommendedCanonical !== '') ? $recommendedCanonical : '정식 명칭';
           ?>
-          <tr>
+          <tr class="cand-row">
             <td><?= (int)$c['id'] ?></td>
             <td><?= (int)$c['seq_in_route'] ?></td>
             <td><input type="text" readonly value="<?= h((string)($c['raw_stop_name'] ?? '')) ?>" style="width:100%;max-width:180px;box-sizing:border-box;" title="선택 후 복사" /></td>
@@ -1077,6 +1078,73 @@ if ($showReco && $onlyUnmatched) {
   <p class="muted" style="margin-top:14px;">
     운영 기준: PARSE_MATCH(job_id 스냅샷) → candidate 승인 → promote로 route_stop 반영 → job_log로 추적.
   </p>
+
+  <script>
+  (function() {
+    var rows = Array.prototype.slice.call(document.querySelectorAll('.cand-row'));
+    if (!rows.length) return;
+
+    var selectedRow = null;
+
+    function setSelected(row) {
+      if (selectedRow === row) return;
+      if (selectedRow) {
+        selectedRow.classList.remove('cand-row-selected');
+      }
+      selectedRow = row;
+      if (selectedRow) {
+        selectedRow.classList.add('cand-row-selected');
+      }
+    }
+
+    rows.forEach(function(row) {
+      row.addEventListener('click', function() {
+        setSelected(row);
+      });
+    });
+
+    function submitActionOnSelected(action, event) {
+      if (!selectedRow) return;
+      var active = document.activeElement;
+      if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT')) {
+        return;
+      }
+      var forms = selectedRow.querySelectorAll('form');
+      for (var i = 0; i < forms.length; i++) {
+        var f = forms[i];
+        var actionInput = f.querySelector('input[name="action"]');
+        if (actionInput && actionInput.value === action) {
+          var btn = f.querySelector('button[type="submit"]');
+          if (btn) {
+            btn.click();
+          } else if (typeof f.submit === 'function') {
+            f.submit();
+          }
+          if (event && typeof event.preventDefault === 'function') {
+            event.preventDefault();
+          }
+          break;
+        }
+      }
+    }
+
+    document.addEventListener('keydown', function(e) {
+      if (!e || e.defaultPrevented) return;
+      var key = e.key;
+      if (key === 'a') {
+        submitActionOnSelected('approve', e);
+      } else if (key === 'r') {
+        submitActionOnSelected('reject', e);
+      } else if (key === 'n') {
+        var jumpLink = document.querySelector('a[data-jump-next-toggle="1"]');
+        if (jumpLink) {
+          e.preventDefault();
+          jumpLink.click();
+        }
+      }
+    });
+  })();
+  </script>
 
   <?php
   // v0.6-32 체크리스트: 리스크 토글/only_risky URL/게이트 동일 동작.
