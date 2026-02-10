@@ -533,6 +533,28 @@ else if ((int)$sum['cand_pending'] > 0) $promoteBlockReason = 'pending 후보가
 else if ((int)$sum['cand_approved'] <= 0) $promoteBlockReason = 'approved 후보가 없어 승격할 수 없습니다.';
 else if ($approvedEmptyStopCnt > 0) $promoteBlockReason = 'approved 후보 중 matched_stop_id가 비어 있는 항목이 있어 승격할 수 없습니다.';
 
+// v1.1-04: 다음 노선 검수(즉시 이동)용 nextRouteLabel / nextRouteUrl (n 키)
+$nextRouteLabel = null;
+$nextRouteUrl = '';
+if ($latestParseJobId > 0) {
+  $nextRlStmt = $pdo->prepare("SELECT route_label FROM shuttle_stop_candidate WHERE source_doc_id=:doc AND created_job_id=:jid AND status='pending' GROUP BY route_label ORDER BY route_label ASC");
+  $nextRlStmt->execute([':doc' => $sourceDocId, ':jid' => $latestParseJobId]);
+  $pendingRouteLabels = $nextRlStmt->fetchAll(PDO::FETCH_COLUMN, 0);
+  if ($pendingRouteLabels !== []) {
+    foreach ($pendingRouteLabels as $rl) {
+      if (strcmp($rl, $routeLabel) > 0) {
+        $nextRouteLabel = $rl;
+        break;
+      }
+    }
+    if ($nextRouteLabel === null) $nextRouteLabel = $pendingRouteLabels[0];
+    if ($nextRouteLabel !== $routeLabel) {
+      $nextRouteUrl = APP_BASE . '/admin/route_review.php?source_doc_id=' . (int)$sourceDocId . '&route_label=' . urlencode($nextRouteLabel) . '&quick_mode=1&show_advanced=0';
+      if ((int)($_GET['jump_next'] ?? 0) === 1) $nextRouteUrl .= '&jump_next=1';
+    }
+  }
+}
+
 // v0.6-34: Lazy render 옵션 (기본 OFF)
 $showReco = (int)($_GET['show_reco'] ?? 0);
 $showQs = (int)($_GET['show_qs'] ?? 0);
@@ -639,6 +661,7 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8')
     .summary-item .value{font-size:20px; font-weight:600; color:#333;}
     .summary-item.warn .value{color:#b56b00;}
     .summary-item.ok .value{color:#1b7a3b;}
+    .cand-selected{background:#f0f4ff;}
   </style>
 </head>
 <body>
@@ -876,7 +899,7 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8')
 
   <!-- C. 하단: Candidates 테이블 + Actions -->
   <div class="grid2">
-    <div class="card">
+    <div class="card"<?= $nextRouteUrl !== '' ? ' data-next-route-url="' . h($nextRouteUrl) . '"' : '' ?>>
       <h3 style="margin:0 0 8px;">Candidates</h3>
       <p class="muted" style="margin:0 0 12px; font-size:12px;">추천 canonical 계산: <?php
 if ($showReco && $onlyUnmatched) {
@@ -890,7 +913,7 @@ if ($showReco && $onlyUnmatched) {
       <?php if ((int)$sum['cand_pending'] > 0 && count($cands) === 0): ?>
       <p class="muted" style="margin:0 0 8px; font-size:12px;">현재 필터로 숨겨진 pending 후보가 있습니다. '전체 보기'를 눌러 확인하세요.</p>
       <?php endif; ?>
-      <p class="muted" style="margin:0 0 8px; font-size:12px;">단축키: a=Approve, r=Reject, n=다음 노선</p>
+      <p class="muted" style="margin:0 0 8px; font-size:12px;">단축키: a=Approve, r=Reject, n=다음 노선, t=자동점프 토글</p>
       <table>
         <thead>
           <tr>
@@ -1089,13 +1112,16 @@ if ($showReco && $onlyUnmatched) {
     function setSelected(row) {
       if (selectedRow === row) return;
       if (selectedRow) {
-        selectedRow.classList.remove('cand-row-selected');
+        selectedRow.classList.remove('cand-selected');
       }
       selectedRow = row;
       if (selectedRow) {
-        selectedRow.classList.add('cand-row-selected');
+        selectedRow.classList.add('cand-selected');
       }
     }
+
+    // 페이지 로드 시 첫 번째 후보 자동 선택
+    setSelected(rows[0]);
 
     rows.forEach(function(row) {
       row.addEventListener('click', function() {
@@ -1136,7 +1162,16 @@ if ($showReco && $onlyUnmatched) {
       } else if (key === 'r') {
         submitActionOnSelected('reject', e);
       } else if (key === 'n') {
-        var jumpLink = document.querySelector('a[data-jump-next-toggle="1"]');
+        var card = document.querySelector('.grid2 .card[data-next-route-url]');
+        if (card) {
+          var url = card.getAttribute('data-next-route-url');
+          if (url) {
+            e.preventDefault();
+            window.location.href = url;
+          }
+        }
+      } else if (key === 't') {
+        var jumpLink = document.querySelector('a[data-jump-next-toggle=\"1\"]');
         if (jumpLink) {
           e.preventDefault();
           jumpLink.click();
