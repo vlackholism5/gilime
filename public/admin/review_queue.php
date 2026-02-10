@@ -9,6 +9,8 @@ $pdo = pdo();
 $onlyRisky = (int)($_GET['only_risky'] ?? 1);
 $limitParam = (int)($_GET['limit'] ?? 50);
 $limitParam = max(10, min(200, $limitParam));
+$filterDocId = isset($_GET['doc_id']) && $_GET['doc_id'] !== '' ? (int)$_GET['doc_id'] : null;
+$filterRouteLabel = isset($_GET['route_label']) && trim((string)$_GET['route_label']) !== '' ? trim((string)$_GET['route_label']) : null;
 
 // doc별 최신 PARSE_MATCH job (1쿼리)
 $latestJobStmt = $pdo->query("
@@ -53,19 +55,31 @@ if ($latestByDoc === []) {
       WHERE j.job_type = 'PARSE_MATCH' AND j.job_status = 'success'
     ) l ON c.source_doc_id = l.source_doc_id AND c.created_job_id = l.job_id
     WHERE c.status = 'pending'
+  ";
+  $summaryParams = [];
+  if ($filterDocId !== null) {
+    $summarySql .= " AND c.source_doc_id = :doc_id";
+    $summaryParams[':doc_id'] = $filterDocId;
+  }
+  if ($filterRouteLabel !== null) {
+    $summarySql .= " AND c.route_label = :route_label";
+    $summaryParams[':route_label'] = $filterRouteLabel;
+  }
+  $summarySql .= "
     GROUP BY c.source_doc_id, c.route_label
     ORDER BY (SUM(CASE WHEN c.match_method = 'like_prefix' THEN 1 ELSE 0 END) + SUM(CASE WHEN c.match_method IS NULL THEN 1 ELSE 0 END)) DESC,
       COUNT(*) DESC, MAX(l.updated_at) ASC
   ";
-  $queueSummary = $pdo->query($summarySql)->fetchAll(PDO::FETCH_ASSOC);
+  $summaryStmt = $pdo->prepare($summarySql);
+  $summaryStmt->execute($summaryParams);
+  $queueSummary = $summaryStmt->fetchAll(PDO::FETCH_ASSOC);
   foreach ($queueSummary as &$row) {
     $row['pending_risky'] = (int)$row['pending_low'] + (int)$row['pending_none'];
   }
   unset($row);
 
-  // Top N Candidates: NONE 우선, LOW 다음, score ASC NULL last, id ASC
   $topSql = "
-    SELECT c.id, c.source_doc_id AS doc_id, c.route_label, c.raw_stop_name, c.matched_stop_name, c.match_method, c.match_score
+    SELECT c.id AS cand_id, c.created_job_id, c.source_doc_id AS doc_id, c.route_label, c.raw_stop_name, c.matched_stop_name, c.match_method, c.match_score
     FROM shuttle_stop_candidate c
     INNER JOIN (
       SELECT source_doc_id, MAX(id) AS mid
@@ -75,6 +89,15 @@ if ($latestByDoc === []) {
     ) t ON c.source_doc_id = t.source_doc_id AND c.created_job_id = t.mid
     WHERE c.status = 'pending'
   ";
+  $topParams = [];
+  if ($filterDocId !== null) {
+    $topSql .= " AND c.source_doc_id = :doc_id";
+    $topParams[':doc_id'] = $filterDocId;
+  }
+  if ($filterRouteLabel !== null) {
+    $topSql .= " AND c.route_label = :route_label";
+    $topParams[':route_label'] = $filterRouteLabel;
+  }
   if ($onlyRisky) {
     $topSql .= " AND (c.match_method = 'like_prefix' OR c.match_method IS NULL)";
   }
@@ -82,7 +105,9 @@ if ($latestByDoc === []) {
     ORDER BY (c.match_method IS NULL) DESC, (c.match_method = 'like_prefix') DESC,
       c.match_score ASC, c.id ASC
     LIMIT " . $limitParam;
-  $topCandidates = $pdo->query($topSql)->fetchAll(PDO::FETCH_ASSOC);
+  $topStmt = $pdo->prepare($topSql);
+  $topStmt->execute($topParams);
+  $topCandidates = $topStmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
 function matchConfidenceLabel(?string $matchMethod): string {
@@ -102,8 +127,13 @@ function h(string $s): string {
 }
 
 $urlBase = APP_BASE . '/admin/review_queue.php';
-$urlOnlyRiskyOn = $urlBase . '?only_risky=1&limit=' . $limitParam;
-$urlOnlyRiskyOff = $urlBase . '?only_risky=0&limit=' . $limitParam;
+$q = ['only_risky' => $onlyRisky, 'limit' => $limitParam];
+if ($filterDocId !== null) $q['doc_id'] = $filterDocId;
+if ($filterRouteLabel !== null) $q['route_label'] = $filterRouteLabel;
+$urlOnlyRiskyOn = $urlBase . '?' . http_build_query(array_merge($q, ['only_risky' => 1]));
+$urlOnlyRiskyOff = $urlBase . '?' . http_build_query(array_merge($q, ['only_risky' => 0]));
+$urlAllDocs = $urlBase . '?' . http_build_query(['only_risky' => $onlyRisky, 'limit' => $limitParam]);
+$uniqueDocIds = array_values(array_unique(array_map(function ($r) { return (int)$r['doc_id']; }, $queueSummary)));
 ?>
 <!doctype html>
 <html lang="ko">
@@ -141,6 +171,17 @@ $urlOnlyRiskyOff = $urlBase . '?only_risky=0&limit=' . $limitParam;
     | limit=<?= (int)$limitParam ?> (10~200)
   </p>
 
+  <p class="muted" style="margin:0 0 8px;">
+    <a href="<?= h($urlAllDocs) ?>">전체 문서</a>
+    <?php foreach ($uniqueDocIds as $did): ?>
+    | <a href="<?= h($urlBase . '?' . http_build_query(array_merge($q, ['doc_id' => $did]))) ?>">doc <?= (int)$did ?>만</a>
+    <?php endforeach; ?>
+    <?php if ($filterDocId !== null): ?>
+    <?php foreach ($queueSummary as $sr): ?>
+    | <a href="<?= h($urlBase . '?' . http_build_query(array_merge($q, ['doc_id' => $filterDocId, 'route_label' => $sr['route_label']]))) ?>">route <?= h((string)$sr['route_label']) ?>만</a>
+    <?php endforeach; ?>
+    <?php endif; ?>
+  </p>
   <h3 class="card">Queue Summary (risky first)</h3>
   <table>
     <thead>
@@ -177,6 +218,8 @@ $urlOnlyRiskyOff = $urlBase . '?only_risky=0&limit=' . $limitParam;
   <table>
     <thead>
       <tr>
+        <th>cand_id</th>
+        <th>created_job_id</th>
         <th>doc_id</th>
         <th>route_label</th>
         <th>원문</th>
@@ -189,20 +232,24 @@ $urlOnlyRiskyOff = $urlBase . '?only_risky=0&limit=' . $limitParam;
     </thead>
     <tbody>
       <?php if ($topCandidates): ?>
-        <?php foreach ($topCandidates as $tc): ?>
+        <?php foreach ($topCandidates as $tc):
+          $reviewUrl = APP_BASE . '/admin/route_review.php?source_doc_id=' . (int)$tc['doc_id'] . '&route_label=' . urlencode((string)$tc['route_label']) . '&quick_mode=1&show_advanced=0&focus_cand_id=' . (int)$tc['cand_id'];
+        ?>
         <tr>
+          <td><?= (int)$tc['cand_id'] ?></td>
+          <td><?= (int)($tc['created_job_id'] ?? 0) ?></td>
           <td><a href="<?= APP_BASE ?>/admin/doc.php?id=<?= (int)$tc['doc_id'] ?>"><?= (int)$tc['doc_id'] ?></a></td>
-          <td><a href="<?= APP_BASE ?>/admin/route_review.php?source_doc_id=<?= (int)$tc['doc_id'] ?>&route_label=<?= urlencode((string)$tc['route_label']) ?>&quick_mode=1&show_advanced=0"><?= h((string)$tc['route_label']) ?></a></td>
+          <td><a href="<?= h($reviewUrl) ?>"><?= h((string)$tc['route_label']) ?></a></td>
           <td><?= h((string)($tc['raw_stop_name'] ?? '')) ?></td>
           <td><?= h(normalizeStopNameDisplay((string)($tc['raw_stop_name'] ?? ''))) ?></td>
           <td><?= $tc['match_method'] !== null && $tc['match_method'] !== '' ? h((string)$tc['match_method']) : '—' ?></td>
           <td><?= isset($tc['match_score']) && $tc['match_score'] !== null && $tc['match_score'] !== '' ? h((string)$tc['match_score']) : '—' ?></td>
           <td><?= h(matchConfidenceLabel($tc['match_method'] ?? null)) ?></td>
-          <td><a href="<?= APP_BASE ?>/admin/route_review.php?source_doc_id=<?= (int)$tc['doc_id'] ?>&route_label=<?= urlencode((string)$tc['route_label']) ?>&quick_mode=1&show_advanced=0">검수</a></td>
+          <td><a href="<?= h($reviewUrl) ?>">열기</a></td>
         </tr>
         <?php endforeach; ?>
       <?php else: ?>
-        <tr><td colspan="8" class="muted">no candidates</td></tr>
+        <tr><td colspan="10" class="muted">no candidates</td></tr>
       <?php endif; ?>
     </tbody>
   </table>
