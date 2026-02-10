@@ -13,8 +13,16 @@
 | **v0.6-7** | 완료 | doc Routes=latest 스냅샷 기준, 스냅샷 비교 표시, PROMOTE 히스토리 10건, promote 보수적 조건(matched_stop_id 빈값 차단) |
 | **v0.6-8** | 완료 | promoted_job_id 레거시 제거 DDL, promoted=0이면 failed 처리+원인 안내, 히스토리 rows=0 legacy 문구 |
 | **v0.6-9** | 완료 | job_log에 base_job_id·route_label 추가(PROMOTE 추적), PROMOTE 히스토리에 base_job_id·후보/승인 수 표시 |
+| **v0.6-10** | 완료 | seoul_bus_stop_master 테이블·import 파이프라인(inbound CSV → DB), data/README import 실행법 |
+| **v0.6-11** | 완료 | PARSE_MATCH 시 seoul_bus_stop_master 기반 자동매칭 추천(matched_stop_id/name/score/method), pending UI 선채움 |
+| **v0.6-12** | 완료 | 정류장명 정규화 파이프라인 + 동의어 사전(shuttle_stop_alias), alias 적용 단계·match_method 확장, route_review에 normalized_name 표시·alias 등록 버튼 |
+| **v0.6-13** | 완료 | alias 등록 즉시 candidate 1건 live rematch(matched_* UPDATE, match_method=alias_live_rematch), canonical 없으면 alias만 저장 |
+| **v0.6-14** | 완료 | match_method/match_score 노출, like_prefix 2글자 이하 시 미적용, alias 입력 가이드 문구 |
+| **v0.6-15** | 완료 | route_review에 Stop Master Quick Search(exact/normalized/like_prefix 최대 10건), raw_stop_name readonly 복사용 |
+| **v0.6-16** | 완료 | 매칭 실패만 보기(only_unmatched=1), 추천 canonical 컬럼, alias 입력 placeholder에 추천값 |
+| **v0.6-17** | 완료 | 추천 canonical 계산을 only_unmatched 시에만 수행, 요청 단위 캐시(normalized 키), meta에 ON/OFF·hits/misses 표시, SoT 불변 |
 
-**코드 기준 SoT(Source of Truth):** v0.6-7 규칙 유지 + v0.6-8/9 확장 반영됨.
+**코드 기준 SoT(Source of Truth):** v0.6-7 규칙 유지 + v0.6-8/9/10/11/12/13/14/15/16/17 확장 반영됨.
 
 ---
 
@@ -31,7 +39,17 @@
   - 인덱스: `ix_job_doc_type_status`, `ix_job_base_job`.
 
 - **shuttle_stop_candidate**  
-  - `created_job_id` = PARSE_MATCH job_id (candidate 스냅샷), `is_active`.
+  - `created_job_id` = PARSE_MATCH job_id (candidate 스냅샷), `is_active`.  
+  - v0.6-11: `matched_stop_id`, `matched_stop_name`, `match_score`, `match_method`(자동매칭 추천, status는 계속 pending).
+
+- **seoul_bus_stop_master** (v0.6-10)  
+  - 서울시 버스 정류장 마스터. `scripts/import_seoul_stop_master.php`로 적재. 자동매칭 조회용.
+
+- **shuttle_stop_alias** (v0.6-12)  
+  - 동의어 사전. alias_text(유니크) → canonical_text. route_review에서 "alias 등록"으로 추가. PARSE_MATCH 시 alias 적용 후 canonical으로 stop_master 재시도.
+
+- **shuttle_stop_normalize_rule** (v0.6-12, 선택)  
+  - 정규화 규칙 확장용. 현재 매칭 로직은 trim+collapse_space 고정.
 
 - **shuttle_source_doc**  
   - 문서 메타 (기존 유지).

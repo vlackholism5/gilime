@@ -33,14 +33,127 @@ unset($_SESSION['flash']);
 
 $error = null;
 
-// POST: approve/reject single row
+/** v0.6-12: 표시용 정규화명 (trim + collapse space) */
+function normalizeStopNameDisplay(string $s): string {
+  return trim(preg_replace('/\s+/', ' ', $s));
+}
+
+/** v0.6-15: stop_master 퀵 검색 (exact → normalized → like_prefix, normalized 2글자 이하면 like_prefix 미적용), 최대 10건 */
+function searchStopMasterQuick(PDO $pdo, string $q): array {
+  $raw = trim($q);
+  if ($raw === '') return [];
+  $normalized = normalizeStopNameDisplay($raw);
+  $seen = [];
+  $out = [];
+  $exactStmt = $pdo->prepare("SELECT stop_id, stop_name FROM seoul_bus_stop_master WHERE stop_name = :name LIMIT 1");
+  $likeStmt = $pdo->prepare("SELECT stop_id, stop_name FROM seoul_bus_stop_master WHERE stop_name LIKE CONCAT(:prefix, '%') LIMIT 10");
+  $exactStmt->execute([':name' => $raw]);
+  $row = $exactStmt->fetch();
+  if ($row && !isset($seen[(string)$row['stop_id']])) {
+    $seen[(string)$row['stop_id']] = true;
+    $out[] = ['stop_id' => (string)$row['stop_id'], 'stop_name' => (string)$row['stop_name'], 'match_type' => 'exact'];
+  }
+  if ($normalized !== $raw) {
+    $exactStmt->execute([':name' => $normalized]);
+    $row = $exactStmt->fetch();
+    if ($row && !isset($seen[(string)$row['stop_id']])) {
+      $seen[(string)$row['stop_id']] = true;
+      $out[] = ['stop_id' => (string)$row['stop_id'], 'stop_name' => (string)$row['stop_name'], 'match_type' => 'normalized'];
+    }
+  }
+  if (mb_strlen($normalized) > 2) {
+    $likeStmt->execute([':prefix' => $raw]);
+    while (count($out) < 10 && ($row = $likeStmt->fetch())) {
+      if (!isset($seen[(string)$row['stop_id']])) {
+        $seen[(string)$row['stop_id']] = true;
+        $out[] = ['stop_id' => (string)$row['stop_id'], 'stop_name' => (string)$row['stop_name'], 'match_type' => 'like_prefix'];
+      }
+    }
+  }
+  return array_slice($out, 0, 10);
+}
+
+/** v0.6-13: canonical으로 stop_master 조회 (인덱스만: exact → normalized → like_prefix) */
+function lookupStopMasterByCanonical(PDO $pdo, string $canonical): ?array {
+  $c = trim($canonical);
+  if ($c === '') return null;
+  $norm = normalizeStopNameDisplay($c);
+  $exactStmt = $pdo->prepare("SELECT stop_id, stop_name FROM seoul_bus_stop_master WHERE stop_name = :name LIMIT 1");
+  $exactStmt->execute([':name' => $c]);
+  $row = $exactStmt->fetch();
+  if ($row) return ['stop_id' => (string)$row['stop_id'], 'stop_name' => (string)$row['stop_name']];
+  if ($norm !== $c) {
+    $exactStmt->execute([':name' => $norm]);
+    $row = $exactStmt->fetch();
+    if ($row) return ['stop_id' => (string)$row['stop_id'], 'stop_name' => (string)$row['stop_name']];
+  }
+  $likeStmt = $pdo->prepare("SELECT stop_id, stop_name FROM seoul_bus_stop_master WHERE stop_name LIKE CONCAT(:prefix, '%') LIMIT 1");
+  $likeStmt->execute([':prefix' => $c]);
+  $row = $likeStmt->fetch();
+  if ($row) return ['stop_id' => (string)$row['stop_id'], 'stop_name' => (string)$row['stop_name']];
+  return null;
+}
+
+// POST: approve/reject/register_alias
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $action = (string)($_POST['action'] ?? '');
   $candId = (int)($_POST['candidate_id'] ?? 0);
 
-  if ($candId <= 0) {
+  // v0.6-12/13: alias 등록 (raw_stop_name → alias_text, 입력값 → canonical_text) + 즉시 재매칭
+  if ($action === 'register_alias' && $candId > 0) {
+    $canonicalText = trim((string)($_POST['canonical_text'] ?? ''));
+    if ($canonicalText === '') {
+      $error = 'canonical_text(정식 명칭)을 입력하세요.';
+    } else {
+      $cRow = $pdo->prepare("SELECT raw_stop_name, created_job_id FROM shuttle_stop_candidate WHERE id=:id AND source_doc_id=:doc AND route_label=:rl LIMIT 1");
+      $cRow->execute([':id' => $candId, ':doc' => $sourceDocId, ':rl' => $routeLabel]);
+      $cRec = $cRow->fetch();
+      if ($cRec) {
+        $aliasText = normalizeStopNameDisplay((string)$cRec['raw_stop_name']);
+        if ($aliasText !== '') {
+          $insAlias = $pdo->prepare("
+            INSERT INTO shuttle_stop_alias (alias_text, canonical_text, rule_version, is_active, created_at, updated_at)
+            VALUES (:alias, :canonical, 'v0.6-12', 1, NOW(), NOW())
+            ON DUPLICATE KEY UPDATE canonical_text=VALUES(canonical_text), updated_at=NOW()
+          ");
+          $insAlias->execute([':alias' => $aliasText, ':canonical' => $canonicalText]);
+
+          // v0.6-13: canonical으로 stop_master 조회 후 해당 candidate 1건 즉시 재매칭 (latest 스냅샷만)
+          $match = lookupStopMasterByCanonical($pdo, $canonicalText);
+          $candJobId = (int)($cRec['created_job_id'] ?? 0);
+          $isLatest = ($latestParseJobId > 0 && $candJobId === $latestParseJobId);
+          if ($match && $isLatest) {
+            $upd = $pdo->prepare("
+              UPDATE shuttle_stop_candidate
+              SET matched_stop_id=:msid, matched_stop_name=:msname, match_score=0.95, match_method='alias_live_rematch', updated_at=NOW()
+              WHERE id=:id AND source_doc_id=:doc AND route_label=:rl AND created_job_id=:jid
+            ");
+            $upd->execute([
+              ':msid' => $match['stop_id'], ':msname' => $match['stop_name'],
+              ':id' => $candId, ':doc' => $sourceDocId, ':rl' => $routeLabel, ':jid' => $latestParseJobId,
+            ]);
+            $_SESSION['flash'] = 'alias saved + candidate rematched (id=' . $candId . ', stop_id=' . $match['stop_id'] . ')';
+          } elseif ($match && !$isLatest) {
+            $_SESSION['flash'] = 'alias 등록: "' . htmlspecialchars($aliasText, ENT_QUOTES, 'UTF-8') . '" → "' . htmlspecialchars($canonicalText, ENT_QUOTES, 'UTF-8') . '" (stale candidate라 rematch 생략)';
+          } else {
+            $_SESSION['flash'] = 'alias saved but canonical not found in master';
+          }
+        } else {
+          $error = 'raw_stop_name이 비어 있어 alias로 등록할 수 없습니다.';
+        }
+      } else {
+        $error = 'candidate를 찾을 수 없습니다.';
+      }
+      if (!$error) {
+        header('Location: ' . APP_BASE . '/admin/route_review.php?source_doc_id=' . $sourceDocId . '&route_label=' . urlencode($routeLabel));
+        exit;
+      }
+    }
+  }
+
+  if ($candId <= 0 && $action !== 'register_alias') {
     $error = 'bad candidate_id';
-  } else {
+  } elseif ($action === 'approve' || $action === 'reject') {
     // 안전장치: 스냅샷(job_id) 외 후보는 업데이트 못 하게 (운영 안정)
     $candMetaStmt = $pdo->prepare("
       SELECT created_job_id
@@ -158,6 +271,15 @@ if ($latestParseJobId > 0) {
 }
 $cands = $candStmt->fetchAll();
 
+// v0.6-16: 매칭 실패만 보기 (latest 스냅샷 기준만)
+$onlyUnmatched = (int)($_GET['only_unmatched'] ?? 0);
+if ($onlyUnmatched && $latestParseJobId > 0) {
+  $cands = array_values(array_filter($cands, function ($c) {
+    $msid = trim((string)($c['matched_stop_id'] ?? ''));
+    return $msid === '';
+  }));
+}
+
 // route_stop list (is_active=1만 표시)
 $routeStmt = $pdo->prepare("
   SELECT source_doc_id, route_label, stop_order, stop_id, stop_name, created_job_id
@@ -271,6 +393,36 @@ else if ((int)$sum['cand_pending'] > 0) $promoteBlockReason = 'pending 후보가
 else if ((int)$sum['cand_approved'] <= 0) $promoteBlockReason = 'approved 후보가 없어 승격할 수 없습니다.';
 else if ($approvedEmptyStopCnt > 0) $promoteBlockReason = 'approved 후보 중 matched_stop_id가 비어 있는 항목이 있어 승격할 수 없습니다.';
 
+// v0.6-15: Stop Master Quick Search (GET q)
+$searchQuery = trim((string)($_GET['q'] ?? ''));
+$stopMasterSearchResults = [];
+if ($searchQuery !== '') {
+  $stopMasterSearchResults = searchStopMasterQuick($pdo, $searchQuery);
+}
+
+// v0.6-17: 추천 canonical 요청 단위 캐시 — only_unmatched=1일 때만 계산
+$recCache = [];
+$recHit = 0;
+$recMiss = 0;
+$recommendedByCandId = [];
+if ($onlyUnmatched) {
+  foreach ($cands as $c) {
+    $raw = (string)($c['raw_stop_name'] ?? '');
+    $cacheKey = normalizeStopNameDisplay($raw);
+    if (array_key_exists($cacheKey, $recCache)) {
+      $recommendedByCandId[(int)$c['id']] = (string)($recCache[$cacheKey] ?? '');
+      $recHit++;
+    } else {
+      $recList = searchStopMasterQuick($pdo, $raw);
+      $firstRec = $recList[0] ?? null;
+      $val = $firstRec ? (string)$firstRec['stop_name'] : '';
+      $recCache[$cacheKey] = $val !== '' ? $val : null;
+      $recommendedByCandId[(int)$c['id']] = $val;
+      $recMiss++;
+    }
+  }
+}
+
 function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8'); }
 ?>
 <!doctype html>
@@ -337,30 +489,76 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8')
       pending=<?= (int)$sum['cand_pending'] ?> /
       route_stop=<?= (int)$sum['route_stop_cnt'] ?>
     </div>
+    <div class="k">추천 canonical</div>
+    <div class="muted" style="font-size:0.85em;">추천 canonical 계산: <?= $onlyUnmatched ? 'ON' : 'OFF' ?>, cache hits=<?= $recHit ?>, misses=<?= $recMiss ?></div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px;">
+    <h3 style="margin:0 0 8px;">Stop Master Quick Search</h3>
+    <p class="muted" style="margin:0 0 8px;font-size:0.9em;">alias canonical_text 입력 전 stop_master 존재 여부 확인용 (exact → normalized → like_prefix, 2글자 이하는 like_prefix 미적용)</p>
+    <form method="get" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <input type="hidden" name="source_doc_id" value="<?= (int)$sourceDocId ?>" />
+      <input type="hidden" name="route_label" value="<?= h($routeLabel) ?>" />
+      <?php if ($onlyUnmatched): ?><input type="hidden" name="only_unmatched" value="1" /><?php endif; ?>
+      <input type="text" name="q" value="<?= h($searchQuery) ?>" placeholder="stop_name" size="20" />
+      <button type="submit">Search</button>
+    </form>
+    <?php if ($searchQuery !== ''): ?>
+    <table style="margin-top:10px;">
+      <thead><tr><th>stop_id</th><th>stop_name</th><th>match_type</th></tr></thead>
+      <tbody>
+        <?php foreach ($stopMasterSearchResults as $r): ?>
+        <tr><td><?= h($r['stop_id']) ?></td><td><?= h($r['stop_name']) ?></td><td><?= h($r['match_type']) ?></td></tr>
+        <?php endforeach; ?>
+        <?php if (!$stopMasterSearchResults): ?>
+        <tr><td colspan="3" class="muted">no results (2글자 이하 검색어는 like_prefix 미적용)</td></tr>
+        <?php endif; ?>
+      </tbody>
+    </table>
+    <?php endif; ?>
   </div>
 
   <div class="grid2">
     <div class="card">
       <h3 style="margin:0 0 8px;">Candidates</h3>
+      <p style="margin:0 0 8px;">
+        <?php if ($onlyUnmatched): ?>
+        <a href="<?= APP_BASE ?>/admin/route_review.php?source_doc_id=<?= (int)$sourceDocId ?>&route_label=<?= urlencode($routeLabel) ?><?= $searchQuery !== '' ? '&q=' . urlencode($searchQuery) : '' ?>">전체 보기</a>
+        <span class="muted"> (매칭 실패만 표시 중)</span>
+        <?php else: ?>
+        <a href="<?= APP_BASE ?>/admin/route_review.php?source_doc_id=<?= (int)$sourceDocId ?>&route_label=<?= urlencode($routeLabel) ?>&only_unmatched=1<?= $searchQuery !== '' ? '&q=' . urlencode($searchQuery) : '' ?>">매칭 실패만 보기</a>
+        <?php endif; ?>
+      </p>
       <table>
         <thead>
           <tr>
             <th>#</th>
             <th>seq</th>
             <th>raw_stop_name</th>
+            <th>추천 canonical</th>
+            <th>normalized_name</th>
             <th>status</th>
             <th>matched_stop_id</th>
+            <th>match_method</th>
+            <th>match_score</th>
             <th>action</th>
           </tr>
         </thead>
         <tbody>
-          <?php foreach ($cands as $c): ?>
+          <?php foreach ($cands as $c):
+            $recommendedCanonical = (string)($recommendedByCandId[(int)$c['id']] ?? '');
+            $canonPlaceholder = ($onlyUnmatched && $recommendedCanonical !== '') ? $recommendedCanonical : '정식 명칭';
+          ?>
           <tr>
             <td><?= (int)$c['id'] ?></td>
             <td><?= (int)$c['seq_in_route'] ?></td>
-            <td><?= h((string)$c['raw_stop_name']) ?></td>
+            <td><input type="text" readonly value="<?= h((string)($c['raw_stop_name'] ?? '')) ?>" style="width:100%;max-width:180px;box-sizing:border-box;" title="선택 후 복사" /></td>
+            <td><?= $recommendedCanonical !== '' ? h($recommendedCanonical) : '<span class="muted">—</span>' ?></td>
+            <td><?= h(normalizeStopNameDisplay((string)($c['raw_stop_name'] ?? ''))) ?></td>
             <td><?= h((string)$c['status']) ?></td>
             <td><?= h((string)($c['matched_stop_id'] ?? '')) ?></td>
+            <td><?= h((string)($c['match_method'] ?? '')) ?></td>
+            <td><?= isset($c['match_score']) ? h((string)$c['match_score']) : '' ?></td>
             <td>
               <div class="row-actions">
                 <?php
@@ -370,7 +568,7 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8')
                   <form method="post" style="display:flex;gap:6px;align-items:center;">
                     <input type="hidden" name="action" value="approve" />
                     <input type="hidden" name="candidate_id" value="<?= (int)$c['id'] ?>" />
-                    <input type="text" name="matched_stop_id" value="" placeholder="ex) ST0001" />
+                    <input type="text" name="matched_stop_id" value="<?= h((string)($c['matched_stop_id'] ?? '')) ?>" placeholder="ex) ST0001" />
                     <button type="submit">Approve</button>
                   </form>
                   <form method="post" style="display:flex;gap:6px;align-items:center;">
@@ -378,6 +576,13 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8')
                     <input type="hidden" name="candidate_id" value="<?= (int)$c['id'] ?>" />
                     <input type="text" name="rejected_reason" value="manual reject" />
                     <button type="submit">Reject</button>
+                  </form>
+                  <form method="post" style="display:inline;">
+                    <input type="hidden" name="action" value="register_alias" />
+                    <input type="hidden" name="candidate_id" value="<?= (int)$c['id'] ?>" />
+                    <input type="text" name="canonical_text" value="<?= h((string)($c['matched_stop_name'] ?? '')) ?>" placeholder="<?= h($canonPlaceholder) ?>" size="14" title="stop_master에 존재하는 정식 정류장명. 추천값은 placeholder 참고." />
+                    <button type="submit">alias 등록</button>
+                    <span class="muted" style="font-size:0.85em;">stop_master 정식 명칭(placeholder 참고)</span>
                   </form>
                 <?php elseif ((string)$c['status'] === 'pending' && !$isLatestSnapshot): ?>
                   <span class="muted">stale (이전 스냅샷, 승인/거절 불가)</span>
@@ -389,7 +594,7 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8')
           </tr>
           <?php endforeach; ?>
           <?php if (!$cands): ?>
-          <tr><td colspan="6" class="muted">no candidates</td></tr>
+          <tr><td colspan="10" class="muted">no candidates</td></tr>
           <?php endif; ?>
         </tbody>
       </table>
