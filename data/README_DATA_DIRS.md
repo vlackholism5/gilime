@@ -113,22 +113,38 @@ node scripts/ensure-data-dirs.js
 
 ---
 
-## Import 실행 방법 (v0.6-10)
+## Import 실행 방법
 
-**서울시 정류장 마스터 (inbound CSV → DB)**
+### v0.6-20: 서울시 정류장 마스터 실데이터 (inbound CSV → DB)
+
+1. **CSV 파일 위치:**  
+   `data/inbound/seoul/bus/stop_master/서울시_정류장마스터_정보.csv` (euc-kr)  
+   ⚠️ **Git 커밋 금지** (inbound는 .gitignore 대상)
+
+2. **Import 실행 (Cursor 터미널, 프로젝트 루트에서):**
+   ```bash
+   php scripts/import_seoul_bus_stop_master_full.php
+   ```
+
+3. **성공 예:**  
+   `OK: imported 11462 rows` (inserted / updated / skipped 로그 포함)
+
+4. **검증 (Workbench):**  
+   `sql/v0.6-20_validation.sql` 주석 해제 후 9개 쿼리 실행
+
+5. **특징:**  
+   - Idempotent (중복 실행 시 UPSERT)
+   - euc-kr → UTF-8 자동 변환
+   - 헤더 기반 자동 매핑 (정류장ID, 정류장명칭, 시군구코드, 위도, 경도)
+
+---
+
+### v0.6-10: 테스트용 더미 (이전 방식)
 
 1. DDL 적용: Workbench에서 `sql/v0.6-10_seoul_stop_master.sql` 실행.
-2. CSV 위치: `data/inbound/seoul/bus/stop_master/서울시_정류장마스터_정보.csv` (euc-kr).  
-   (inbound는 .gitignore 대상이므로 배포 시 해당 파일을 별도 배치해야 함.)
-3. CLI 실행 (프로젝트 루트에서):
+2. 더미 데이터 10건만 생성 (강남역, 서울역, 홍대입구역 등)
 
-```bash
-php scripts/import_seoul_stop_master.php
-```
-
-성공 시 예: `OK rows_processed=11462 inserted=... updated=...`  
-중복 실행 시에도 결과가 안정적(upsert, idempotent).  
-커밋 정책: inbound 제외 유지, raw/derived·스크립트·SQL은 커밋 대상.
+**커밋 정책:** inbound 제외 유지, raw/derived·스크립트·SQL은 커밋 대상.
 
 ---
 
