@@ -32,6 +32,19 @@ $latestJobStmt = $pdo->prepare("
 $latestJobStmt->execute([':id' => $id]);
 $latestParseJobId = (int)(($latestJobStmt->fetch()['id'] ?? 0));
 
+// v0.6-22: PARSE_MATCH 매칭 품질 지표 (latest job 기준)
+$metrics = [];
+if ($latestParseJobId > 0) {
+  $metricsStmt = $pdo->prepare("
+    SELECT route_label, cand_total, auto_matched_cnt, low_confidence_cnt, none_matched_cnt, alias_used_cnt, high_cnt, med_cnt, low_cnt, none_cnt
+    FROM shuttle_parse_metrics
+    WHERE parse_job_id = :jid
+    ORDER BY route_label
+  ");
+  $metricsStmt->execute([':jid' => $latestParseJobId]);
+  $metrics = $metricsStmt->fetchAll();
+}
+
 // v0.6-7: Routes 기준 = latest PARSE_MATCH 스냅샷 (승인/승격과 동일 규칙, 혼동 방지)
 if ($latestParseJobId > 0) {
   $routeStmt = $pdo->prepare("
@@ -132,6 +145,46 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8')
       <?php endforeach; ?>
       <?php if (!$jobs): ?>
       <tr><td colspan="5" class="muted">no jobs</td></tr>
+      <?php endif; ?>
+    </tbody>
+  </table>
+
+  <!-- v0.6-22: PARSE_MATCH Metrics (latest job) -->
+  <h3 style="margin-top:24px;">PARSE_MATCH Metrics (latest job)</h3>
+  <p class="muted" style="margin:0 0 8px;">매칭 품질 지표 (job_id=<?= (int)$latestParseJobId ?>)</p>
+  <table>
+    <thead>
+      <tr>
+        <th>route</th>
+        <th>후보 수</th>
+        <th>자동매칭</th>
+        <th>LOW</th>
+        <th>미매칭</th>
+        <th>alias 사용</th>
+        <th>HIGH</th>
+        <th>MED</th>
+        <th>LOW</th>
+        <th>NONE</th>
+      </tr>
+    </thead>
+    <tbody>
+      <?php if ($metrics): ?>
+        <?php foreach ($metrics as $m): ?>
+        <tr>
+          <td><?= h((string)$m['route_label']) ?></td>
+          <td><?= (int)$m['cand_total'] ?></td>
+          <td><?= (int)$m['auto_matched_cnt'] ?></td>
+          <td><?= (int)$m['low_confidence_cnt'] ?></td>
+          <td><?= (int)$m['none_matched_cnt'] ?></td>
+          <td><?= (int)$m['alias_used_cnt'] ?></td>
+          <td><?= (int)$m['high_cnt'] ?></td>
+          <td><?= (int)$m['med_cnt'] ?></td>
+          <td><?= (int)$m['low_cnt'] ?></td>
+          <td><?= (int)$m['none_cnt'] ?></td>
+        </tr>
+        <?php endforeach; ?>
+      <?php else: ?>
+        <tr><td colspan="10" class="muted">no metrics (Run Parse/Match 먼저 실행하세요)</td></tr>
       <?php endif; ?>
     </tbody>
   </table>

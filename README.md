@@ -50,6 +50,37 @@ PARSE_MATCH(job) 실행 시 후보(candidates) 생성하면서 **서울시 정�
 - **summary 4개 카운트:** latest 스냅샷 기준 auto_matched_cnt, low_confidence_cnt(like_prefix), none_matched_cnt, alias_used_cnt. promote 전 모호매칭 비중 파악용. only_unmatched=1일 때도 동일 latest 기준으로 표시.
 - **검증:** sql/v0.6-18_validation.sql 에 검증 쿼리 7개(주석 블록). 매칭 로직/SoT 변경 없음.
 
+## v0.6-19 LOW(like_prefix) 필터 + Promote 경고
+
+- **only_low 필터:** GET only_low=1 시 latest 스냅샷 후보 중 `match_method='like_prefix'` 인 후보만 표시. only_unmatched=1과 동시 사용 가능(like_prefix 이면서 unmatched만).
+- **토글 링크:** Candidates 상단에 "LOW만 보기" / "LOW 해제" 링크 추가. only_unmatched와 조합 유지.
+- **Promote 경고:** Promote 버튼 위에 경고 문구 표시. 조건: low_confidence_cnt > 0 AND (low_confidence_cnt / auto_matched_cnt) >= 0.30. "주의: like_prefix(LOW) 비중이 높습니다. Promote 전 후보를 재검토하세요."
+- **SQL 없음:** 화면 필터/표시만 추가. 매칭 로직/SoT 불변.
+
+## v0.6-20 seoul_bus_stop_master 실데이터 import
+
+- **Import 스크립트:** `scripts/import_seoul_bus_stop_master_full.php` (euc-kr CSV → UTF-8 변환, UPSERT, idempotent)
+- **입력 파일:** `data/inbound/seoul/bus/stop_master/서울시_정류장마스터_정보.csv` (Git 커밋 금지, 로컬 전용)
+- **실행:** `php scripts/import_seoul_bus_stop_master_full.php` (Cursor 터미널)
+- **검증:** `sql/v0.6-20_validation.sql` (9개 쿼리: 건수, 인덱스, EXPLAIN, match_method 분포)
+- **인덱스:** `sql/v0.6-20_stop_master_indexes.sql` (stop_name 인덱스 확인, 추가 인덱스는 v0.6-21로 미룸)
+
+## v0.6-21 운영 안전장치 강화 (LOW 승인 + alias 검증)
+
+- **LOW 승인 게이트:** match_method='like_prefix'인 pending 후보는 **체크박스 "LOW(like_prefix) 확인함"** 체크 후에만 Approve 가능. 미체크 시 서버에서 차단, 에러: "LOW... 확인 체크 후 승인할 수 있습니다." (DB UPDATE 없음)
+- **alias 등록 검증 강화:** (a) canonical_text가 stop_master에 **존재**해야만 저장. 없으면 차단, 에러: "alias blocked: canonical not found". (b) alias_text(정규화 후) **길이 <=2** 이면 저장 차단, 에러: "alias blocked: alias_text too short". 검증 통과 시에만 alias 저장 + live rematch.
+- **검증:** `sql/v0.6-21_validation.sql` (8개 쿼리: LOW pending/approved, alias canonical 존재, alias_text 길이 분포, 회귀 확인)
+- **매칭 로직/SoT 불변:** 승인/등록 단계 게이트만 강화.
+
+## v0.6-22 PARSE_MATCH 품질 지표 저장
+
+- **테이블 1개 추가:** `shuttle_parse_metrics` (job_id + route_label 단위로 매칭 품질 수치 저장). 인덱스: UNIQUE(parse_job_id, route_label), INDEX(source_doc_id, route_label).
+- **저장 컬럼:** cand_total, auto_matched_cnt, low_confidence_cnt, none_matched_cnt, alias_used_cnt, high_cnt, med_cnt, low_cnt, none_cnt. 분류는 v0.6-18과 동일(HIGH/MED/LOW/NONE).
+- **run_job.php:** PARSE_MATCH 성공 후 DB 집계 쿼리로 metrics 계산 → UPSERT 저장 (PHP 루프 금지). 저장 실패 시 PARSE_MATCH는 성공 유지(비치명적).
+- **doc.php:** "PARSE_MATCH Metrics (latest job)" 테이블 추가. latest_parse_job_id 기준 route별 품질 지표 표시. route_review는 기존 그대로 유지.
+- **검증:** `sql/v0.6-22_validation.sql` (8개 쿼리: 테이블 존재, metrics row count, candidate 집계와 일치, UPSERT idempotent 확인).
+- **SQL 실행:** Cursor PC 앱(Workbench)에서만. 매칭 로직/SoT 불변.
+
 ## 폴더 구조(확정)
 - /public/admin : 웹에서 접근하는 관리자 페이지(실제 URL은 /admin 로 유지)
 - /app/inc      : PHP 공통 코드(config/db/auth)

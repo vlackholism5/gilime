@@ -209,6 +209,69 @@ try {
 
   $pdo->commit();
 
+  // v0.6-22: PARSE_MATCH 성공 후 매칭 품질 지표 저장 (route_label별)
+  try {
+    $routeLabels = $pdo->query("
+      SELECT DISTINCT route_label
+      FROM shuttle_stop_candidate
+      WHERE source_doc_id = {$sourceDocId} AND created_job_id = {$jobId}
+    ")->fetchAll(PDO::FETCH_COLUMN);
+
+    $metricsStmt = $pdo->prepare("
+      INSERT INTO shuttle_parse_metrics
+        (source_doc_id, parse_job_id, route_label, cand_total, auto_matched_cnt, low_confidence_cnt, none_matched_cnt, alias_used_cnt, high_cnt, med_cnt, low_cnt, none_cnt)
+      VALUES
+        (:doc, :jid, :rl, :cand_total, :auto_matched, :low_confidence, :none_matched, :alias_used, :high, :med, :low, :none)
+      ON DUPLICATE KEY UPDATE
+        cand_total = VALUES(cand_total),
+        auto_matched_cnt = VALUES(auto_matched_cnt),
+        low_confidence_cnt = VALUES(low_confidence_cnt),
+        none_matched_cnt = VALUES(none_matched_cnt),
+        alias_used_cnt = VALUES(alias_used_cnt),
+        high_cnt = VALUES(high_cnt),
+        med_cnt = VALUES(med_cnt),
+        low_cnt = VALUES(low_cnt),
+        none_cnt = VALUES(none_cnt)
+    ");
+
+    foreach ($routeLabels as $rl) {
+      $metricsData = $pdo->prepare("
+        SELECT
+          COUNT(*) AS cand_total,
+          SUM(CASE WHEN match_method IS NOT NULL THEN 1 ELSE 0 END) AS auto_matched,
+          SUM(CASE WHEN match_method = 'like_prefix' THEN 1 ELSE 0 END) AS low_confidence,
+          SUM(CASE WHEN matched_stop_id IS NULL OR matched_stop_id = '' THEN 1 ELSE 0 END) AS none_matched,
+          SUM(CASE WHEN match_method IN ('alias_exact','alias_normalized','alias_live_rematch') THEN 1 ELSE 0 END) AS alias_used,
+          SUM(CASE WHEN match_method IN ('exact','alias_live_rematch','alias_exact') THEN 1 ELSE 0 END) AS high,
+          SUM(CASE WHEN match_method IN ('normalized','alias_normalized') THEN 1 ELSE 0 END) AS med,
+          SUM(CASE WHEN match_method = 'like_prefix' THEN 1 ELSE 0 END) AS low,
+          SUM(CASE WHEN match_method IS NULL THEN 1 ELSE 0 END) AS none
+        FROM shuttle_stop_candidate
+        WHERE source_doc_id = :doc AND created_job_id = :jid AND route_label = :rl
+      ");
+      $metricsData->execute([':doc' => $sourceDocId, ':jid' => $jobId, ':rl' => $rl]);
+      $m = $metricsData->fetch();
+
+      $metricsStmt->execute([
+        ':doc' => $sourceDocId,
+        ':jid' => $jobId,
+        ':rl' => $rl,
+        ':cand_total' => (int)($m['cand_total'] ?? 0),
+        ':auto_matched' => (int)($m['auto_matched'] ?? 0),
+        ':low_confidence' => (int)($m['low_confidence'] ?? 0),
+        ':none_matched' => (int)($m['none_matched'] ?? 0),
+        ':alias_used' => (int)($m['alias_used'] ?? 0),
+        ':high' => (int)($m['high'] ?? 0),
+        ':med' => (int)($m['med'] ?? 0),
+        ':low' => (int)($m['low'] ?? 0),
+        ':none' => (int)($m['none'] ?? 0),
+      ]);
+    }
+  } catch (Throwable $metricsErr) {
+    // metrics 저장 실패해도 PARSE_MATCH는 성공으로 처리 (비치명적)
+    error_log('shuttle_parse_metrics save failed: ' . $metricsErr->getMessage());
+  }
+
   // (가드) 실행 후 route_stop 개수 비교: 바뀌면 실패로 처리(운영 기준 위반)
   $afterCntStmt = $pdo->prepare("
     SELECT COUNT(*) AS cnt
