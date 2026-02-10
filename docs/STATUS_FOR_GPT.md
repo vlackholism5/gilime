@@ -16,8 +16,9 @@
 
 ## 현재 버전
 
-- **v1.1-07** 운영 속도팩 안정화. 단축키/작업 흐름 고정, doc 오늘 작업 시작, 마지막 검수 시각 표시.
-- v1.1-04~06: 단축키(n/t/a/r/j/k), focus_cand_id, 오늘 작업 시작, Queue 준비.
+- **v1.2-05** 운영 대시보드 3페이지 확장 완료. Review Queue / Alias Audit / Ops Dashboard (read-only). 새 테이블 없음.
+- v1.2-01~04: review_queue.php(필터/ focus 링크), alias_audit.php(리스크+최근 alias), ops_dashboard.php(문서별 검수 필요·최근 job·promote 후보).
+- v1.1-07: 운영 속도팩 안정화, 단축키 치트시트, 문서 갱신.
 
 ## 운영자 단축키 치트시트 (route_review)
 
@@ -28,6 +29,13 @@
 - Approve/Reject 후 jump_next=0이면 같은 노선 유지 + 다음 pending 행 자동 선택(redirect 시 focus_cand_id).
 - INPUT/TEXTAREA/SELECT 포커스 중에는 단축키 무시(연타 방지 800ms 포함).
 - Known Issues: 필터로 후보 숨김 시 안내 문구, show_advanced 기본 숨김, alias_text<=2 legacy 3건 유지.
+
+## v1.2 신규 Admin 페이지 (read-only)
+
+- **Review Queue** (review_queue.php): 문서/노선별 pending Summary + Top N 후보. doc_id/route_label 필터, focus_cand_id 링크. index/doc 링크.
+- **Alias Audit** (alias_audit.php): Alias Issues(alias_text<=2, canonical 미존재) + Recent Alias Writes 50건. index/doc 메타 링크.
+- **Ops Dashboard** (ops_dashboard.php): Docs needing review, Recent PARSE_MATCH 20건, Promote candidates(pending=0). index 링크.
+- 승인/승격은 route_review에서만. 새 페이지는 조회·링크 전용.
 
 ## SoT (변경 금지)
 

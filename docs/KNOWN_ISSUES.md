@@ -11,6 +11,10 @@
 - **처리 방향:** (1) 정리: 필요 시 수동 UPDATE/삭제 또는 "legacy" 플래그 등 후속 버전에서 정리. (2) 당장 동작에는 영향 없음(매칭/승인 게이트와 무관).
 - **후속:** v1.x에서 데이터 정리 스크립트 또는 마이그레이션 검토 가능.
 
+## 운영 원칙 (v1.2)
+
+- **새 페이지는 read-only.** Review Queue / Alias Audit / Ops Dashboard는 조회·링크만 제공. Promote·Approve·Reject는 **route_review에서만** 수행.
+
 ## 운영 중 확인 항목
 
 - **특정 doc/route에서 LOW(like_prefix) 증가:** doc.php PARSE_MATCH Metrics 경고("LOW 후보가 직전 job 대비 +N 증가") 확인 후 route_review에서 재검토.

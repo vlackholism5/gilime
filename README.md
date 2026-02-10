@@ -87,7 +87,12 @@ PARSE_MATCH(job) 실행 시 후보(candidates) 생성하면서 **서울시 정�
 
 ## v1.1 운영 속도팩 완료
 
-- v1.1-01~09: 단축키(a/r/n/t/j/k), 오늘 작업 시작, 마지막 검수 시각, focus_cand_id 흐름, 연타 방지 등 운영 속도/안정화 반영. v1.2에서 새 페이지 확장(Review Queue 등) 시작.
+- v1.1-01~09: 단축키(a/r/n/t/j/k), 오늘 작업 시작, 마지막 검수 시각, focus_cand_id 흐름, 연타 방지 등 운영 속도/안정화 반영.
+
+## v1.2 운영 대시보드 3페이지
+
+- Review Queue (review_queue.php), Alias Audit (alias_audit.php), Ops Dashboard (ops_dashboard.php). read-only, 승인/승격은 route_review만.
+- v1.3에서 새 테이블(ops_events, alias_audit_log, job_snapshot_summary 등) 도입 후보 검토.
 
 ## v0.6-24 관리자 UI 정보구조 정리
 
