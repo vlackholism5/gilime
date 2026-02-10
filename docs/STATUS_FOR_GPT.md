@@ -1,8 +1,22 @@
 # GILIME MVP — 상태 요약 (GPT/운영 참고)
 
+## v1.0 RC 종료 조건 (6개)
+
+| # | 조건 | 충족 | 비고 |
+|---|------|:----:|------|
+| 1 | stop_master 실데이터(11,461건) + 인덱스/EXPLAIN | [x] | v0.6-20 검증 완료 |
+| 2 | LOW 승인 게이트(like_prefix 시 체크 강제) | [x] | v0.6-21 |
+| 3 | alias 등록 검증(canonical 존재 + alias_text 길이) | [x] | v0.6-21. alias_text<=2 기존 3건은 Known Issues |
+| 4 | PARSE_MATCH 품질 지표 저장·노출(shuttle_parse_metrics, doc.php) | [x] | v0.6-22 |
+| 5 | route_review/doc 운영 동선·필터(show_advanced 기본, 단순뷰 진입) | [x] | v0.6-24~38 |
+| 6 | SoT 유지(stale 차단, promote latest만, 매칭 로직 변경 없음) | [x] | 회귀 없음 확인 |
+
+- alias_text<=2 기존 3건 처리 방향: docs/KNOWN_ISSUES.md 참고.
+
 ## 현재 버전
 
-- **v0.6-22** 반영 완료 (코드·검증 쿼리, SQL/DDL/Import 실행은 Cursor PC 앱에서만).
+- **v0.6-31** doc.php Next Actions에 route별 pending 요약 + only_risky(LOW/NONE) 토글 추가.
+- v0.6-30 Next Actions Top20. v0.6-29 Review Progress.
 
 ## SoT (변경 금지)
 
@@ -14,6 +28,42 @@
 6. 추천 canonical 계산은 only_unmatched=1에서만 (캐시 포함) — v0.6-17 고정.
 7. 매칭 신뢰도(HIGH/MED/LOW/NONE) 표시는 표시/집계 전용, 매칭 로직 변경 금지 — v0.6-18 고정.
 8. PARSE_MATCH 품질 지표는 DB에 저장(shuttle_parse_metrics). job_id + route_label 단위 집계 — v0.6-22 추가.
+
+## v0.6-31 요약
+
+- **doc.php만 변경.** Next Actions에 GET only_risky=1 토글. only_risky=1이면 Top20이 LOW/NONE만. "Next Actions Summary (by route)" 추가(1쿼리): route_label별 pending_total, pending_low_cnt, pending_none_cnt, pending_risky_cnt, 정렬 risky·total DESC. Top20 제목/안내에 (all pending)/(LOW/NONE only) 반영. 요약 1쿼리 + Top20 1쿼리만.
+
+## v0.6-30 요약
+
+- **doc.php만 변경.** Review Progress 아래에 "Next Actions (Top 20 pending candidates)" 섹션 추가. pending 후보 1쿼리, 정렬: like_prefix → match_method NULL → match_score ASC, LIMIT 20. route_label 링크, 원문/정규화/매칭결과/근거/신뢰도, Action="route_review에서 처리". Approve/Reject 없음. 신뢰도 함수(route_review와 동일) doc.php에 추가. 데이터 없으면 "no pending candidates".
+
+## v0.6-29 요약
+
+- **doc.php만 변경.** Metrics(latest) 표 바로 아래에 "Review Progress (latest job)" 표 추가. latest_parse_job_id 기준 shuttle_stop_candidate route_label별 집계 1회(cand_total, pending/approved/rejected_cnt, done_cnt, done_rate%). 정렬: pending_cnt DESC, cand_total DESC. route_label 링크·안내 1줄. 표시/집계만.
+
+## v0.6-28 요약
+
+- **doc.php만 변경.** Metrics(latest)·History 표에서 route_label을 route_review 링크로 제공. 안내 1줄 추가. latest 표 정렬: low_confidence_cnt DESC, none_matched_cnt DESC, cand_total DESC. History 표 정렬: parse_job_id DESC, low_confidence_cnt DESC, none_matched_cnt DESC, cand_total DESC. 표시/링크/정렬만.
+
+## v0.6-27 요약
+
+- **doc.php만 변경.** Metrics 표 상단에 운영 경고 2종(표시 전용). prev job 없으면 미표시. 경고 A: low_delta 합계 > 0 시 "주의: LOW(like_prefix) 후보가 직전 job 대비 +N 증가했습니다." 경고 B: none_delta 합계 > 0 시 "주의: NONE(미매칭) 후보가 직전 job 대비 +N 증가했습니다." v0.6-25 delta 활용.
+
+## v0.6-26 요약
+
+- **doc.php만 변경.** "PARSE_MATCH Metrics (latest job)" 아래에 "PARSE_MATCH Metrics History (recent 5 jobs)" 표 추가. source_doc_id 기준 PARSE_MATCH success 최근 5 job_id → shuttle_parse_metrics 조회(parse_job_id DESC, route_label ASC). 데이터 없으면 "no history". 표시 전용.
+
+## v0.6-25 요약
+
+- **doc.php만 변경.** PARSE_MATCH Metrics에 직전 job(prev_parse_job_id) 대비 delta 표시(auto_delta, low_delta, none_delta). +n/-n/0 또는 "—"(prev 없을 때). 표시 전용.
+- prev_parse_job_id: shuttle_doc_job_log에서 PARSE_MATCH success, id &lt; latest 중 최대 id 1건. route_review·매칭·게이트 변경 없음.
+
+## v0.6-24 요약
+
+- **기능 변경 없음.** 관리자 UI 가독성/정보구조만 정리(운영 UX 리팩터).
+- **doc.php:** 운영 플로우 순 재배치(메타 → 실행 버튼 상단 → latest job → PARSE_MATCH Metrics). Metrics 표 route_review와 동일 기준(latest snapshot) 설명 추가.
+- **route_review.php:** 3단(상단 요약 / 중단 필터·검색 / 하단 Candidates·Actions). 필터 2줄·현재 상태 1줄, 테이블 헤더 운영자 관점 라벨, Actions 레이아웃 정리.
+- 새 테이블/페이지·SQL·매칭 로직·게이트 규칙 변경 없음.
 
 ## v0.6-22 요약
 
