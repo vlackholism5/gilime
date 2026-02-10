@@ -98,7 +98,7 @@ function lookupStopMasterByCanonical(PDO $pdo, string $canonical): ?array {
 function build_route_review_redirect_query(): string {
   global $sourceDocId, $routeLabel;
   $parts = ['source_doc_id=' . (int)$sourceDocId, 'route_label=' . urlencode($routeLabel)];
-  $keep = ['only_unmatched', 'only_low', 'only_risky', 'top', 'show_reco', 'show_qs', 'quick_mode', 'rec_limit', 'q', 'show_advanced', 'jump_next'];
+  $keep = ['only_unmatched', 'only_low', 'only_risky', 'top', 'show_reco', 'show_qs', 'quick_mode', 'rec_limit', 'q', 'show_advanced', 'jump_next', 'focus_cand_id'];
   foreach ($keep as $k) {
     if (isset($_GET[$k]) && (string)$_GET[$k] !== '') {
       $parts[] = $k . '=' . urlencode((string)$_GET[$k]);
@@ -252,7 +252,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               exit;
             }
           }
-          header('Location: ' . APP_BASE . '/admin/route_review.php?' . build_route_review_redirect_query());
+          $redirectUrl = build_route_review_redirect_query();
+          if ($jumpNext === 0 && $latestParseJobId > 0) {
+            $firstPendingStmt = $pdo->prepare("SELECT id FROM shuttle_stop_candidate WHERE source_doc_id=:doc AND route_label=:rl AND created_job_id=:jid AND status='pending' ORDER BY seq_in_route ASC, id ASC LIMIT 1");
+            $firstPendingStmt->execute([':doc' => $sourceDocId, ':rl' => $routeLabel, ':jid' => $latestParseJobId]);
+            $firstPending = $firstPendingStmt->fetch();
+            if ($firstPending && (int)$firstPending['id'] > 0) {
+              $redirectUrl .= '&focus_cand_id=' . (int)$firstPending['id'];
+            }
+          }
+          header('Location: ' . APP_BASE . '/admin/route_review.php?' . $redirectUrl);
           exit;
         }
 
@@ -295,7 +304,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
           }
         }
-        header('Location: ' . APP_BASE . '/admin/route_review.php?' . build_route_review_redirect_query());
+        $redirectUrl = build_route_review_redirect_query();
+        if ($jumpNext === 0 && $latestParseJobId > 0) {
+          $firstPendingStmt = $pdo->prepare("SELECT id FROM shuttle_stop_candidate WHERE source_doc_id=:doc AND route_label=:rl AND created_job_id=:jid AND status='pending' ORDER BY seq_in_route ASC, id ASC LIMIT 1");
+          $firstPendingStmt->execute([':doc' => $sourceDocId, ':rl' => $routeLabel, ':jid' => $latestParseJobId]);
+          $firstPending = $firstPendingStmt->fetch();
+          if ($firstPending && (int)$firstPending['id'] > 0) {
+            $redirectUrl .= '&focus_cand_id=' . (int)$firstPending['id'];
+          }
+        }
+        header('Location: ' . APP_BASE . '/admin/route_review.php?' . $redirectUrl);
         exit;
 
       } else {
@@ -913,7 +931,7 @@ if ($showReco && $onlyUnmatched) {
       <?php if ((int)$sum['cand_pending'] > 0 && count($cands) === 0): ?>
       <p class="muted" style="margin:0 0 8px; font-size:12px;">현재 필터로 숨겨진 pending 후보가 있습니다. '전체 보기'를 눌러 확인하세요.</p>
       <?php endif; ?>
-      <p class="muted" style="margin:0 0 8px; font-size:12px;">단축키: a=Approve, r=Reject, n=다음 노선, t=자동점프 토글</p>
+      <p class="muted" style="margin:0 0 8px; font-size:12px;">단축키: a=Approve, r=Reject, n=다음 노선, t=자동점프 토글, j/k=행이동</p>
       <table>
         <thead>
           <tr>
@@ -934,7 +952,7 @@ if ($showReco && $onlyUnmatched) {
             $recommendedCanonical = (string)($recommendedByCandId[(int)$c['id']] ?? '');
             $canonPlaceholder = ($showReco && $onlyUnmatched && $recommendedCanonical !== '') ? $recommendedCanonical : '정식 명칭';
           ?>
-          <tr class="cand-row">
+          <tr class="cand-row" data-cand-id="<?= (int)$c['id'] ?>"<?= (string)$c['status'] === 'pending' ? ' data-pending="1"' : '' ?>>
             <td><?= (int)$c['id'] ?></td>
             <td><?= (int)$c['seq_in_route'] ?></td>
             <td><input type="text" readonly value="<?= h((string)($c['raw_stop_name'] ?? '')) ?>" style="width:100%;max-width:180px;box-sizing:border-box;" title="선택 후 복사" /></td>
@@ -1120,8 +1138,24 @@ if ($showReco && $onlyUnmatched) {
       }
     }
 
-    // 페이지 로드 시 첫 번째 후보 자동 선택
-    setSelected(rows[0]);
+    function getFocusCandId() {
+      var m = window.location.search.match(/[?&]focus_cand_id=(\d+)/);
+      return m ? m[1] : null;
+    }
+
+    var focusId = getFocusCandId();
+    if (focusId) {
+      for (var i = 0; i < rows.length; i++) {
+        if (rows[i].getAttribute('data-cand-id') === focusId) {
+          setSelected(rows[i]);
+          break;
+        }
+      }
+    }
+    if (!selectedRow) {
+      var pendingRows = rows.filter(function(r) { return r.getAttribute('data-pending') === '1'; });
+      setSelected(pendingRows.length ? pendingRows[0] : rows[0]);
+    }
 
     rows.forEach(function(row) {
       row.addEventListener('click', function() {
@@ -1156,6 +1190,10 @@ if ($showReco && $onlyUnmatched) {
 
     document.addEventListener('keydown', function(e) {
       if (!e || e.defaultPrevented) return;
+      var active = document.activeElement;
+      if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT')) {
+        return;
+      }
       var key = e.key;
       if (key === 'a') {
         submitActionOnSelected('approve', e);
@@ -1171,10 +1209,19 @@ if ($showReco && $onlyUnmatched) {
           }
         }
       } else if (key === 't') {
-        var jumpLink = document.querySelector('a[data-jump-next-toggle=\"1\"]');
+        var jumpLink = document.querySelector('a[data-jump-next-toggle="1"]');
         if (jumpLink) {
           e.preventDefault();
           jumpLink.click();
+        }
+      } else if (key === 'j' || key === 'k') {
+        var idx = rows.indexOf(selectedRow);
+        if (key === 'j' && idx < rows.length - 1) {
+          e.preventDefault();
+          setSelected(rows[idx + 1]);
+        } else if (key === 'k' && idx > 0) {
+          e.preventDefault();
+          setSelected(rows[idx - 1]);
         }
       }
     });

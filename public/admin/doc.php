@@ -232,6 +232,15 @@ if ($recentJobIds !== []) {
   });
 }
 
+// v1.1: 마지막 검수(작업) 시각 (job_log 기반)
+$lastJobLogAt = null;
+$lastJobStmt = $pdo->prepare("SELECT updated_at FROM shuttle_doc_job_log WHERE source_doc_id=:id ORDER BY id DESC LIMIT 1");
+$lastJobStmt->execute([':id' => $id]);
+$lastJob = $lastJobStmt->fetch();
+if ($lastJob && !empty($lastJob['updated_at'])) {
+  $lastJobLogAt = (string)$lastJob['updated_at'];
+}
+
 function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8'); }
 
 // v0.6-30: route_review와 동일한 신뢰도 분류 (표시 전용)
@@ -291,6 +300,9 @@ function normalizeStopNameDisplay(string $s): string {
     <div class="k">parse_status</div><div><?= h((string)$doc['parse_status']) ?></div>
     <div class="k">validation_status</div><div><?= h((string)$doc['validation_status']) ?></div>
     <div class="k">latest_parse_job_id</div><div><?= (int)$latestParseJobId ?></div>
+    <?php if ($lastJobLogAt !== null): ?>
+    <div class="k">마지막 검수 시각</div><div><?= h($lastJobLogAt) ?></div>
+    <?php endif; ?>
   </div>
 
   <!-- B. 실행 버튼 영역 (상단 고정) -->
@@ -417,7 +429,16 @@ function normalizeStopNameDisplay(string $s): string {
 
   <!-- v0.6-31: Next Actions (Summary + Top20 + only_risky 토글) -->
   <h3 style="margin-top:24px;">Next Actions</h3>
-  <?php $nextActionsBase = APP_BASE . '/admin/doc.php?id=' . (int)$id; ?>
+  <?php
+  $nextActionsBase = APP_BASE . '/admin/doc.php?id=' . (int)$id;
+  $startRouteLabel = $nextActionsSummary[0]['route_label'] ?? '';
+  ?>
+  <?php if ($startRouteLabel !== ''): ?>
+  <p style="margin:0 0 8px;">
+    <a class="btn" href="<?= APP_BASE ?>/admin/route_review.php?source_doc_id=<?= (int)$id ?>&route_label=<?= urlencode($startRouteLabel) ?>&quick_mode=1&show_advanced=0">오늘 작업 시작</a>
+    <span class="muted" style="margin-left:8px;">pending_risky 가장 많은 노선(<?= h($startRouteLabel) ?>)으로 이동</span>
+  </p>
+  <?php endif; ?>
   <p style="margin:0 0 8px;">
     <?php if ($onlyRisky): ?>
     <a href="<?= $nextActionsBase ?>">전체 pending 보기</a>
