@@ -16,6 +16,11 @@
 - **브라우저 3개:** (1) route_review 진입 → 화면 로딩·Candidates 표. (2) doc.php에서 route_label 클릭 → route_review 진입 시 show_advanced=0(기본 문구 "기본(고급숨김)"). (3) Approve 1회 → redirect 후 필터 유지.
 - **SQL 1개:** v0.6-20/v0.6-21 검증 쿼리 중 건수·인덱스·alias_text 길이 분포 등 1회 샘플 실행 후 결과 확인.
 
+## v1.1에서의 게이트
+
+- v1.1은 운영 속도팩(단축키, 오늘 작업 시작, Queue 등)만 추가. SoT/게이트/매칭 로직은 변경 없음. v1.0 RC 게이트 6개 그대로 유지.
+- v1.1 검증은 브라우저 스모크 2개만: (A) route_review 진입 후 첫 pending 자동 선택 + j/k 행이동. (B) a/r 처리 후 focus_cand_id 기반 다음 pending 자동 선택 또는 n으로 다음 노선 이동.
+
 ## RC 스모크(최소 3개) 결과
 
 | Check | Result | Note |

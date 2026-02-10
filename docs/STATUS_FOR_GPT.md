@@ -16,8 +16,18 @@
 
 ## 현재 버전
 
-- **v0.6-31** doc.php Next Actions에 route별 pending 요약 + only_risky(LOW/NONE) 토글 추가.
-- v0.6-30 Next Actions Top20. v0.6-29 Review Progress.
+- **v1.1-07** 운영 속도팩 안정화. 단축키/작업 흐름 고정, doc 오늘 작업 시작, 마지막 검수 시각 표시.
+- v1.1-04~06: 단축키(n/t/a/r/j/k), focus_cand_id, 오늘 작업 시작, Queue 준비.
+
+## 운영자 단축키 치트시트 (route_review)
+
+- **a** 선택 행 Approve (LOW는 체크박스 필수). **r** 선택 행 Reject.
+- **n** 다음 노선 검수(즉시 이동). **t** 검수 후 다음 노선 자동 점프 토글(jump_next=1/0).
+- **j** 선택 행 아래로 이동. **k** 선택 행 위로 이동.
+- 진입 시 첫 pending 행 자동 선택. focus_cand_id 있으면 해당 행 선택.
+- Approve/Reject 후 jump_next=0이면 같은 노선 유지 + 다음 pending 행 자동 선택(redirect 시 focus_cand_id).
+- INPUT/TEXTAREA/SELECT 포커스 중에는 단축키 무시(연타 방지 800ms 포함).
+- Known Issues: 필터로 후보 숨김 시 안내 문구, show_advanced 기본 숨김, alias_text<=2 legacy 3건 유지.
 
 ## SoT (변경 금지)
 

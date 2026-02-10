@@ -1,5 +1,9 @@
 # Known Issues / Backlog
 
+## Resolved
+
+- **단축키 오작동 방지 (INPUT 포커스 시 무시)** — v1.1-07. INPUT/TEXTAREA/SELECT 포커스 중에는 a/r/n/t/j/k 무시. 연타 방지(800ms 락) 포함. 해결됨.
+
 ## alias_text<=2 기존 3건 (v0.6-21 이전 데이터)
 
 - **내용:** v0.6-21에서 alias_text 길이 <=2 저장 차단을 도입했으나, 그 이전에 등록된 alias 중 길이 2 이하인 행이 3건 잔존한다.
