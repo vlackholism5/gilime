@@ -12,6 +12,7 @@
 | 6 | SoT 유지(stale 차단, promote latest만, 매칭 로직 변경 없음) | [x] | 회귀 없음 확인 |
 
 - alias_text<=2 기존 3건 처리 방향: docs/KNOWN_ISSUES.md 참고.
+- v1.0 RC 종료: v1.0-rc.1 (commit 3898ac0) 기준으로 게이트 통과 기록 고정.
 
 ## 현재 버전
 
