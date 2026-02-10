@@ -15,3 +15,11 @@
 
 - **브라우저 3개:** (1) route_review 진입 → 화면 로딩·Candidates 표. (2) doc.php에서 route_label 클릭 → route_review 진입 시 show_advanced=0(기본 문구 "기본(고급숨김)"). (3) Approve 1회 → redirect 후 필터 유지.
 - **SQL 1개:** v0.6-20/v0.6-21 검증 쿼리 중 건수·인덱스·alias_text 길이 분포 등 1회 샘플 실행 후 결과 확인.
+
+## RC 스모크(최소 3개) 결과
+
+| Check | Result | Note |
+|-------|--------|------|
+| doc.php 섹션/링크 | PASS | Review Progress, Next Actions Summary, Top20 노출 / route_label→route_review 이동(show_advanced=0) |
+| route_review 기본 단순뷰/초단축 | PASS | 기본(고급숨김), 초단축·매칭실패 토글·고급옵션보기 / 초단축 빠른 검수 클릭 시 quick_mode=1 적용 |
+| route_review redirect 유지 | PASS | Approve/Reject 후 동일 필터 상태로 복귀 확인 |
