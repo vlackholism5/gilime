@@ -211,3 +211,10 @@ LIMIT 100;
 
 - CREATE INDEX 실행 시 Warning 1831(duplicate index) 발생 → 이미 존재하던 인덱스였음을 명시. SHOW INDEX 결과로 4컬럼(source_doc_id, job_type, job_status, id) 존재 확정.
 - **v1.3-06 후보(문서만, 코드 변경 보류):** j2가 idx_joblog_doc_type_status_id를 사용하지 않을 경우, NOT EXISTS 서브쿼리 j2에 USE INDEX(idx_joblog_doc_type_status_id) 힌트 적용 후보. 확인 필요.
+
+---
+
+## J. v1.3-06 검증 통합팩
+
+- **원칙:** 운영 3페이지(review_queue, alias_audit, ops_dashboard) 성능 검증은 **sql/v1.3-06_validation_pack.sql 1개**로 통합. SHOW INDEX 4건 + EXPLAIN 3건 실행 후 각 "(여기 채움)" 블록에 결과 붙여넣기.
+- j2가 idx_joblog_doc_type_status_id를 쓰지 않고 ix_job_doc_type_status를 쓰는 현상은 **확인 필요/가설**로 분리. 옵티마이저 선택 차이 또는 통계에 따른 것으로 두고, 다음 버전(v1.3-07)에서 **힌트 실험(STRAIGHT_JOIN/USE INDEX)** 계획만 명시.
