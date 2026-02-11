@@ -6,35 +6,7 @@ require_once __DIR__ . '/../../app/inc/user_session.php';
 $pdo = pdo();
 $userId = user_session_user_id();
 
-// POST: subscribe / unsubscribe (MVP2 temporary auth)
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-  $action = isset($_POST['action']) ? trim((string)$_POST['action']) : '';
-  $docId = isset($_POST['doc_id']) ? (int)$_POST['doc_id'] : 0;
-  $routeLabel = isset($_POST['route_label']) ? trim((string)$_POST['route_label']) : '';
-  if ($docId > 0 && $routeLabel !== '' && in_array($action, ['subscribe', 'unsubscribe'], true)) {
-    $targetId = $docId . '_' . $routeLabel;
-    $isActive = $action === 'subscribe' ? 1 : 0;
-    if ($action === 'subscribe') {
-      $pdo->prepare("
-        INSERT INTO app_subscriptions (user_id, target_type, target_id, alert_type, is_active)
-        VALUES (:uid, 'route', :target_id, 'strike,event,update', 1)
-        ON DUPLICATE KEY UPDATE is_active = 1, updated_at = NOW()
-      ")->execute([':uid' => $userId, ':target_id' => $targetId]);
-    } else {
-      $pdo->prepare("
-        UPDATE app_subscriptions SET is_active = 0, updated_at = NOW()
-        WHERE user_id = :uid AND target_type = 'route' AND target_id = :target_id
-      ")->execute([':uid' => $userId, ':target_id' => $targetId]);
-    }
-    try {
-      error_log(sprintf('OPS subscribe_toggle user_id=%d target_id=%s is_active=%d', $userId, $targetId, $isActive));
-    } catch (Throwable $e) {
-      // do not break UX
-    }
-  }
-  header('Location: ' . APP_BASE . '/user/routes.php');
-  exit;
-}
+// v1.1 observability: POST removed, now handled by /api/subscription/toggle
 
 // List: distinct (doc_id, route_label) from shuttle_stop_candidate + latest PARSE_MATCH job
 $routes = [];
@@ -77,33 +49,33 @@ $base = APP_BASE . '/user';
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
-  <title>GILIME - Routes</title>
-  <style>
-    body{font-family:system-ui,-apple-system,sans-serif;padding:24px;background:#f9fafb;}
-    a{color:#0b57d0;text-decoration:none;}
-    .nav a{margin-right:16px;}
-    .card{background:#fff;border:1px solid #eee;border-radius:8px;padding:16px;}
-    .muted{color:#666;font-size:13px;}
-    table{border-collapse:collapse;width:100%;}
-    th,td{border-bottom:1px solid #eee;padding:8px 12px;text-align:left;font-size:13px;}
-    th{background:#f7f8fa;}
-    button{padding:6px 12px;cursor:pointer;}
-  </style>
+  <title>GILIME - 노선</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="<?= APP_BASE ?>/public/assets/css/gilaime_ui.css" />
 </head>
-<body>
-  <nav class="nav">
-    <a href="<?= $base ?>/home.php">Home</a>
-    <a href="<?= $base ?>/routes.php">Routes</a>
-    <a href="<?= $base ?>/alerts.php">Alerts</a>
+<body class="gilaime-app">
+  <main class="container-fluid py-4">
+  <nav class="nav g-topnav mb-3">
+    <a class="nav-link" href="<?= $base ?>/home.php">홈</a>
+    <a class="nav-link" href="<?= $base ?>/routes.php">노선</a>
+    <a class="nav-link" href="<?= $base ?>/alerts.php">알림</a>
   </nav>
-  <h1>Routes</h1>
-  <p class="muted">Subscribe to routes for alerts (read-only list).</p>
-  <div class="card">
+  <div class="g-page-head mb-3">
+    <h1>노선 구독</h1>
+    <p class="helper mb-0">알림을 받을 노선을 구독/해제할 수 있습니다.</p>
+  </div>
+  <details class="kbd-help mb-3">
+    <summary>단축키 안내</summary>
+    <div class="body">/ : 검색 입력으로 이동 · Esc : 닫기 · Ctrl+Enter : 주요 폼 제출(지원 페이지)</div>
+  </details>
+  <div class="card g-card">
+    <div class="card-body">
     <?php if ($routes === []): ?>
-      <p class="muted">No routes.</p>
+      <p class="text-muted-g small mb-0">노선이 없습니다.</p>
     <?php else: ?>
-      <table>
-        <thead><tr><th>Doc ID</th><th>Route</th><th>Subscribe</th></tr></thead>
+      <div class="table-responsive">
+      <table class="table table-hover align-middle g-table mb-0">
+        <thead><tr><th class="mono">문서 ID</th><th>노선</th><th>구독</th></tr></thead>
         <tbody>
           <?php foreach ($routes as $r):
             $tid = (int)$r['doc_id'] . '_' . $r['route_label'];
@@ -111,25 +83,61 @@ $base = APP_BASE . '/user';
           ?>
             <tr>
               <td><?= (int)$r['doc_id'] ?></td>
-              <td><?= h($r['route_label']) ?><?php if ($isSub): ?> <span class="muted" style="font-size:11px;">(Subscribed)</span><?php endif; ?></td>
+              <td><?= h($r['route_label']) ?><?php if ($isSub): ?> <span class="badge badge-g-published ms-1">구독중</span><?php endif; ?></td>
               <td>
-                <form method="post" style="display:inline;">
-                  <input type="hidden" name="doc_id" value="<?= (int)$r['doc_id'] ?>" />
-                  <input type="hidden" name="route_label" value="<?= h($r['route_label']) ?>" />
-                  <?php if ($isSub): ?>
-                    <input type="hidden" name="action" value="unsubscribe" />
-                    <button type="submit">Unsubscribe</button>
-                  <?php else: ?>
-                    <input type="hidden" name="action" value="subscribe" />
-                    <button type="submit">Subscribe</button>
-                  <?php endif; ?>
-                </form>
+                <?php if ($isSub): ?>
+                  <button type="button" class="btn btn-outline-secondary btn-sm sub-toggle" data-doc-id="<?= (int)$r['doc_id'] ?>" data-route-label="<?= h($r['route_label']) ?>" data-action="unsubscribe">구독 해제</button>
+                <?php else: ?>
+                  <button type="button" class="btn btn-sm btn-gilaime-primary sub-toggle" data-doc-id="<?= (int)$r['doc_id'] ?>" data-route-label="<?= h($r['route_label']) ?>" data-action="subscribe">구독</button>
+                <?php endif; ?>
               </td>
             </tr>
           <?php endforeach; ?>
         </tbody>
       </table>
+      </div>
     <?php endif; ?>
+    </div>
   </div>
+
+  <script src="<?= APP_BASE ?>/admin/trace-helper.js"></script>
+  <script src="<?= APP_BASE ?>/public/assets/js/gilaime_ui.js"></script>
+  <script>
+    <?php require_once __DIR__ . '/../../app/inc/observability.php'; ?>
+    window.__GILIME_DEBUG__ = <?= is_debug_enabled() ? 'true' : 'false' ?>;
+
+    (function () {
+      var buttons = document.querySelectorAll('.sub-toggle');
+      buttons.forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+          e.preventDefault();
+          var docId = btn.getAttribute('data-doc-id');
+          var routeLabel = btn.getAttribute('data-route-label');
+          var action = btn.getAttribute('data-action');
+          var tid = GilimeTrace.createId();
+          if (window.__GILIME_DEBUG__) console.log('[TRACE ' + tid + '] click', { action: action, doc_id: docId, route_label: routeLabel });
+          btn.disabled = true;
+          GilimeTrace.fetch('<?= APP_BASE ?>/api/subscription/toggle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ doc_id: parseInt(docId), route_label: routeLabel, action: action })
+          }, tid).then(function (r) {
+            return r.json();
+          }).then(function (data) {
+            if (data.ok) {
+              window.location.reload();
+            } else {
+              alert('Error: ' + (data.error || 'unknown'));
+              btn.disabled = false;
+            }
+          }).catch(function (err) {
+            alert('Request failed');
+            btn.disabled = false;
+          });
+        });
+      });
+    })();
+  </script>
+  </main>
 </body>
 </html>

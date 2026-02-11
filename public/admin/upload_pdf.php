@@ -119,58 +119,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
-  <title>Admin - Upload PDF</title>
-  <style>
-    body{font-family:system-ui, -apple-system, Segoe UI, Roboto, sans-serif; padding:24px;}
-    a{color:#0b57d0;text-decoration:none;}
-    .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
-    .box{max-width:760px;border:1px solid #e7e7e7;border-radius:12px;padding:16px;background:#fff;}
-    .row{margin:10px 0;}
-    .muted{color:#666;font-size:12px;}
-    .flash{margin:12px 0;padding:10px 12px;border:1px solid #ddd;border-radius:10px;}
-    .ok{background:#f6ffed;border-color:#b7eb8f;}
-    .err{background:#fff2f0;border-color:#ffccc7;}
-    .btn{display:inline-block;border:1px solid #d9d9d9;border-radius:8px;padding:8px 12px;background:#fff;cursor:pointer;}
-  </style>
+  <title>관리자 - PDF 업로드</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="<?= APP_BASE ?>/public/assets/css/gilaime_ui.css" />
 </head>
-<body>
-  <div class="top">
-    <a href="<?= APP_BASE ?>/admin/index.php">← Back</a>
-    <a href="<?= APP_BASE ?>/admin/logout.php">Logout</a>
+<body class="gilaime-app">
+  <main class="container-fluid py-4">
+  <div class="top d-flex justify-content-between align-items-center mb-3">
+    <a href="<?= APP_BASE ?>/admin/index.php">← 뒤로</a>
+    <a href="<?= APP_BASE ?>/admin/logout.php">로그아웃</a>
   </div>
 
-  <h2>Upload PDF (v1.7-17 minimal ingest)</h2>
-  <p class="muted">업로드 → source_doc 생성 → doc 화면에서 Run Parse/Match 실행. OCR/워커는 이번 범위에 포함하지 않습니다.</p>
+  <div class="g-page-head mb-3">
+    <h2>PDF 업로드 (v1.7-17 최소 ingest)</h2>
+    <p class="helper mb-0">업로드 → source_doc 생성 → doc 화면에서 Run Parse/Match 실행. OCR/워커는 이번 범위에 포함하지 않습니다.</p>
+  </div>
 
   <?php if ($flash !== null): ?>
-    <div class="flash <?= $flashType === 'ok' ? 'ok' : 'err' ?>"><?= h($flash) ?></div>
+    <div class="alert <?= $flashType === 'ok' ? 'alert-success' : 'alert-danger' ?> py-2"><?= h($flash) ?></div>
   <?php endif; ?>
 
-  <div class="box">
+  <div class="card g-card g-max-760">
+    <div class="card-body">
     <form method="post" enctype="multipart/form-data">
-      <div class="row">
-        <label for="pdf_file">PDF 파일 선택</label><br />
-        <input id="pdf_file" type="file" name="pdf_file" accept=".pdf,application/pdf" required />
+      <div class="mb-3">
+        <label class="form-label" for="pdf_file">PDF 파일 선택</label>
+        <input id="pdf_file" class="form-control" type="file" name="pdf_file" accept=".pdf,application/pdf" required />
       </div>
-      <div class="row">
-        <button class="btn" type="submit">Upload</button>
-        <span class="muted" style="margin-left:8px;">허용: .pdf, 최대 10MB</span>
+      <div class="d-flex align-items-center gap-2">
+        <button class="btn btn-gilaime-primary" type="submit">Upload</button>
+        <span class="text-muted-g small">허용: .pdf, 최대 10MB</span>
       </div>
     </form>
 
     <?php if ($newDocId > 0): ?>
-      <hr style="margin:16px 0;border:none;border-top:1px solid #eee;" />
+      <hr class="my-3" />
       <p><strong>source_doc_id:</strong> <?= (int)$newDocId ?></p>
       <p><strong>saved_file:</strong> <?= h($savedFile) ?></p>
       <p>
-        <a class="btn" href="<?= APP_BASE ?>/admin/doc.php?id=<?= (int)$newDocId ?>">Doc 상세 보기</a>
+        <a class="btn btn-outline-secondary" href="<?= APP_BASE ?>/admin/doc.php?id=<?= (int)$newDocId ?>">Doc 상세 보기</a>
       </p>
-      <form method="post" action="<?= APP_BASE ?>/admin/run_job.php" style="margin-top:8px;">
+      <form method="post" action="<?= APP_BASE ?>/admin/run_job.php" class="mt-2">
         <input type="hidden" name="source_doc_id" value="<?= (int)$newDocId ?>" />
-        <button class="btn" type="submit">Run Parse/Match now</button>
+        <button class="btn btn-gilaime-primary" type="submit">Run Parse/Match now</button>
       </form>
     <?php endif; ?>
+    </div>
   </div>
+  </main>
 </body>
 </html>
 

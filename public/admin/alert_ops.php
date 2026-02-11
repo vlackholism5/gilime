@@ -259,82 +259,81 @@ function h(string $s): string {
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
-  <title>Admin - Alert Ops</title>
-  <style>
-    body{font-family:system-ui,-apple-system,sans-serif;padding:24px;background:#f9fafb;}
-    a{color:#0b57d0;text-decoration:none;}
-    a:hover{text-decoration:underline;}
-    .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
-    .muted{color:#666;font-size:12px;}
-    table{border-collapse:collapse;width:100%;background:#fff;}
-    th,td{border-bottom:1px solid #eee;padding:10px;text-align:left;font-size:13px;}
-    th{background:#f7f8fa;}
-    tr.highlight{background:#fef3cd;}
-    .badge{display:inline-block;padding:2px 6px;font-size:11px;border-radius:4px;}
-    .badge-draft{background:#f0f0f0;color:#555;}
-    .badge-published{background:#e0f0e0;color:#166;}
-    .form-inline{margin-bottom:16px;}
-    .form-inline label{margin-right:8px;}
-    .form-inline input, .form-inline select{margin-right:12px;}
-  </style>
+  <title>관리자 - 알림 운영</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="<?= APP_BASE ?>/public/assets/css/gilaime_ui.css" />
 </head>
-<body>
-  <div class="top">
+<body class="gilaime-app">
+  <main class="container-fluid py-4">
+  <div class="g-top">
     <div>
-      <a href="<?= h($base) ?>/index.php">Docs</a>
-      <span class="muted"> / Alert Ops</span>
-      <span class="muted" style="margin-left:12px;">Role: <?= h($currentUserRole) ?></span>
+      <a href="<?= h($base) ?>/index.php">문서 허브</a>
+      <span class="text-muted-g"> / 알림 운영</span>
+      <span class="text-muted-g ms-2">권한: <?= h($currentUserRole) ?></span>
     </div>
-    <a href="<?= h($base) ?>/alert_event_audit.php">Alert Audit</a>
-    <a href="<?= h($base) ?>/logout.php">Logout</a>
+    <div class="d-flex gap-2">
+      <a class="btn btn-outline-secondary btn-sm" href="<?= h($base) ?>/alert_event_audit.php">알림 감사</a>
+      <a class="btn btn-outline-secondary btn-sm" href="<?= h($base) ?>/logout.php">로그아웃</a>
+    </div>
   </div>
 
-  <h2>Alert Ops</h2>
+  <div class="g-page-head mb-3">
+    <h2 class="h3">알림 운영</h2>
+    <p class="helper mb-0">초안 생성, 대상 미리보기, 발행(Publish)까지 한 화면에서 처리합니다.</p>
+  </div>
+  <details class="kbd-help mb-3">
+    <summary>단축키 안내</summary>
+    <div class="body">/ : 검색 입력으로 이동 · Esc : 닫기 · Ctrl+Enter : 주요 폼 제출(지원 페이지)</div>
+  </details>
 
   <!-- 새 알림 작성 -->
-  <div class="card" style="margin-bottom:20px;">
-    <h3>새 알림 작성</h3>
+  <div class="card g-card mb-4">
+    <div class="card-body">
+    <h3 class="h5 mb-3">새 알림 작성</h3>
     <form method="post" action="<?= h($base) ?>/alert_ops.php">
       <input type="hidden" name="ref_type" value="route" />
-      <div class="form-inline">
+      <div class="g-form-inline mb-2">
         <label>event_type</label>
-        <select name="event_type" required>
+        <select class="form-select form-select-sm w-auto" name="event_type" required>
           <option value="strike">strike</option>
           <option value="event">event</option>
           <option value="update">update</option>
           <option value="e2e_test">e2e_test</option>
         </select>
         <label>title</label>
-        <input type="text" name="title" required maxlength="255" size="40" />
-        <label>body (optional)</label>
-        <input type="text" name="body" maxlength="500" size="30" />
+        <input class="form-control form-control-sm" type="text" name="title" required maxlength="255" size="40" />
+        <label>본문(선택)</label>
+        <input class="form-control form-control-sm" type="text" name="body" maxlength="500" size="30" />
       </div>
-      <div class="form-inline">
+      <div class="g-form-inline mb-3">
         <label>ref_id</label>
-        <input type="number" name="ref_id" required min="1" value="1" />
+        <input class="form-control form-control-sm w-auto" type="number" name="ref_id" required min="1" value="1" />
         <label>route_label</label>
-        <input type="text" name="route_label" required maxlength="64" value="R1" />
+        <input class="form-control form-control-sm w-auto" type="text" name="route_label" required maxlength="64" value="R1" />
         <label>published_at</label>
-        <input type="datetime-local" name="published_at" /> <span class="muted">(비우면 초안)</span>
-        <label><input type="checkbox" name="publish_now" value="1" /> Publish now</label>
+        <input class="form-control form-control-sm w-auto" type="datetime-local" name="published_at" /> <span class="text-muted-g small">(비우면 초안)</span>
+        <label><input type="checkbox" name="publish_now" value="1" /> 즉시 발행(Publish)</label>
       </div>
-      <button type="submit">Create</button>
+      <button class="btn btn-gilaime-primary" type="submit">생성(Create)</button>
     </form>
+    </div>
   </div>
 
   <?php if ($flash !== null): ?>
-  <p class="muted"><?= $flash === 'created' ? 'created' : ($flash === 'duplicate ignored' ? 'duplicate ignored' : ($flash === 'published' ? 'published' : ($flash === 'published_with_queue' ? 'published (queued ' . (int)$queuedCnt . ')' : ($flash === 'blocked_no_targets' ? 'blocked_no_targets' : ($flash === 'blocked_not_approver' ? 'blocked_not_approver' : 'failed'))))) ?></p>
+  <p class="text-muted-g small"><?= $flash === 'created' ? '생성 완료' : ($flash === 'duplicate ignored' ? '중복: 기존 항목이 있어 건너뜀' : ($flash === 'published' ? '발행 완료' : ($flash === 'published_with_queue' ? '발행 완료: 대상 ' . (int)$queuedCnt . '명 큐 적재' : ($flash === 'blocked_no_targets' ? '차단: 대상 사용자가 없습니다(구독 조건 불일치)' : ($flash === 'blocked_not_approver' ? '차단: 승인 권한이 없습니다' : '실패: 처리 중 오류가 발생했습니다'))))) ?></p>
   <?php endif; ?>
 
   <?php if ($focusEventId > 0 && $previewEvent !== null): ?>
   <!-- v1.7-03: Targeting Preview (read-only) -->
-  <div class="card" style="margin-bottom:20px; border:1px solid #ddd;">
-    <h3>Targeting Preview</h3>
-    <p class="muted">event_id=<?= (int)$focusEventId ?> · event_type=<?= h($previewEvent['event_type'] ?? '') ?> · ref_id=<?= (int)($previewEvent['ref_id'] ?? 0) ?> · route_label=<?= h($previewEvent['route_label'] ?? '') ?> · published_at=<?= h($previewEvent['published_at'] ?? '') ?></p>
-    <p><strong>Target users: <?= (int)$previewTargetCnt ?></strong></p>
+  <div class="card g-card mb-4">
+    <div class="card-body">
+    <h3 class="h5">대상 미리보기 (Targeting Preview)</h3>
+    <p class="text-muted-g small">event_id=<?= (int)$focusEventId ?> · event_type=<?= h($previewEvent['event_type'] ?? '') ?> · ref_id=<?= (int)($previewEvent['ref_id'] ?? 0) ?> · route_label=<?= h($previewEvent['route_label'] ?? '') ?> · published_at=<?= h($previewEvent['published_at'] ?? '') ?></p>
+    <p><strong>대상 사용자: <?= (int)$previewTargetCnt ?></strong></p>
     <?php if ($previewTargetList !== []): ?>
-    <table>
-      <thead><tr><th>user_id</th><th>display_name</th><th>email</th><th>subscription_target_id</th><th>alert_type</th></tr></thead>
+    <div class="table-responsive">
+    <table class="table table-hover align-middle g-table mb-0">
+      <thead><tr><th class="mono">user_id</th><th>이름</th><th>이메일</th><th class="mono">subscription_target_id</th><th>alert_type</th></tr></thead>
       <tbody>
         <?php foreach ($previewTargetList as $u): ?>
         <tr>
@@ -347,33 +346,43 @@ function h(string $s): string {
         <?php endforeach; ?>
       </tbody>
     </table>
+    </div>
     <?php endif; ?>
+    </div>
   </div>
   <?php endif; ?>
 
   <!-- 필터. v1.7-02: draft_only, published_only -->
-  <p class="muted">
+  <div class="card g-card mb-3">
+  <div class="card-body py-3">
+  <p class="text-muted-g small mb-0">
     <a href="<?= h($base) ?>/alert_ops.php">전체</a>
     <a href="<?= h($base) ?>/alert_ops.php?draft_only=1">초안만</a>
     <a href="<?= h($base) ?>/alert_ops.php?published_only=1">발행만</a>
     <a href="<?= h($base) ?>/alert_ops.php?event_type=strike">strike</a>
     <a href="<?= h($base) ?>/alert_ops.php?event_type=event">event</a>
     <a href="<?= h($base) ?>/alert_ops.php?event_type=update">update</a>
-    | route_label: <form method="get" action="<?= h($base) ?>/alert_ops.php" style="display:inline;">
+    <span class="mx-2">|</span> route_label:
+    <form method="get" action="<?= h($base) ?>/alert_ops.php" class="d-inline">
       <input type="hidden" name="event_type" value="<?= h($filterType ?? '') ?>" />
       <input type="hidden" name="draft_only" value="<?= $filterDraftOnly ? '1' : '' ?>" />
       <input type="hidden" name="published_only" value="<?= $filterPublishedOnly ? '1' : '' ?>" />
-      <input type="text" name="route_label" value="<?= h($filterRoute ?? '') ?>" placeholder="R1" size="6" />
-      <input type="text" name="published_from" value="<?= h($filterFrom ?? '') ?>" placeholder="from" size="12" />
-      <input type="text" name="published_to" value="<?= h($filterTo ?? '') ?>" placeholder="to" size="12" />
-      <button type="submit">Filter</button>
+      <input class="form-control form-control-sm d-inline-block w-auto" type="text" name="route_label" value="<?= h($filterRoute ?? '') ?>" placeholder="R1" size="6" />
+      <input class="form-control form-control-sm d-inline-block w-auto" type="text" name="published_from" value="<?= h($filterFrom ?? '') ?>" placeholder="from" size="12" />
+      <input class="form-control form-control-sm d-inline-block w-auto" type="text" name="published_to" value="<?= h($filterTo ?? '') ?>" placeholder="to" size="12" />
+      <button class="btn btn-outline-secondary btn-sm" type="submit">필터 적용</button>
     </form>
   </p>
+  </div>
+  </div>
 
-  <table>
+  <div class="card g-card">
+  <div class="card-body">
+  <div class="table-responsive">
+  <table class="table table-hover align-middle g-table mb-0">
     <thead>
       <tr>
-        <th>id</th><th>event_type</th><th>title</th><th>ref_type</th><th>ref_id</th><th>route_label</th><th>published_at</th><th>State</th><th>created_at</th><th>Action</th><th>Links</th>
+        <th class="mono">id</th><th>event_type</th><th>title</th><th>ref_type</th><th class="mono">ref_id</th><th>route_label</th><th>published_at</th><th>상태</th><th>created_at</th><th>액션</th><th>링크</th>
       </tr>
     </thead>
     <tbody>
@@ -395,24 +404,28 @@ function h(string $s): string {
           <td><?= $refId ?></td>
           <td><?= h($rl) ?></td>
           <td><?= h($publishedAt ?? '') ?></td>
-          <td><span class="badge badge-<?= $isDraft ? 'draft' : 'published' ?>"><?= $isDraft ? 'draft' : 'published' ?></span></td>
+          <td><span class="badge badge-<?= $isDraft ? 'draft' : 'published' ?>"><?= $isDraft ? '초안' : '발행' ?></span></td>
           <td><?= h($e['created_at'] ?? '') ?></td>
           <td>
             <?php if ($isDraft): ?>
-            <form method="post" action="<?= h($base) ?>/alert_ops.php" style="display:inline;">
+            <form method="post" action="<?= h($base) ?>/alert_ops.php" class="d-inline">
               <input type="hidden" name="publish_event_id" value="<?= $eid ?>" />
-              <button type="submit">Publish</button>
+              <button class="btn btn-gilaime-primary btn-sm" type="submit">발행(Publish)</button>
             </form>
             <?php else: ?>—<?php endif; ?>
           </td>
           <td>
-            <?php if ($userAlertsUrl !== ''): ?><a href="<?= h($userAlertsUrl) ?>" target="_blank" rel="noopener">User Alerts</a><?php endif; ?>
-            <?php if ($reviewUrl !== ''): ?> <a href="<?= h($reviewUrl) ?>">Admin Review</a><?php endif; ?>
+            <?php if ($userAlertsUrl !== ''): ?><a href="<?= h($userAlertsUrl) ?>" target="_blank" rel="noopener">사용자 알림</a><?php endif; ?>
+            <?php if ($reviewUrl !== ''): ?> <a href="<?= h($reviewUrl) ?>">관리자 검수</a><?php endif; ?>
           </td>
         </tr>
       <?php endforeach; ?>
     </tbody>
   </table>
-  <p class="muted">최근 200건. Pagination은 v1.6-06(확인 필요).</p>
+  </div>
+  </div>
+  </div>
+  <p class="text-muted-g small mt-3">최근 200건. Pagination은 v1.6-06(확인 필요).</p>
+  </main>
 </body>
 </html>

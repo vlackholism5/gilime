@@ -25,12 +25,13 @@ if (!$hasRouteLabelColumn) {
   $subscribedOnly = false;
 }
 
+// v1.7-02: user sees only published alerts (drafts never shown)
 $sql = "
   SELECT id, event_type, title, body, ref_type, ref_id" . ($hasRouteLabelColumn ? ", route_label" : "") . ", published_at, created_at
   FROM app_alert_events
 ";
 $params = [];
-$where = [];
+$where = [" published_at IS NOT NULL"];
 if ($typeFilter !== null) {
   $where[] = " event_type = :etype";
   $params[':etype'] = $typeFilter;
@@ -47,9 +48,7 @@ if ($hasRouteLabelColumn && $subscribedOnly) {
   )";
   $params[':uid'] = $userId;
 }
-if ($where !== []) {
-  $sql .= " WHERE " . implode(' AND ', $where);
-}
+$sql .= " WHERE " . implode(' AND ', $where);
 $sql .= " ORDER BY created_at DESC LIMIT " . (int)$perPage . " OFFSET " . (int)$offset;
 
 $stmt = $pdo->prepare($sql);
@@ -92,50 +91,50 @@ $qNext = array_merge($q, ['page' => (string)($page + 1)]);
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
-  <title>GILIME - Alerts</title>
-  <style>
-    body{font-family:system-ui,-apple-system,sans-serif;padding:24px;background:#f9fafb;}
-    a{color:#0b57d0;text-decoration:none;}
-    a:hover{text-decoration:underline;}
-    .nav{margin-bottom:20px;}
-    .nav a{margin-right:16px;}
-    .filters{margin-bottom:12px;}
-    .filters a{margin-right:8px;}
-    .card{background:#fff;border:1px solid #eee;border-radius:8px;padding:16px;}
-    .muted{color:#666;font-size:13px;}
-    table{border-collapse:collapse;width:100%;}
-    th,td{border-bottom:1px solid #eee;padding:8px 12px;text-align:left;font-size:13px;}
-    th{background:#f7f8fa;}
-  </style>
+  <title>GILIME - 알림</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="<?= APP_BASE ?>/public/assets/css/gilaime_ui.css" />
 </head>
-<body>
-  <nav class="nav">
-    <a href="<?= $base ?>/home.php">Home</a>
-    <a href="<?= $base ?>/routes.php">Routes</a>
-    <a href="<?= $base ?>/alerts.php">Alerts</a>
+<body class="gilaime-app">
+  <main class="container-fluid py-4">
+  <nav class="nav g-topnav mb-3">
+    <a class="nav-link" href="<?= $base ?>/home.php">홈</a>
+    <a class="nav-link" href="<?= $base ?>/routes.php">노선</a>
+    <a class="nav-link" href="<?= $base ?>/alerts.php">알림</a>
   </nav>
 
-  <h1>Alerts</h1>
-  <div class="filters">
-    <span>type:</span>
+  <div class="g-page-head mb-3">
+    <h1>알림</h1>
+    <p class="helper mb-0">필터를 사용해 필요한 알림만 빠르게 확인할 수 있습니다.</p>
+  </div>
+  <details class="kbd-help mb-3">
+    <summary>단축키 안내</summary>
+    <div class="body">/ : 검색 입력으로 이동 · Esc : 닫기 · Ctrl+Enter : 주요 폼 제출(지원 페이지)</div>
+  </details>
+  <div class="card g-card mb-3">
+    <div class="card-body py-3">
+    <span>유형:</span>
     <a href="<?= $base ?>/alerts.php?<?= http_build_query(array_filter(['route_label' => $routeFilter, 'subscribed' => $subscribedOnly ? '1' : null])) ?>">전체</a>
     <a href="<?= $base ?>/alerts.php?<?= http_build_query(array_merge($q, ['type' => 'strike'])) ?>">strike</a>
     <a href="<?= $base ?>/alerts.php?<?= http_build_query(array_merge($q, ['type' => 'event'])) ?>">event</a>
     <a href="<?= $base ?>/alerts.php?<?= http_build_query(array_merge($q, ['type' => 'update'])) ?>">update</a>
-    <span style="margin-left:12px;">subscribed only:</span>
+    <span class="ms-3">구독 노선만:</span>
     <?php if ($subscribedOnly): ?>
-      <a href="<?= $base ?>/alerts.php?<?= http_build_query(array_filter(['type' => $typeFilter, 'route_label' => $routeFilter])) ?>">off</a>
+      <a href="<?= $base ?>/alerts.php?<?= http_build_query(array_filter(['type' => $typeFilter, 'route_label' => $routeFilter])) ?>">해제</a>
     <?php else: ?>
-      <a href="<?= $base ?>/alerts.php?<?= http_build_query(array_merge($q, ['subscribed' => '1'])) ?>">on</a>
+      <a href="<?= $base ?>/alerts.php?<?= http_build_query(array_merge($q, ['subscribed' => '1'])) ?>">켜기</a>
     <?php endif; ?>
+    </div>
   </div>
 
-  <div class="card">
+  <div class="card g-card">
+    <div class="card-body">
     <?php if ($events === []): ?>
-      <p class="muted">알림이 없습니다.</p>
+      <p class="text-muted-g small mb-0">알림이 없습니다.</p>
     <?php else: ?>
-      <table>
-        <thead><tr><th>유형</th><th>제목</th><th>본문</th><th>발행일</th><th>Review</th></tr></thead>
+      <div class="table-responsive">
+      <table class="table table-hover align-middle g-table mb-0">
+        <thead><tr><th>유형</th><th>제목</th><th>본문</th><th>발행일</th><th>검수 링크</th></tr></thead>
         <tbody>
           <?php foreach ($events as $e):
             $docId = isset($e['ref_id']) ? (int)$e['ref_id'] : 0;
@@ -149,23 +148,27 @@ $qNext = array_merge($q, ['page' => (string)($page + 1)]);
               <td><?= h($e['title'] ?? '') ?></td>
               <td><?= h(mb_substr((string)($e['body'] ?? ''), 0, 80)) ?><?= mb_strlen((string)($e['body'] ?? '')) > 80 ? '…' : '' ?></td>
               <td><?= h($e['published_at'] ?? '') ?></td>
-              <td><?= $reviewUrl !== '' ? '<a href="' . h($reviewUrl) . '" target="_blank" rel="noopener">Review</a>' : '—' ?></td>
+              <td><?= $reviewUrl !== '' ? '<a class="btn" href="' . h($reviewUrl) . '" target="_blank" rel="noopener">검수 보기</a>' : '—' ?></td>
             </tr>
           <?php endforeach; ?>
         </tbody>
       </table>
+      </div>
     <?php endif; ?>
+    </div>
   </div>
   <?php if ($events !== []): ?>
-  <p class="muted" style="margin-top:12px;">
-    Page <?= (int)$page ?> (<?= (int)$perPage ?> per page)
+  <p class="text-muted-g small mt-3 mb-0">
+    페이지 <?= (int)$page ?> (페이지당 <?= (int)$perPage ?>건)
     <?php if ($page > 1): ?>
-      <a href="<?= $base ?>/alerts.php?<?= http_build_query($qPrev) ?>">Previous</a>
+      <a href="<?= $base ?>/alerts.php?<?= http_build_query($qPrev) ?>">이전</a>
     <?php endif; ?>
     <?php if (count($events) >= $perPage): ?>
-      <a href="<?= $base ?>/alerts.php?<?= http_build_query($qNext) ?>">Next</a>
+      <a href="<?= $base ?>/alerts.php?<?= http_build_query($qNext) ?>">다음</a>
     <?php endif; ?>
   </p>
   <?php endif; ?>
+  <script src="<?= APP_BASE ?>/public/assets/js/gilaime_ui.js"></script>
+  </main>
 </body>
 </html>

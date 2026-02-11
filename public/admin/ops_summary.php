@@ -45,36 +45,29 @@ function h(string $s): string {
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
-  <title>Admin - Ops Summary</title>
-  <style>
-    body{font-family:system-ui,-apple-system,sans-serif;padding:24px;background:#f9fafb;}
-    a{color:#0b57d0;text-decoration:none;}
-    a:hover{text-decoration:underline;}
-    .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
-    section{margin-bottom:24px;background:#fff;padding:16px;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.08);}
-    h3{margin:0 0 12px 0;font-size:16px;}
-    table{border-collapse:collapse;width:100%;}
-    th,td{border-bottom:1px solid #eee;padding:8px 10px;text-align:left;font-size:13px;}
-    th{background:#f7f8fa;}
-    .muted{color:#666;font-size:12px;}
-    code{background:#f0f0f0;padding:2px 6px;border-radius:4px;}
-  </style>
+  <title>관리자 - 운영 요약</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="<?= APP_BASE ?>/public/assets/css/gilaime_ui.css" />
 </head>
-<body>
-  <div class="top">
-    <h2>Ops Summary</h2>
-    <div>
-      <a href="<?= $base ?>/alert_ops.php">Alert Ops</a>
-      <span style="margin:0 8px;">|</span>
-      <a href="<?= $base ?>/alert_event_audit.php">Alert Audit</a>
-      <span style="margin:0 8px;">|</span>
-      <a href="<?= $base ?>/index.php">Admin Home</a>
+<body class="gilaime-app">
+  <main class="container-fluid py-4">
+  <div class="g-top">
+    <div class="g-page-head">
+      <h2 class="h3">운영 요약</h2>
+      <p class="helper mb-0">승인/이벤트/배달 상태를 한 화면에서 확인합니다.</p>
+    </div>
+    <div class="d-flex gap-2">
+      <a class="btn btn-outline-secondary btn-sm" href="<?= $base ?>/alert_ops.php">알림 운영</a>
+      <a class="btn btn-outline-secondary btn-sm" href="<?= $base ?>/alert_event_audit.php">알림 감사</a>
+      <a class="btn btn-outline-secondary btn-sm" href="<?= $base ?>/index.php">관리자 홈</a>
     </div>
   </div>
 
-  <section>
-    <h3>1. Approvals (최근 20)</h3>
-    <table>
+  <section class="card g-card mb-4">
+    <div class="card-body">
+    <h3 class="h5">1. 승인 이력 (최근 20)</h3>
+    <div class="table-responsive">
+    <table class="table table-hover align-middle g-table mb-0">
       <thead>
         <tr>
           <th>id</th><th>event_id</th><th>actor</th><th>action</th><th>note</th><th>event_type</th><th>route</th><th>created</th>
@@ -94,15 +87,19 @@ function h(string $s): string {
           </tr>
         <?php endforeach; ?>
         <?php if (!$approvals): ?>
-          <tr><td colspan="8" class="muted">(none)</td></tr>
+          <tr><td colspan="8" class="text-muted-g small">(none)</td></tr>
         <?php endif; ?>
       </tbody>
     </table>
+    </div>
+    </div>
   </section>
 
-  <section>
-    <h3>2. Events (최근 50) — Draft: <?= $draftCnt ?>, Published: <?= $publishedCnt ?></h3>
-    <table>
+  <section class="card g-card mb-4">
+    <div class="card-body">
+    <h3 class="h5">2. 이벤트 (최근 50) — 초안: <?= $draftCnt ?>, 발행: <?= $publishedCnt ?></h3>
+    <div class="table-responsive">
+    <table class="table table-hover align-middle g-table mb-0">
       <thead>
         <tr>
           <th>id</th><th>event_type</th><th>title</th><th>route</th><th>status</th><th>created</th>
@@ -115,20 +112,23 @@ function h(string $s): string {
             <td><?= h((string)($e['event_type'] ?? '')) ?></td>
             <td><?= h((string)($e['title'] ?? '')) ?></td>
             <td><?= h((string)($e['route_label'] ?? '')) ?></td>
-            <td><?= !empty($e['published_at']) ? 'published' : 'draft' ?></td>
+            <td><?= !empty($e['published_at']) ? '발행' : '초안' ?></td>
             <td><?= h((string)$e['created_at']) ?></td>
           </tr>
         <?php endforeach; ?>
         <?php if (!$events): ?>
-          <tr><td colspan="6" class="muted">(none)</td></tr>
+          <tr><td colspan="6" class="text-muted-g small">(none)</td></tr>
         <?php endif; ?>
       </tbody>
     </table>
-    <p class="muted">Event 상세: <a href="<?= $base ?>/alert_ops.php">Alert Ops</a>, <a href="<?= $base ?>/alert_event_audit.php">Alert Audit</a></p>
+    </div>
+    <p class="text-muted-g small mt-2 mb-0">이벤트 상세: <a href="<?= $base ?>/alert_ops.php">알림 운영</a>, <a href="<?= $base ?>/alert_event_audit.php">알림 감사</a></p>
+    </div>
   </section>
 
-  <section>
-    <h3>3. Deliveries (상태별 카운트 + 최근 20)</h3>
+  <section class="card g-card mb-4">
+    <div class="card-body">
+    <h3 class="h5">3. 배달(Deliveries) (상태별 카운트 + 최근 20)</h3>
     <p><strong>상태별:</strong>
       <?php
         $parts = [];
@@ -138,7 +138,8 @@ function h(string $s): string {
         echo $parts ? implode(', ', $parts) : '(none)';
       ?>
     </p>
-    <table>
+    <div class="table-responsive">
+    <table class="table table-hover align-middle g-table mb-0">
       <thead>
         <tr>
           <th>id</th><th>event_id</th><th>user_id</th><th>channel</th><th>status</th><th>sent_at</th><th>delivered_at</th><th>last_error</th><th>created</th>
@@ -159,17 +160,22 @@ function h(string $s): string {
           </tr>
         <?php endforeach; ?>
         <?php if (!$recentDeliveries): ?>
-          <tr><td colspan="9" class="muted">(none)</td></tr>
+          <tr><td colspan="9" class="text-muted-g small">(none)</td></tr>
         <?php endif; ?>
       </tbody>
     </table>
+    </div>
+    </div>
   </section>
 
-  <section>
-    <h3>4. Outbound Stub 실행 안내</h3>
-    <p>pending → sent 처리(스텁): 터미널에서 아래 명령 실행.</p>
-    <p><code>php scripts/run_delivery_outbound_stub.php --limit=200</code></p>
-    <p class="muted">실제 이메일/SMS/푸시 연동 없음. pending만 sent로 전환하는 운영 스텁.</p>
+  <section class="card g-card">
+    <div class="card-body">
+    <h3 class="h5">4. Outbound Stub 실행 안내</h3>
+    <p>대기(pending) → 발송됨(sent) 처리 스텁: 터미널에서 아래 명령 실행.</p>
+    <p><code class="small">php scripts/run_delivery_outbound_stub.php --limit=200</code></p>
+    <p class="text-muted-g small mb-0">실제 이메일/SMS/푸시 연동 없음. pending만 sent로 전환하는 운영 스텁.</p>
+    </div>
   </section>
+  </main>
 </body>
 </html>

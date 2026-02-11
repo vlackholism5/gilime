@@ -35,37 +35,28 @@ function h(string $s): string {
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
-  <title>Admin - Ops Control</title>
-  <style>
-    body{font-family:system-ui,-apple-system,sans-serif;padding:24px;background:#f9fafb;}
-    a{color:#0b57d0;text-decoration:none;}
-    a:hover{text-decoration:underline;}
-    .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
-    section{margin-bottom:24px;background:#fff;padding:16px;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.08);}
-    h3{margin:0 0 12px 0;font-size:16px;}
-    table{border-collapse:collapse;width:100%;}
-    th,td{border-bottom:1px solid #eee;padding:8px 10px;text-align:left;font-size:13px;}
-    th{background:#f7f8fa;}
-    .muted{color:#666;font-size:12px;}
-    code{background:#f0f0f0;padding:2px 6px;border-radius:4px;}
-  </style>
+  <title>관리자 - 운영 제어</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="<?= APP_BASE ?>/public/assets/css/gilaime_ui.css" />
 </head>
-<body>
-  <div class="top">
-    <h2>Ops Control</h2>
-    <div>
-      <a href="<?= $base ?>/alert_ops.php">Alert Ops</a>
-      <span style="margin:0 8px;">|</span>
-      <a href="<?= $base ?>/alert_event_audit.php">Alert Audit</a>
-      <span style="margin:0 8px;">|</span>
-      <a href="<?= $base ?>/ops_summary.php">Ops Summary</a>
-      <span style="margin:0 8px;">|</span>
-      <a href="<?= $base ?>/index.php">Admin Home</a>
+<body class="gilaime-app">
+  <main class="container-fluid py-4">
+  <div class="g-top">
+    <div class="g-page-head">
+      <h2 class="h3">운영 제어</h2>
+      <p class="helper mb-0">재시도/백오프, 실데이터 ingest, 운영 링크를 한 번에 제어합니다.</p>
+    </div>
+    <div class="d-flex gap-2">
+      <a class="btn btn-outline-secondary btn-sm" href="<?= $base ?>/alert_ops.php">알림 운영</a>
+      <a class="btn btn-outline-secondary btn-sm" href="<?= $base ?>/alert_event_audit.php">알림 감사</a>
+      <a class="btn btn-outline-secondary btn-sm" href="<?= $base ?>/ops_summary.php">운영 요약</a>
+      <a class="btn btn-outline-secondary btn-sm" href="<?= $base ?>/index.php">관리자 홈</a>
     </div>
   </div>
 
-  <section>
-    <h3>A. Deliveries retry/backoff 현황</h3>
+  <section class="card g-card mb-4">
+    <div class="card-body">
+    <h3 class="h5">A. Deliveries retry/backoff 현황</h3>
     <p><strong>상태별:</strong>
       <?php
         $parts = [];
@@ -76,7 +67,8 @@ function h(string $s): string {
       ?>
     </p>
     <p><strong>Failed Top 20</strong></p>
-    <table>
+    <div class="table-responsive">
+    <table class="table table-hover align-middle g-table mb-0">
       <thead>
         <tr>
           <th>id</th><th>user_id</th><th>event_id</th><th>channel</th><th>retry_count</th><th>last_error</th><th>created</th>
@@ -95,17 +87,21 @@ function h(string $s): string {
           </tr>
         <?php endforeach; ?>
         <?php if (!$failedTop20): ?>
-          <tr><td colspan="7" class="muted">(none)</td></tr>
+          <tr><td colspan="7" class="text-muted-g small">(none)</td></tr>
         <?php endif; ?>
       </tbody>
     </table>
-    <p class="muted">Run outbound stub (CLI): <code>php scripts/run_delivery_outbound_stub.php --limit=200</code></p>
+    </div>
+    <p class="text-muted-g small mt-2 mb-0">Run outbound stub (CLI): <code>php scripts/run_delivery_outbound_stub.php --limit=200</code></p>
+    </div>
   </section>
 
-  <section>
-    <h3>B. Real ingest 실행 안내 + 최근 metrics 이벤트 10</h3>
-    <p class="muted">Run metrics ingest (CLI): <code>php scripts/run_alert_ingest_real_metrics.php --since_minutes=1440 --limit=200</code></p>
-    <table>
+  <section class="card g-card mb-4">
+    <div class="card-body">
+    <h3 class="h5">B. 실데이터 ingest 실행 안내 + 최근 metrics 이벤트 10</h3>
+    <p class="text-muted-g small">Run metrics ingest (CLI): <code>php scripts/run_alert_ingest_real_metrics.php --since_minutes=1440 --limit=200</code></p>
+    <div class="table-responsive">
+    <table class="table table-hover align-middle g-table mb-0">
       <thead>
         <tr>
           <th>id</th><th>event_type</th><th>title</th><th>ref_id</th><th>route</th><th>published</th><th>created</th>
@@ -124,21 +120,24 @@ function h(string $s): string {
           </tr>
         <?php endforeach; ?>
         <?php if (!$recentMetricsEvents): ?>
-          <tr><td colspan="7" class="muted">(none)</td></tr>
+          <tr><td colspan="7" class="text-muted-g small">(none)</td></tr>
         <?php endif; ?>
       </tbody>
     </table>
+    </div>
+    </div>
   </section>
 
-  <section>
-    <h3>C. Gate quick links</h3>
-    <p>
-      <a href="<?= $base ?>/alert_ops.php">Alert Ops</a>
-      <span style="margin:0 8px;">|</span>
-      <a href="<?= $base ?>/alert_event_audit.php">Alert Audit</a>
-      <span style="margin:0 8px;">|</span>
-      <a href="<?= $base ?>/ops_summary.php">Ops Summary</a>
+  <section class="card g-card">
+    <div class="card-body">
+    <h3 class="h5">C. 빠른 링크</h3>
+    <p class="d-flex gap-2 mb-0">
+      <a class="btn btn-outline-secondary btn-sm" href="<?= $base ?>/alert_ops.php">알림 운영</a>
+      <a class="btn btn-outline-secondary btn-sm" href="<?= $base ?>/alert_event_audit.php">알림 감사</a>
+      <a class="btn btn-outline-secondary btn-sm" href="<?= $base ?>/ops_summary.php">운영 요약</a>
     </p>
+    </div>
   </section>
+  </main>
 </body>
 </html>

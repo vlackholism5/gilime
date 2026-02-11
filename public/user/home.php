@@ -38,45 +38,45 @@ $base = APP_BASE . '/user';
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
-  <title>GILIME - Home</title>
-  <style>
-    body{font-family:system-ui,-apple-system,sans-serif;padding:24px;background:#f9fafb;}
-    a{color:#0b57d0;text-decoration:none;}
-    .nav a{margin-right:16px;}
-    .card{background:#fff;border:1px solid #eee;border-radius:8px;padding:16px;margin-bottom:16px;}
-    .muted{color:#666;font-size:13px;}
-    table{border-collapse:collapse;width:100%;}
-    th,td{border-bottom:1px solid #eee;padding:8px 12px;text-align:left;font-size:13px;}
-    th{background:#f7f8fa;}
-  </style>
+  <title>GILIME - 홈</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="<?= APP_BASE ?>/public/assets/css/gilaime_ui.css" />
 </head>
-<body>
-  <nav class="nav">
-    <a href="<?= $base ?>/home.php">Home</a>
-    <a href="<?= $base ?>/routes.php">Routes</a>
-    <a href="<?= $base ?>/alerts.php">Alerts</a>
+<body class="gilaime-app">
+  <main class="container-fluid py-4">
+  <nav class="nav g-topnav mb-3">
+    <a class="nav-link" href="<?= $base ?>/home.php">홈</a>
+    <a class="nav-link" href="<?= $base ?>/routes.php">노선</a>
+    <a class="nav-link" href="<?= $base ?>/alerts.php">알림</a>
   </nav>
-  <h1>GILIME</h1>
-  <p class="muted">My subscriptions: <?= (int)$subCount ?></p>
+  <div class="g-page-head mb-3">
+    <h1>길라임</h1>
+    <p class="helper mb-0">구독과 최근 알림을 한 번에 확인합니다.</p>
+  </div>
+  <p class="text-muted-g small mb-3">내 구독 수: <?= (int)$subCount ?></p>
   <?php if ($subscribedRoutes !== []): ?>
-  <div class="card" style="margin-bottom:16px;">
-    <h2>Subscribed routes (max 10)</h2>
-    <p class="muted">
+  <div class="card g-card mb-3">
+    <div class="card-body">
+    <h2 class="h4">구독 노선 (최대 10)</h2>
+    <p class="text-muted-g small mb-0">
       <?php foreach ($subscribedRoutes as $sr): ?>
         <a href="<?= $base ?>/alerts.php?route_label=<?= urlencode($sr['route_label']) ?>"><?= h($sr['route_label']) ?></a>
         (doc <?= h($sr['doc_id']) ?>)
         <?= $sr !== end($subscribedRoutes) ? ' · ' : '' ?>
       <?php endforeach; ?>
     </p>
+    </div>
   </div>
   <?php endif; ?>
-  <div class="card">
-    <h2>Latest alerts (5)</h2>
+  <div class="card g-card">
+    <div class="card-body">
+    <h2 class="h4">최근 알림 (5)</h2>
     <?php if ($alerts === []): ?>
-      <p class="muted">No alerts.</p>
+      <p class="text-muted-g small mb-0">알림이 없습니다.</p>
     <?php else: ?>
-      <table>
-        <thead><tr><th>Type</th><th>Title</th><th>Published</th></tr></thead>
+      <div class="table-responsive">
+      <table class="table table-hover align-middle g-table mb-0">
+        <thead><tr><th>유형</th><th>제목</th><th>발행 시각</th></tr></thead>
         <tbody>
           <?php foreach ($alerts as $a): ?>
             <tr>
@@ -87,7 +87,10 @@ $base = APP_BASE . '/user';
           <?php endforeach; ?>
         </tbody>
       </table>
+      </div>
     <?php endif; ?>
+    </div>
   </div>
+  </main>
 </body>
 </html>
