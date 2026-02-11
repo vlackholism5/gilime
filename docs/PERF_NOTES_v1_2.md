@@ -183,3 +183,27 @@ LIMIT 100;
 - **목표:** latest job per doc을 derived table(t) 대신 NOT EXISTS로만 필터. derived2 제거로 해당 단계의 Using temporary; Using filesort 제거 또는 감소.
 - **검증 포인트:** EXPLAIN에서 derived2 Extra에 **Using temporary / Using filesort** 가 줄었는지 확인. 쿼리 결과 동일성(컬럼·정렬: pending_risky_total DESC, pending_total DESC) 유지.
 - 검증: sql/v1.3-04_explain.sql 실행 후 결과 공유.
+
+---
+
+## I. v1.3-05 목표/검증 (job_log 인덱스 — NOT EXISTS 최적화)
+
+- **목적:** NOT EXISTS 내부(j2) 비용 감소. shuttle_doc_job_log에 (source_doc_id, job_type, job_status, id) 인덱스 추가 → j2가 source_doc_id·job_type·job_status 기준으로 id > j.id 범위만 스캔하도록 유도.
+- **검증 포인트:** EXPLAIN에서 **j2**의 key가 **idx_joblog_doc_type_status_id** 로 잡히는지, rows 감소 여부 확인.
+- 롤백: sql/v1.3-05_joblog_index.sql 하단 DROP INDEX 주석 참고. 검증: sql/v1.3-05_validation.sql (SHOW INDEX + EXPLAIN).
+
+**Workbench SHOW INDEX (shuttle_doc_job_log, Key_name = idx_joblog_doc_type_status_id):**
+
+| 구분 | 행 수 | Key_name | Column_name 순서(1~4) |
+|------|-------|----------|----------------------|
+| 초기(CREATE INDEX 적용 전) | 0 rows | — | — |
+| CREATE INDEX 적용 후 | (채움) | idx_joblog_doc_type_status_id | 1 source_doc_id, 2 job_type, 3 job_status, 4 id |
+
+**EXPLAIN — j2 행만 (NOT EXISTS 내부):**
+
+| 구분 | key | rows | Extra |
+|------|-----|------|-------|
+| CREATE INDEX 적용 후 | (채움) | (채움) | (채움) |
+
+**판정:** ( ) A) key 변경됨 — j2가 idx_joblog_doc_type_status_id 사용  
+( ) B) key 미변경 — j2가 기존 ix_job_doc_type_status 유지
