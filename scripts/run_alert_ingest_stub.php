@@ -17,8 +17,8 @@ $now = date('Y-m-d H:i:s');
 $inserted = 0;
 
 $stmt = $pdo->prepare("
-  INSERT INTO app_alert_events (event_type, title, body, ref_type, ref_id, content_hash, published_at, created_at)
-  VALUES (:etype, :title, :body, NULL, NULL, :chash, :pub, :created)
+  INSERT INTO app_alert_events (event_type, title, body, ref_type, ref_id, route_label, content_hash, published_at, created_at)
+  VALUES (:etype, :title, :body, 'route', 1, 'R1', :chash, :pub, :created)
 ");
 $check = $pdo->prepare("SELECT 1 FROM app_alert_events WHERE content_hash = :chash LIMIT 1");
 
