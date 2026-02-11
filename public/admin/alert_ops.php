@@ -7,11 +7,38 @@ $pdo = pdo();
 $base = APP_BASE . '/admin';
 $userBase = APP_BASE . '/user';
 
-// POST: v1.7-02 Publish action. v1.7-04: guard by target_user_cnt (0 = block)
+// v1.7-06: current user role (for approver gate + UI)
+$currentUserId = current_user_id();
+$currentUserRole = 'user';
+if ($currentUserId > 0) {
+  try {
+    $stRole = $pdo->prepare("SELECT role FROM app_users WHERE id = :uid");
+    $stRole->execute([':uid' => $currentUserId]);
+    $row = $stRole->fetch(PDO::FETCH_ASSOC);
+    if ($row && isset($row['role']) && $row['role'] !== '') {
+      $currentUserRole = trim((string)$row['role']);
+    }
+  } catch (Throwable $e) {
+    // role column may not exist before v1.7-06 schema
+  }
+}
+
+// POST: v1.7-02 Publish. v1.7-04: guard target_user_cnt. v1.7-05: queue. v1.7-06: approver only + approval log
 $flash = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $publishEventId = isset($_POST['publish_event_id']) ? (int)$_POST['publish_event_id'] : 0;
   if ($publishEventId > 0) {
+    $stApproval = null;
+    try {
+      $stApproval = $pdo->prepare("INSERT INTO app_alert_approvals (alert_event_id, actor_user_id, action, note) VALUES (:eid, :uid, :action, :note)");
+    } catch (Throwable $e) {}
+    if ($currentUserRole !== 'approver') {
+      try {
+        if ($stApproval) $stApproval->execute([':eid' => $publishEventId, ':uid' => $currentUserId, ':action' => 'publish_blocked', ':note' => 'not_approver']);
+      } catch (Throwable $e) {}
+      header('Location: ' . $base . '/alert_ops.php?flash=blocked_not_approver&event_id=' . $publishEventId);
+      exit;
+    }
     $allowPublish = false;
     $stEv = $pdo->prepare("SELECT id, ref_type, ref_id, route_label, event_type FROM app_alert_events WHERE id = :id AND published_at IS NULL");
     $stEv->execute([':id' => $publishEventId]);
@@ -28,6 +55,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stCnt->execute([':tid' => $targetId, ':atype' => $likePattern]);
         $targetUserCnt = (int)($stCnt->fetch(PDO::FETCH_ASSOC)['c'] ?? 0);
         if ($targetUserCnt === 0) {
+          try {
+            if ($stApproval) $stApproval->execute([':eid' => $publishEventId, ':uid' => $currentUserId, ':action' => 'publish_blocked', ':note' => 'no_targets']);
+          } catch (Throwable $e) {}
           header('Location: ' . $base . '/alert_ops.php?flash=blocked_no_targets&event_id=' . $publishEventId);
           exit;
         }
@@ -59,6 +89,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               $queuedCnt++;
             }
           }
+          try {
+            if ($stApproval) $stApproval->execute([':eid' => $publishEventId, ':uid' => $currentUserId, ':action' => 'publish_success', ':note' => null]);
+          } catch (Throwable $e) {}
           $flashParam = $queuedCnt > 0 ? 'published_with_queue&queued_cnt=' . $queuedCnt : 'published';
           header('Location: ' . $base . '/alert_ops.php?flash=' . $flashParam . '&event_id=' . $publishEventId);
           exit;
@@ -67,6 +100,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         error_log('OPS alert_publish_failed: ' . $e->getMessage());
       }
     }
+    try {
+      if ($stApproval) $stApproval->execute([':eid' => $publishEventId, ':uid' => $currentUserId, ':action' => 'publish_failed', ':note' => null]);
+    } catch (Throwable $e) {}
     header('Location: ' . $base . '/alert_ops.php?flash=failed&event_id=' . $publishEventId);
     exit;
   }
@@ -250,6 +286,7 @@ function h(string $s): string {
     <div>
       <a href="<?= h($base) ?>/index.php">Docs</a>
       <span class="muted"> / Alert Ops</span>
+      <span class="muted" style="margin-left:12px;">Role: <?= h($currentUserRole) ?></span>
     </div>
     <a href="<?= h($base) ?>/alert_event_audit.php">Alert Audit</a>
     <a href="<?= h($base) ?>/logout.php">Logout</a>
@@ -289,7 +326,7 @@ function h(string $s): string {
   </div>
 
   <?php if ($flash !== null): ?>
-  <p class="muted"><?= $flash === 'created' ? 'created' : ($flash === 'duplicate ignored' ? 'duplicate ignored' : ($flash === 'published' ? 'published' : ($flash === 'published_with_queue' ? 'published (queued ' . (int)$queuedCnt . ')' : ($flash === 'blocked_no_targets' ? 'blocked_no_targets' : 'failed')))) ?></p>
+  <p class="muted"><?= $flash === 'created' ? 'created' : ($flash === 'duplicate ignored' ? 'duplicate ignored' : ($flash === 'published' ? 'published' : ($flash === 'published_with_queue' ? 'published (queued ' . (int)$queuedCnt . ')' : ($flash === 'blocked_no_targets' ? 'blocked_no_targets' : ($flash === 'blocked_not_approver' ? 'blocked_not_approver' : 'failed'))))) ?></p>
   <?php endif; ?>
 
   <?php if ($focusEventId > 0 && $previewEvent !== null): ?>
