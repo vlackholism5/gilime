@@ -101,6 +101,7 @@ PARSE_MATCH(job) 실행 시 후보(candidates) 생성하면서 **서울시 정�
 - **문서:** docs/PERF_NOTES_v1_2.md에 v1.3-01~09 결론 표·v1.4 후보(job_log 인덱스 정리, 집계 테이블 도입 여부, 대량 데이터 LIMIT/필터 가이드) 확정.
 - v1.4에서 새 테이블(ops_events, alias_audit_log, job_snapshot_summary 등) 도입 후보 검토.
 - **MVP2 v1.4 one-shot expansion** 준비: docs/SECURITY_BASELINE.md, docs/ERROR_POLICY.md, docs/ROUTING_STRUCTURE_v1_4.md 로 보안·에러·라우팅 규칙을 문서화하여 v1.4 사용자 페이지·구독·알림 확장 전 기준을 고정.
+- **v1.4 계획 문서** (docs/v1.4-00): PRD_v1_4_MVP2.md, ARCH_v1_4_SYSTEM.md, ERD_v1_4_DRAFT.md, WIREFRAME_v1_4.md 생성 완료. 구현은 다음 단계에서 진행.
 
 ## v0.6-24 관리자 UI 정보구조 정리
 

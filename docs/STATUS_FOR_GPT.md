@@ -16,11 +16,12 @@
 
 ## 현재 버전
 
-- **v1.3-06 (docs-only)** MVP2(v1.4) 전 준비 문서 3종 추가. 코드/테이블 변경 없음.
-- docs/SECURITY_BASELINE.md: admin 접근 정책, 세션 기준선, 최소 감사 로그 범위, OAuth/2FA 등 현재 범위 외 명시. 미검증 항목은 "확인 필요".
-- docs/ERROR_POLICY.md: SQL 실패·파라미터 누락·권한 없음·Not found 시 사용자 표시(muted/리다이렉트)와 로그 기록 정책.
-- docs/ROUTING_STRUCTURE_v1_4.md: v1.4 일괄 확장용 폴더(admin/user/api), URL 규칙(/admin, /user), 신규 페이지 네이밍(home, routes, alerts), 쿼리 파라미터 유지(quick_mode, show_advanced, jump_next, focus_cand_id 등).
-- v1.3-10: v1.3 성능/운영 안정 패키지 완료(검증팩, 정렬 옵션, USE INDEX, 결론 표).
+- **v1.4-00 (planning-only)** MVP2 v1.4 계획 문서 4종 추가. 코드/테이블 변경 없음.
+- docs/PRD_v1_4_MVP2.md: 문제·범위·Non-goals, Personas(통근자/운영자), 사용자 기능(노선 검색·정류장·구독·공지 피드), 데이터 요구사항·지표.
+- docs/ARCH_v1_4_SYSTEM.md: Mermaid 시스템 구성도, public/user·admin·api·배치·DB, 자동화 파이프라인(수집→파싱→검수→승격→알림), 장애·복구 요약.
+- docs/ERD_v1_4_DRAFT.md: v1.4 신규 테이블 후보 Mermaid ERD(user, user_session, subscriptions, alert_events, alert_deliveries). DDL은 확인 필요.
+- docs/WIREFRAME_v1_4.md: 사용자 3페이지 ASCII 와이어프레임(home, routes, alerts). Admin은 기존 유지.
+- v1.3-06: SECURITY_BASELINE, ERROR_POLICY, ROUTING_STRUCTURE_v1_4 준비 문서.
 - **v1.2-06** 운영 3페이지 성능 노트/EXPLAIN 문서화. PERF_NOTES_v1_2.md 추가, 핵심 SELECT 3개 EXPLAIN 증거화. 인덱스 후보는 v1.3에서 적용 예정.
 - **v1.2-05** 운영 대시보드 3페이지 확장 완료. Review Queue / Alias Audit / Ops Dashboard (read-only). 새 테이블 없음.
 - v1.2-01~04: review_queue.php(필터/ focus 링크), alias_audit.php(리스크+최근 alias), ops_dashboard.php(문서별 검수 필요·최근 job·promote 후보).
