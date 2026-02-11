@@ -14,7 +14,8 @@
 ## MVP2 v1.4 (임시·스텁)
 
 - **MVP2 인증:** 현재 사용자 페이지는 쿠키 기반 anonymous session_id + lazy app_users/app_user_sessions만 사용. 프로덕션용 로그인/회원가입으로 교체 필요 (확인 필요).
-- **알림 수집:** run_alert_ingest_stub.php는 테스트용 더미 이벤트만 삽입. 실제 외부 API/이벤트 연동은 미구현.
+- **알림 수집:** run_alert_ingest_stub.php는 테스트용 더미. run_alert_generate_from_metrics.php는 DB 내 shuttle_parse_metrics 기반 NONE/LOW 증가 이벤트만 생성. 외부 API/이벤트 연동은 미구현 (확인 필요).
+- **route_label 컬럼:** app_alert_events.route_label은 v1.4-07 DDL(sql/v1.4-07_route_label.sql) 적용 후 필터·Review 링크에 사용. 미적용 시 alerts route/subscribed 필터는 비활성.
 
 ## 운영 원칙 (v1.2)
 

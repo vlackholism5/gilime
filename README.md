@@ -103,13 +103,13 @@ PARSE_MATCH(job) 실행 시 후보(candidates) 생성하면서 **서울시 정�
 - **MVP2 v1.4 one-shot expansion** 준비: docs/SECURITY_BASELINE.md, docs/ERROR_POLICY.md, docs/ROUTING_STRUCTURE_v1_4.md 로 보안·에러·라우팅 규칙을 문서화하여 v1.4 사용자 페이지·구독·알림 확장 전 기준을 고정.
 - **v1.4 계획 문서** (docs/v1.4-00): PRD_v1_4_MVP2.md, ARCH_v1_4_SYSTEM.md, ERD_v1_4_DRAFT.md, WIREFRAME_v1_4.md 생성 완료.
 
-## v1.4 MVP2 사용자 페이지·구독·알림 (v1.4-05)
+## v1.4 MVP2 사용자 페이지·구독·알림 (v1.4-10)
 
-- **사용자 페이지:** public/user/ — home.php, routes.php, alerts.php. URL: /user/, /user/home.php, /user/routes.php, /user/alerts.php (APP_BASE 기준). 공통 네비: Home / Routes / Alerts.
-- **DB 테이블:** app_users, app_user_sessions, app_subscriptions, app_alert_events, app_alert_deliveries. DDL: sql/v1.4-02_schema.sql (PC에서만 실행). 검증: sql/v1.4-02_validation.sql.
-- **구독:** routes.php에서 노선(doc_id+route_label) 목록 표시, 구독 토글만 POST로 app_subscriptions에 반영. MVP2 임시 인증(쿠키 session_id, lazy app_users).
-- **알림 피드:** alerts.php 최근 50건, type 필터. home.php 최근 5건 + 구독 수. 배치 스텁: scripts/run_alert_ingest_stub.php (더미 이벤트 삽입, content_hash 기준 idempotent).
-- **스모크:** docs/v1.4-05_smoke.md 참고.
+- **사용자 페이지:** public/user/ — home.php, routes.php, alerts.php. 공통 네비: Home / Routes / Alerts. home에 구독 노선 목록(최대 10) + alerts.php?route_label= 링크.
+- **DB 테이블:** app_* 5개. DDL: v1.4-02_schema.sql, v1.4-06_delivery_unique.sql (배달 UNIQUE), v1.4-07_route_label.sql (app_alert_events.route_label). PC에서만 실행.
+- **구독·알림:** routes.php Subscribe/Unsubscribe, "(Subscribed)" 표시. alerts.php type·route_label·subscribed only 필터, Review 링크(route_review/doc). 배달 로깅: app_alert_deliveries (노출 시 channel=web, status=shown).
+- **배치:** run_alert_ingest_stub.php (더미). run_alert_generate_from_metrics.php — shuttle_parse_metrics 직전 job 대비 NONE/LOW 증가 시 이벤트 삽입(content_hash idempotent). v1.4-07_route_label.sql 적용 후 실행.
+- **스모크:** docs/v1.4-10_smoke.md 참고.
 
 ## v0.6-24 관리자 UI 정보구조 정리
 

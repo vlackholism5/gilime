@@ -16,12 +16,13 @@
 
 ## 현재 버전
 
-- **v1.4-05** MVP2 사용자 페이지·구독·알림 피드·배치 스텁 구현.
-  - **v1.4-01:** public/user/ 폴더, home.php / routes.php / alerts.php, 공통 헤더·네비(Home / Routes / Alerts). .htaccess에 /user/* 라우트. admin index에 User Home 링크(새 탭).
-  - **v1.4-02:** sql/v1.4-02_schema.sql (app_users, app_user_sessions, app_subscriptions, app_alert_events, app_alert_deliveries). sql/v1.4-02_validation.sql. DDL은 PC에서만 실행.
-  - **v1.4-03:** routes.php에서 shuttle_doc_job_log+shuttle_stop_candidate 기반 (doc_id, route_label) 목록, 구독 토글 POST → app_subscriptions insert/update. MVP2 임시 인증: 쿠키 session_id, lazy app_users, app_user_sessions (app/inc/user_session.php).
-  - **v1.4-04:** alerts.php 최근 app_alert_events 50건, GET type 필터(strike/event/update). home.php 최근 5건 알림 + 내 구독 수.
-  - **v1.4-05:** scripts/run_alert_ingest_stub.php 더미 1~3건 app_alert_events 삽입(content_hash 기준 idempotent). 외부 API 연동 없음.
+- **v1.4-10** MVP2 알림 배달 로깅·실제 신호 생성·구독 UX 확장.
+  - **v1.4-06:** app_alert_deliveries 기록(helper record_alert_delivery), alerts.php 로드 시 노출 이벤트에 대해 channel=web·status=shown 삽입/갱신. sql/v1.4-06_delivery_unique.sql (UNIQUE user_id, alert_event_id, channel).
+  - **v1.4-07:** routes.php 구독 상태 "(Subscribed)" 표시. home.php 구독 노선 목록(최대 10) + /user/alerts.php?route_label= 링크. alerts.php route_label·subscribed only 필터. sql/v1.4-07_route_label.sql (app_alert_events.route_label 컬럼).
+  - **v1.4-08:** scripts/run_alert_generate_from_metrics.php — shuttle_parse_metrics + shuttle_doc_job_log 최신/직전 PARSE_MATCH 비교, none_matched_cnt/low_confidence_cnt 증가 시 type=update "NONE 증가"/"LOW 증가" 이벤트 삽입(content_hash idempotent). route_label·ref_id 설정.
+  - **v1.4-09:** alerts.php 행별 Review 링크(route_review 또는 doc.php, ref_id·route_label 있으면 route_review).
+  - **v1.4-10:** docs/v1.4-10_smoke.md, STATUS/README/KNOWN_ISSUES 갱신.
+- **v1.4-05** MVP2 사용자 페이지·구독·알림 피드·배치 스텁 (home/routes/alerts, app_* 5테이블, run_alert_ingest_stub).
 - **v1.4-00 (planning-only)** MVP2 v1.4 계획 문서 4종. docs/PRD_v1_4_MVP2.md, ARCH_v1_4_SYSTEM.md, ERD_v1_4_DRAFT.md, WIREFRAME_v1_4.md.
 - v1.3-06: SECURITY_BASELINE, ERROR_POLICY, ROUTING_STRUCTURE_v1_4 준비 문서.
 - **v1.2-06** 운영 3페이지 성능 노트/EXPLAIN 문서화. PERF_NOTES_v1_2.md 추가, 핵심 SELECT 3개 EXPLAIN 증거화. 인덱스 후보는 v1.3에서 적용 예정.

@@ -105,7 +105,7 @@ $base = APP_BASE . '/user';
           ?>
             <tr>
               <td><?= (int)$r['doc_id'] ?></td>
-              <td><?= h($r['route_label']) ?></td>
+              <td><?= h($r['route_label']) ?><?php if ($isSub): ?> <span class="muted" style="font-size:11px;">(Subscribed)</span><?php endif; ?></td>
               <td>
                 <form method="post" style="display:inline;">
                   <input type="hidden" name="doc_id" value="<?= (int)$r['doc_id'] ?>" />

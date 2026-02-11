@@ -7,6 +7,15 @@ $pdo = pdo();
 $userId = user_session_user_id();
 $subCount = user_session_subscription_count();
 
+$subscribedRoutes = [];
+$st = $pdo->prepare("SELECT target_id FROM app_subscriptions WHERE user_id = :uid AND target_type = 'route' AND is_active = 1 ORDER BY updated_at DESC LIMIT 10");
+$st->execute([':uid' => $userId]);
+foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $row) {
+  $tid = (string)$row['target_id'];
+  $parts = explode('_', $tid, 2);
+  $subscribedRoutes[] = ['doc_id' => $parts[0] ?? '', 'route_label' => $parts[1] ?? $tid];
+}
+
 $alerts = [];
 try {
   $stmt = $pdo->query("
@@ -49,6 +58,18 @@ $base = APP_BASE . '/user';
   </nav>
   <h1>GILIME</h1>
   <p class="muted">My subscriptions: <?= (int)$subCount ?></p>
+  <?php if ($subscribedRoutes !== []): ?>
+  <div class="card" style="margin-bottom:16px;">
+    <h2>Subscribed routes (max 10)</h2>
+    <p class="muted">
+      <?php foreach ($subscribedRoutes as $sr): ?>
+        <a href="<?= $base ?>/alerts.php?route_label=<?= urlencode($sr['route_label']) ?>"><?= h($sr['route_label']) ?></a>
+        (doc <?= h($sr['doc_id']) ?>)
+        <?= $sr !== end($subscribedRoutes) ? ' · ' : '' ?>
+      <?php endforeach; ?>
+    </p>
+  </div>
+  <?php endif; ?>
   <div class="card">
     <h2>Latest alerts (5)</h2>
     <?php if ($alerts === []): ?>
