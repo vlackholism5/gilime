@@ -40,7 +40,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute([':id' => $publishEventId]);
         if ($stmt->rowCount() > 0) {
           error_log('OPS alert_published event_id=' . $publishEventId);
-          header('Location: ' . $base . '/alert_ops.php?flash=published&event_id=' . $publishEventId);
+          $queuedCnt = 0;
+          $refType = (string)($ev['ref_type'] ?? '');
+          $refId = isset($ev['ref_id']) ? (int)$ev['ref_id'] : null;
+          $routeLabel = isset($ev['route_label']) ? trim((string)$ev['route_label']) : null;
+          if ($refType === 'route' && $refId !== null && $routeLabel !== null && $routeLabel !== '') {
+            $targetId = $refId . '_' . $routeLabel;
+            $eventType = trim((string)($ev['event_type'] ?? ''));
+            $likePattern = '%' . $eventType . '%';
+            $stUsers = $pdo->prepare("SELECT DISTINCT s.user_id FROM app_subscriptions s WHERE s.is_active = 1 AND s.target_type = 'route' AND s.target_id = :tid AND s.alert_type LIKE :atype ORDER BY s.user_id LIMIT 1000");
+            $stUsers->execute([':tid' => $targetId, ':atype' => $likePattern]);
+            $userIdList = $stUsers->fetchAll(PDO::FETCH_COLUMN);
+            $stIns = $pdo->prepare("INSERT IGNORE INTO app_alert_deliveries (alert_event_id, user_id, channel, status, sent_at, created_at) VALUES (:eid, :uid, 'web', 'pending', NULL, NOW())");
+            foreach ($userIdList as $uid) {
+              $uid = (int)$uid;
+              if ($uid <= 0) continue;
+              $stIns->execute([':eid' => $publishEventId, ':uid' => $uid]);
+              $queuedCnt++;
+            }
+          }
+          $flashParam = $queuedCnt > 0 ? 'published_with_queue&queued_cnt=' . $queuedCnt : 'published';
+          header('Location: ' . $base . '/alert_ops.php?flash=' . $flashParam . '&event_id=' . $publishEventId);
           exit;
         }
       } catch (Throwable $e) {
@@ -122,6 +142,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   exit;
 }
 $flash = isset($_GET['flash']) ? trim((string)$_GET['flash']) : null;
+$queuedCnt = isset($_GET['queued_cnt']) ? (int)$_GET['queued_cnt'] : null;
 $focusEventId = isset($_GET['event_id']) ? (int)$_GET['event_id'] : null;
 
 // Filters (GET). v1.7-02: draft_only, published_only
@@ -268,7 +289,7 @@ function h(string $s): string {
   </div>
 
   <?php if ($flash !== null): ?>
-  <p class="muted"><?= $flash === 'created' ? 'created' : ($flash === 'duplicate ignored' ? 'duplicate ignored' : ($flash === 'published' ? 'published' : ($flash === 'blocked_no_targets' ? 'blocked_no_targets' : 'failed'))) ?></p>
+  <p class="muted"><?= $flash === 'created' ? 'created' : ($flash === 'duplicate ignored' ? 'duplicate ignored' : ($flash === 'published' ? 'published' : ($flash === 'published_with_queue' ? 'published (queued ' . (int)$queuedCnt . ')' : ($flash === 'blocked_no_targets' ? 'blocked_no_targets' : 'failed')))) ?></p>
   <?php endif; ?>
 
   <?php if ($focusEventId > 0 && $previewEvent !== null): ?>
