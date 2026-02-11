@@ -50,9 +50,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       if ($refType === 'route' && $refId !== null && $routeLabel !== null && $routeLabel !== '') {
         $targetId = $refId . '_' . $routeLabel;
         $eventType = trim((string)($ev['event_type'] ?? ''));
-        $likePattern = '%' . $eventType . '%';
-        $stCnt = $pdo->prepare("SELECT COUNT(DISTINCT s.user_id) AS c FROM app_subscriptions s WHERE s.is_active = 1 AND s.target_type = 'route' AND s.target_id = :tid AND s.alert_type LIKE :atype");
-        $stCnt->execute([':tid' => $targetId, ':atype' => $likePattern]);
+        $stCnt = $pdo->prepare("SELECT COUNT(DISTINCT s.user_id) AS c FROM app_subscriptions s WHERE s.is_active = 1 AND s.target_type = 'route' AND s.target_id = :tid AND FIND_IN_SET(:etype, REPLACE(s.alert_type, ' ', '')) > 0");
+        $stCnt->execute([':tid' => $targetId, ':etype' => $eventType]);
         $targetUserCnt = (int)($stCnt->fetch(PDO::FETCH_ASSOC)['c'] ?? 0);
         if ($targetUserCnt === 0) {
           try {
@@ -77,9 +76,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           if ($refType === 'route' && $refId !== null && $routeLabel !== null && $routeLabel !== '') {
             $targetId = $refId . '_' . $routeLabel;
             $eventType = trim((string)($ev['event_type'] ?? ''));
-            $likePattern = '%' . $eventType . '%';
-            $stUsers = $pdo->prepare("SELECT DISTINCT s.user_id FROM app_subscriptions s WHERE s.is_active = 1 AND s.target_type = 'route' AND s.target_id = :tid AND s.alert_type LIKE :atype ORDER BY s.user_id LIMIT 1000");
-            $stUsers->execute([':tid' => $targetId, ':atype' => $likePattern]);
+            $stUsers = $pdo->prepare("SELECT DISTINCT s.user_id FROM app_subscriptions s WHERE s.is_active = 1 AND s.target_type = 'route' AND s.target_id = :tid AND FIND_IN_SET(:etype, REPLACE(s.alert_type, ' ', '')) > 0 ORDER BY s.user_id LIMIT 1000");
+            $stUsers->execute([':tid' => $targetId, ':etype' => $eventType]);
             $userIdList = $stUsers->fetchAll(PDO::FETCH_COLUMN);
             $stIns = $pdo->prepare("INSERT IGNORE INTO app_alert_deliveries (alert_event_id, user_id, channel, status, sent_at, created_at) VALUES (:eid, :uid, 'web', 'pending', NULL, NOW())");
             foreach ($userIdList as $uid) {
@@ -233,23 +231,22 @@ if ($focusEventId > 0) {
     $routeLabel = trim((string)$previewEvent['route_label']);
     $eventType = trim((string)($previewEvent['event_type'] ?? ''));
     $targetId = $refId . '_' . $routeLabel;
-    $likePattern = '%' . $eventType . '%';
     $stCnt = $pdo->prepare("
       SELECT COUNT(DISTINCT s.user_id) AS target_user_cnt
       FROM app_subscriptions s
-      WHERE s.is_active = 1 AND s.target_type = 'route' AND s.target_id = :tid AND s.alert_type LIKE :atype
+      WHERE s.is_active = 1 AND s.target_type = 'route' AND s.target_id = :tid AND FIND_IN_SET(:etype, REPLACE(s.alert_type, ' ', '')) > 0
     ");
-    $stCnt->execute([':tid' => $targetId, ':atype' => $likePattern]);
+    $stCnt->execute([':tid' => $targetId, ':etype' => $eventType]);
     $previewTargetCnt = (int)($stCnt->fetch(PDO::FETCH_ASSOC)['target_user_cnt'] ?? 0);
     $stList = $pdo->prepare("
       SELECT u.id AS user_id, u.display_name, u.email, s.target_id AS subscription_target_id, s.alert_type
       FROM app_subscriptions s
       JOIN app_users u ON u.id = s.user_id
-      WHERE s.is_active = 1 AND s.target_type = 'route' AND s.target_id = :tid AND s.alert_type LIKE :atype
+      WHERE s.is_active = 1 AND s.target_type = 'route' AND s.target_id = :tid AND FIND_IN_SET(:etype, REPLACE(s.alert_type, ' ', '')) > 0
       ORDER BY s.user_id
       LIMIT 20
     ");
-    $stList->execute([':tid' => $targetId, ':atype' => $likePattern]);
+    $stList->execute([':tid' => $targetId, ':etype' => $eventType]);
     $previewTargetList = $stList->fetchAll(PDO::FETCH_ASSOC);
   }
 }
