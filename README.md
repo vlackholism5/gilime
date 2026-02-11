@@ -91,6 +91,7 @@ PARSE_MATCH(job) 실행 시 후보(candidates) 생성하면서 **서울시 정�
 
 ## v1.2 운영 대시보드 3페이지
 
+- v1.2-06: 운영 3페이지 성능 노트/EXPLAIN 문서화 완료 (docs/PERF_NOTES_v1_2.md). 인덱스 후보는 v1.3에서 적용 예정.
 - Review Queue (review_queue.php), Alias Audit (alias_audit.php), Ops Dashboard (ops_dashboard.php). read-only, 승인/승격은 route_review만.
 - v1.3에서 새 테이블(ops_events, alias_audit_log, job_snapshot_summary 등) 도입 후보 검토.
 
