@@ -1,5 +1,21 @@
 # Gilaime MVP - public/ 구조
 
+## PDF Parsing (v1.7-13)
+
+실제 PDF 파일에서 노선 및 정류장 정보를 추출하는 기능이 추가되었습니다.
+
+- **설정 가이드**: `README_PDF_PARSING.md`
+- **스펙 문서**: `docs/releases/v1.7/specs/spec_13_pdf_parsing.md`
+- **라이브러리**: smalot/pdfparser (Composer)
+
+## v1.7-15 Legacy error normalize
+
+- doc.php Failure TopN에서 레거시 오류문구를 표준 `error_code`로 정규화해 UNKNOWN 비중을 축소.
+
+## v1.7-16 parse_status policy
+
+- batch 선별 정책을 고정(only_failed=1: failed+legacy 실패, 기본: success만)하고 dry_run 3줄 요약을 추가.
+
 ## v0.6-11 자동매칭 규칙
 
 PARSE_MATCH(job) 실행 시 후보(candidates) 생성하면서 **서울시 정류장마스터(seoul_bus_stop_master)** 기반으로  
@@ -117,17 +133,17 @@ PARSE_MATCH(job) 실행 시 후보(candidates) 생성하면서 **서울시 정�
 - **Alert ref contract:** docs/ALERT_REF_CONTRACT_v1_5.md. ref_type=route/doc/NULL 규칙, 스크립트·검증 sql/v1.5-02_validation.sql.
 - **Delivery semantics:** 렌더된 이벤트에만 delivery 기록. alerts.php pagination (50 per page), Previous/Next. docs/DELIVERY_SEMANTICS_v1_5.md, docs/v1.5-03_smoke.md.
 - **v1.6-10** MVP3 운영콘솔 안정화: alert_ops create contract + content_hash + redirect, alert_event_audit 필터·요약·드릴다운, user alerts delivery 가드. No new tables. docs/v1.6_RELEASE_GATE.md S1–S7 + Evidence SQL 블록.
-- **v1.7-02** Draft/Publish: published_at NULL 허용, alert_ops 초안·Publish 액션·draft_only/published_only 필터, user alerts는 발행된 것만 노출. sql/v1.7-02_*.sql, docs/v1.7-02_smoke.md, v1.7-02_GATE.md.
-- **v1.7-03** Targeting Preview: alert_ops event_id 기준 구독 매칭 target_user_cnt·리스트 20 read-only. docs/TARGETING_PREVIEW_v1_7.md, v1.7-03_smoke.md, v1.7-03_GATE.md, sql/v1.7-03_validation.sql.
-- **v1.7-04** Approval + Publish guard: draft/published 뱃지, Publish 시 target_user_cnt=0 차단(blocked_no_targets). docs/APPROVAL_FLOW_v1_7.md, v1.7-04_smoke.md, v1.7-04_GATE.md, sql/v1.7-04_validation.sql.
-- **v1.7-05** Deliveries pre-write: Publish 시 pending 적재, user/alerts에서 pending→shown만 UPDATE. docs/DELIVERY_QUEUE_v1_7.md, v1.7-05_smoke.md, v1.7-05_GATE.md, sql/v1.7-05_*.sql.
-- **v1.7-06** Approver role + approval audit: app_users.role, app_alert_approvals, Publish approver만 허용. docs/APPROVER_ROLE_v1_7.md, v1.7-06_smoke.md, v1.7-06_GATE.md, sql/v1.7-06_*.sql.
-- **v1.7-07** Outbound stub: app_alert_deliveries(delivered_at, last_error), scripts/run_delivery_outbound_stub.php. docs/OUTBOUND_STUB_v1_7.md, v1.7-07_smoke/GATE, sql/v1.7-07_*.
-- **v1.7-08** Subscription alert_type FIND_IN_SET: alert_ops 4곳, app/inc/subscription_match.php. docs/SUBSCRIPTION_MATCHING_v1_7.md, v1.7-08_smoke/GATE, sql/v1.7-08_validation.sql.
-- **v1.7-09** Ops Summary: public/admin/ops_summary.php(approvals/events/deliveries/outbound 안내), index 링크. docs/OPS_SUMMARY_v1_7.md, v1.7-09_smoke/GATE, sql/v1.7-09_validation.sql.
-- **v1.7-10** Retry/backoff: app_alert_deliveries.retry_count, run_delivery_outbound_stub pending+failed(backoff). docs/RETRY_BACKOFF_v1_7.md, v1.7-10_smoke/GATE, sql/v1.7-10_*.
-- **v1.7-11** Real metrics ingest: run_alert_ingest_real_metrics.php. docs/REALDATA_INGEST_v1_7.md, v1.7-11_smoke/GATE, sql/v1.7-11_validation.sql.
-- **v1.7-12** Ops control: ops_control.php(retry/backoff·metrics ingest CLI·quick links). docs/v1.7-12_smoke/GATE, sql/v1.7-12_validation.sql.
+- **v1.7-02** Draft/Publish: published_at NULL 허용, alert_ops 초안·Publish 액션·draft_only/published_only 필터, user alerts는 발행된 것만 노출. sql/releases/v1.7/schema/schema_02_draft_publish_nullable.sql, sql/releases/v1.7/validation/validation_02_draft_publish.sql, docs/releases/v1.7/smoke/smoke_02_draft_publish.md, docs/releases/v1.7/gate/gate_02_draft_publish.md.
+- **v1.7-03** Targeting Preview: alert_ops event_id 기준 구독 매칭 target_user_cnt·리스트 20 read-only. docs/releases/v1.7/specs/spec_03_targeting_preview.md, docs/releases/v1.7/smoke/smoke_03_targeting_preview.md, docs/releases/v1.7/gate/gate_03_targeting_preview.md, sql/releases/v1.7/validation/validation_03_targeting_preview.sql.
+- **v1.7-04** Approval + Publish guard: draft/published 뱃지, Publish 시 target_user_cnt=0 차단(blocked_no_targets). docs/releases/v1.7/specs/spec_04_approval_flow.md, docs/releases/v1.7/smoke/smoke_04_publish_guard.md, docs/releases/v1.7/gate/gate_04_publish_guard.md, sql/releases/v1.7/validation/validation_04_publish_guard.sql.
+- **v1.7-05** Deliveries pre-write: Publish 시 pending 적재, user/alerts에서 pending→shown만 UPDATE. docs/releases/v1.7/specs/spec_05_delivery_queue.md, docs/releases/v1.7/smoke/smoke_05_delivery_queue.md, docs/releases/v1.7/gate/gate_05_delivery_queue.md, sql/releases/v1.7/schema/schema_05_deliveries_index.sql, sql/releases/v1.7/validation/validation_05_delivery_queue.sql.
+- **v1.7-06** Approver role + approval audit: app_users.role, app_alert_approvals, Publish approver만 허용. docs/releases/v1.7/specs/spec_06_approver_role.md, docs/releases/v1.7/smoke/smoke_06_approver_role.md, docs/releases/v1.7/gate/gate_06_approver_role.md, sql/releases/v1.7/schema/schema_06_approver_role_audit.sql, sql/releases/v1.7/validation/validation_06_approver_role.sql.
+- **v1.7-07** Outbound stub: app_alert_deliveries(delivered_at, last_error), scripts/run_delivery_outbound_stub.php. docs/releases/v1.7/specs/spec_07_outbound_stub.md, docs/releases/v1.7/smoke/smoke_07_outbound_stub.md, docs/releases/v1.7/gate/gate_07_outbound_stub.md, sql/releases/v1.7/schema/schema_07_outbound_stub.sql, sql/releases/v1.7/validation/validation_07_outbound_stub.sql.
+- **v1.7-08** Subscription alert_type FIND_IN_SET: alert_ops 4곳, app/inc/subscription_match.php. docs/releases/v1.7/specs/spec_08_subscription_matching.md, docs/releases/v1.7/smoke/smoke_08_subscription_matching.md, docs/releases/v1.7/gate/gate_08_subscription_matching.md, sql/releases/v1.7/validation/validation_08_subscription_matching.sql.
+- **v1.7-09** Ops Summary: public/admin/ops_summary.php(approvals/events/deliveries/outbound 안내), index 링크. docs/releases/v1.7/specs/spec_09_ops_summary.md, docs/releases/v1.7/smoke/smoke_09_ops_summary.md, docs/releases/v1.7/gate/gate_09_ops_summary.md, sql/releases/v1.7/validation/validation_09_ops_summary.sql.
+- **v1.7-10** Retry/backoff: app_alert_deliveries.retry_count, run_delivery_outbound_stub pending+failed(backoff). docs/releases/v1.7/specs/spec_10_retry_backoff.md, docs/releases/v1.7/smoke/smoke_10_retry_backoff.md, docs/releases/v1.7/gate/gate_10_retry_backoff.md, sql/releases/v1.7/schema/schema_10_retry_backoff.sql, sql/releases/v1.7/validation/validation_10_retry_backoff.sql.
+- **v1.7-11** Real metrics ingest: run_alert_ingest_real_metrics.php. docs/releases/v1.7/specs/spec_11_real_metrics_ingest.md, docs/releases/v1.7/smoke/smoke_11_real_metrics_ingest.md, docs/releases/v1.7/gate/gate_11_real_metrics_ingest.md, sql/releases/v1.7/validation/validation_11_real_metrics_ingest.sql.
+- **v1.7-12** Ops control: ops_control.php(retry/backoff·metrics ingest CLI·quick links). docs/releases/v1.7/smoke/smoke_12_ops_control.md, docs/releases/v1.7/gate/gate_12_ops_control.md, sql/releases/v1.7/validation/validation_12_ops_control.sql.
 - **v1.7 (MVP3)** 로드맵: docs/v1.7_ROADMAP.md. 7버전(01 문서→02 승인/발행→03 타겟팅→04 dispatch→05 retry→06 funnel→07 release gate). Cursor 프롬프트·PC 실행·Gate 확정.
 
 ## v0.6-24 관리자 UI 정보구조 정리
