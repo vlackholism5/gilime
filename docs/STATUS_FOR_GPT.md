@@ -16,7 +16,10 @@
 
 ## 현재 버전
 
-- **v1.7-06** (현재) Approver 분리 + 감사로그. app_users.role(user/approver), app_alert_approvals 테이블. Publish는 role=approver만 허용, 그 외 blocked_not_approver·approval 기록. docs/APPROVER_ROLE_v1_7.md, v1.7-06_smoke.md, v1.7-06_GATE.md, sql/v1.7-06_schema.sql, v1.7-06_validation.sql.
+- **v1.7-09** (현재) Ops Summary. public/admin/ops_summary.php(approvals/events/deliveries/outbound 안내), index 링크, docs/OPS_SUMMARY_v1_7.md, v1.7-09_smoke/GATE, sql/v1.7-09_validation.sql.
+- **v1.7-08** Subscription alert_type FIND_IN_SET 매칭. alert_ops 4곳, app/inc/subscription_match.php, docs/SUBSCRIPTION_MATCHING_v1_7.md, v1.7-08_smoke/GATE, sql/v1.7-08_validation.sql.
+- **v1.7-07** Outbound stub. app_alert_deliveries(delivered_at, last_error), scripts/run_delivery_outbound_stub.php, docs/OUTBOUND_STUB_v1_7.md, v1.7-07_smoke/GATE, sql/v1.7-07_schema·validation.
+- **v1.7-06** Approver 분리 + 감사로그. app_users.role(user/approver), app_alert_approvals 테이블. Publish는 role=approver만 허용, 그 외 blocked_not_approver·approval 기록. docs/APPROVER_ROLE_v1_7.md, v1.7-06_smoke.md, v1.7-06_GATE.md, sql/v1.7-06_schema.sql, v1.7-06_validation.sql.
 - **v1.7-05** Deliveries pre-write. Publish 시 pending 적재, user/alerts에서 pending→shown만 UPDATE. flash=published_with_queue&queued_cnt=N. docs/DELIVERY_QUEUE_v1_7.md, v1.7-05_smoke.md, v1.7-05_GATE.md, sql/v1.7-05_*.sql.
 - **v1.7-04** Approval + Publish guard. alert_ops에 draft/published 상태 뱃지, Publish 시 target_user_cnt=0이면 차단(blocked_no_targets), >0이면 published_at=NOW()·flash=published. docs/APPROVAL_FLOW_v1_7.md, v1.7-04_smoke.md, v1.7-04_GATE.md, sql/v1.7-04_validation.sql.
 - **v1.7-03** Targeting Preview. alert_ops에서 event_id 지정 시 app_subscriptions 기준 매칭으로 target_user_cnt·상위 20명 리스트 read-only 프리뷰. docs/TARGETING_PREVIEW_v1_7.md, v1.7-03_smoke.md, v1.7-03_GATE.md, sql/v1.7-03_validation.sql. 실제 발송·채널·스케줄러 Non-goal.

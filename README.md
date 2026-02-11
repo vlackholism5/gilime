@@ -122,6 +122,9 @@ PARSE_MATCH(job) 실행 시 후보(candidates) 생성하면서 **서울시 정�
 - **v1.7-04** Approval + Publish guard: draft/published 뱃지, Publish 시 target_user_cnt=0 차단(blocked_no_targets). docs/APPROVAL_FLOW_v1_7.md, v1.7-04_smoke.md, v1.7-04_GATE.md, sql/v1.7-04_validation.sql.
 - **v1.7-05** Deliveries pre-write: Publish 시 pending 적재, user/alerts에서 pending→shown만 UPDATE. docs/DELIVERY_QUEUE_v1_7.md, v1.7-05_smoke.md, v1.7-05_GATE.md, sql/v1.7-05_*.sql.
 - **v1.7-06** Approver role + approval audit: app_users.role, app_alert_approvals, Publish approver만 허용. docs/APPROVER_ROLE_v1_7.md, v1.7-06_smoke.md, v1.7-06_GATE.md, sql/v1.7-06_*.sql.
+- **v1.7-07** Outbound stub: app_alert_deliveries(delivered_at, last_error), scripts/run_delivery_outbound_stub.php. docs/OUTBOUND_STUB_v1_7.md, v1.7-07_smoke/GATE, sql/v1.7-07_*.
+- **v1.7-08** Subscription alert_type FIND_IN_SET: alert_ops 4곳, app/inc/subscription_match.php. docs/SUBSCRIPTION_MATCHING_v1_7.md, v1.7-08_smoke/GATE, sql/v1.7-08_validation.sql.
+- **v1.7-09** Ops Summary: public/admin/ops_summary.php(approvals/events/deliveries/outbound 안내), index 링크. docs/OPS_SUMMARY_v1_7.md, v1.7-09_smoke/GATE, sql/v1.7-09_validation.sql.
 - **v1.7 (MVP3)** 로드맵: docs/v1.7_ROADMAP.md. 7버전(01 문서→02 승인/발행→03 타겟팅→04 dispatch→05 retry→06 funnel→07 release gate). Cursor 프롬프트·PC 실행·Gate 확정.
 
 ## v0.6-24 관리자 UI 정보구조 정리
