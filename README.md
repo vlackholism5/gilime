@@ -116,7 +116,7 @@ PARSE_MATCH(job) 실행 시 후보(candidates) 생성하면서 **서울시 정�
 - **Observability:** docs/OBSERVABILITY_v1_5.md. 증거는 app_alert_deliveries + (선택) error_log. subscribe_toggle/delivery_written 로그. docs/v1.5-01_smoke.md.
 - **Alert ref contract:** docs/ALERT_REF_CONTRACT_v1_5.md. ref_type=route/doc/NULL 규칙, 스크립트·검증 sql/v1.5-02_validation.sql.
 - **Delivery semantics:** 렌더된 이벤트에만 delivery 기록. alerts.php pagination (50 per page), Previous/Next. docs/DELIVERY_SEMANTICS_v1_5.md, docs/v1.5-03_smoke.md.
-- After v1.5 baseline hardening, **v1.6 one-shot expansion** is being prepared (bigger scope). 예시(확인 필요): external ingest sources, multi-channel delivery, admin ops automation.
+- After v1.5 baseline hardening, **v1.6-05** MVP3: admin alert ops console (alert_ops list+create, alert_event_audit deliveries view). No new tables; uses app_alert_events / app_alert_deliveries only. Next: v1.6-06 pagination/templating (확인 필요).
 
 ## v0.6-24 관리자 UI 정보구조 정리
 

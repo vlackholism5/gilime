@@ -304,6 +304,7 @@ function normalizeStopNameDisplay(string $s): string {
     <div class="k">마지막 검수 시각</div><div><?= h($lastJobLogAt) ?></div>
     <?php endif; ?>
     <div class="k">Alias Audit</div><div><a href="<?= APP_BASE ?>/admin/alias_audit.php">Alias Audit</a></div>
+    <div class="k">Alert Ops</div><div><a href="<?= APP_BASE ?>/admin/alert_ops.php">Alert Ops</a></div>
   </div>
 
   <!-- B. 실행 버튼 영역 (상단 고정) -->
