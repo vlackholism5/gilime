@@ -16,13 +16,13 @@
 
 ## 현재 버전
 
-- **v1.6-05** (one-shot) MVP3 Admin Alert Ops: admin alert_ops (list + create), admin alert_event_audit (deliveries view), v1.6 gate 문서 추가. No new tables; uses app_alert_events / app_alert_deliveries only.
-- **v1.6** 핵심 3줄: (1) admin alert_ops — 이벤트 조회/필터/생성. (2) admin alert_event_audit — deliveries 조회. (3) v1.6 gate 문서(docs/v1.6_RELEASE_GATE.md) 스모크 S1–S4.
+- **v1.6-10** (현재) MVP3 운영콘솔 안정화·증거화 완료. v1.6-06 create contract + content_hash + redirect, v1.6-07 audit 필터·요약·드릴다운, v1.6-08 user alerts delivery 가드, v1.6-09 인덱스/EXPLAIN(선택), v1.6-10 gate S5–S7 + Evidence 템플릿. No new tables.
+- **v1.6** 핵심: admin alert_ops (list + create + contract), alert_event_audit (filters + summary + drilldown), user alerts delivery guard, docs/v1.6_RELEASE_GATE.md S1–S7 + Evidence SQL 블록.
+- **v1.7 (MVP3)** 시작 조건: v1.6 게이트 통과 후. 자동 발송(채널 확장), 타겟팅, 승인 플로우(운영자 승인 후 publish) 등 확장 예정.
 - **v1.5-03** MVP2.5 hardening: observability baseline, alert ref contract, delivery semantics + pagination.
   - **v1.5-01:** Observability baseline (no new tables). docs/OBSERVABILITY_v1_5.md, subscribe_toggle/delivery_written 시 error_log 1줄, app_alert_deliveries·app_subscriptions로 증거. docs/v1.5-01_smoke.md.
   - **v1.5-02:** Alert ref contract. docs/ALERT_REF_CONTRACT_v1_5.md (ref_type route/doc/NULL, Review 링크 규칙). run_alert_ingest_stub ref_type=route·ref_id=1·route_label=R1. sql/v1.5-02_validation.sql (read-only 위반 탐지).
   - **v1.5-03:** Delivery semantics: 렌더된 목록에만 delivery 기록. alerts.php pagination (page, per_page=50), Previous/Next. docs/DELIVERY_SEMANTICS_v1_5.md, docs/v1.5-03_smoke.md.
-- **v1.6-05** 완료. v1.6-06에서 pagination/templating 등 확인 필요.
 - **v1.4-10** MVP2 알림 배달 로깅·실제 신호 생성·구독 UX 확장 (v1.4-06~10).
 - **v1.4-05** MVP2 사용자 페이지·구독·알림 피드·배치 스텁 (home/routes/alerts, app_* 5테이블, run_alert_ingest_stub).
 - **v1.4-00 (planning-only)** MVP2 v1.4 계획 문서 4종. docs/PRD_v1_4_MVP2.md, ARCH_v1_4_SYSTEM.md, ERD_v1_4_DRAFT.md, WIREFRAME_v1_4.md.
