@@ -9,6 +9,7 @@ $pdo = pdo();
 $onlyRisky = (int)($_GET['only_risky'] ?? 1);
 $limitParam = (int)($_GET['limit'] ?? 50);
 $limitParam = max(10, min(200, $limitParam));
+$sortTop = isset($_GET['sort']) && $_GET['sort'] === 'simple' ? 'simple' : 'default';
 $filterDocId = isset($_GET['doc_id']) && $_GET['doc_id'] !== '' ? (int)$_GET['doc_id'] : null;
 $filterRouteLabel = isset($_GET['route_label']) && trim((string)$_GET['route_label']) !== '' ? trim((string)$_GET['route_label']) : null;
 
@@ -101,10 +102,14 @@ if ($latestByDoc === []) {
   if ($onlyRisky) {
     $topSql .= " AND (c.match_method = 'like_prefix' OR c.match_method IS NULL)";
   }
-  $topSql .= "
+  if ($sortTop === 'simple') {
+    $topSql .= " ORDER BY c.id ASC LIMIT " . $limitParam;
+  } else {
+    $topSql .= "
     ORDER BY (c.match_method IS NULL) DESC, (c.match_method = 'like_prefix') DESC,
       c.match_score ASC, c.id ASC
     LIMIT " . $limitParam;
+  }
   $topStmt = $pdo->prepare($topSql);
   $topStmt->execute($topParams);
   $topCandidates = $topStmt->fetchAll(PDO::FETCH_ASSOC);
@@ -128,6 +133,7 @@ function h(string $s): string {
 
 $urlBase = APP_BASE . '/admin/review_queue.php';
 $q = ['only_risky' => $onlyRisky, 'limit' => $limitParam];
+if ($sortTop !== 'default') $q['sort'] = $sortTop;
 if ($filterDocId !== null) $q['doc_id'] = $filterDocId;
 if ($filterRouteLabel !== null) $q['route_label'] = $filterRouteLabel;
 $urlOnlyRiskyOn = $urlBase . '?' . http_build_query(array_merge($q, ['only_risky' => 1]));
@@ -214,7 +220,7 @@ $uniqueDocIds = array_values(array_unique(array_map(function ($r) { return (int)
     </tbody>
   </table>
 
-  <h3 class="card">Top <?= (int)$limitParam ?> Candidates (LOW/NONE first)</h3>
+  <h3 class="card">Top <?= (int)$limitParam ?> Candidates (LOW/NONE first) <span class="muted">| <a href="<?= h($urlBase . '?' . http_build_query(array_merge($q, ['sort' => 'default']))) ?>">정렬: 기본</a> <a href="<?= h($urlBase . '?' . http_build_query(array_merge($q, ['sort' => 'simple']))) ?>">정렬: 단순</a></span></h3>
   <table>
     <thead>
       <tr>

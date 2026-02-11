@@ -233,3 +233,11 @@ LIMIT 100;
 
 - **목표:** j2에서 key가 ix_job_doc_type_status로 잡히는 것을 idx_joblog_doc_type_status_id로 **강제 시도**. NOT EXISTS 내부만 `FROM shuttle_doc_job_log j2 USE INDEX (idx_joblog_doc_type_status_id)` 적용.
 - **검증:** sql/v1.3-08_explain.sql 실행 후 j2 행의 key 확인. 결과가 바뀌지 않으면(옵티마이저가 힌트 무시 시) **무시됨/효과 없음**으로 기록.
+
+---
+
+## M. v1.3-09 review_queue 정렬 단순 옵션
+
+- **목적:** Top Candidates 정렬을 기본(복합: match_method NULL, like_prefix, score, id) 유지하되, **GET sort=simple** 일 때 **ORDER BY c.id ASC** 로 단순화하여 **가벼운 경로** 제공. 운영 시 급한 상황에서 성능 우회 가능.
+- **동작:** UI는 "정렬: 기본" / "정렬: 단순" 링크 2개만. only_risky=1 기본 유지(SoT 영향 없음).
+- 검증: sql/v1.3-09_explain.sql (sort=default vs sort=simple EXPLAIN 각 1건).
