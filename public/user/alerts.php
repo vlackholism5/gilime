@@ -62,13 +62,15 @@ if (!$hasRouteLabelColumn) {
   unset($row);
 }
 
-// v1.4-06 / v1.5-01: mark shown as delivered (insert/upsert by unique user_id, event_id, channel); log for ops
-foreach ($events as $e) {
-  try {
-    record_alert_delivery((int)$e['id'], $userId, 'web', 'shown');
-    error_log(sprintf('OPS delivery_written user_id=%d alert_event_id=%d channel=web status=shown', $userId, (int)$e['id']));
-  } catch (Throwable $t) {
-    // UNIQUE not yet applied or missing table — skip; do not break UX
+// v1.4-06 / v1.5-01 / v1.6-08: delivery only for rendered list; user_id 미확정이면 기록 안 함 (확인 필요 시 docs 참고)
+if ($userId > 0) {
+  foreach ($events as $e) {
+    try {
+      record_alert_delivery((int)$e['id'], $userId, 'web', 'shown');
+      error_log(sprintf('OPS delivery_written user_id=%d alert_event_id=%d channel=web status=shown', $userId, (int)$e['id']));
+    } catch (Throwable $t) {
+      // UNIQUE not yet applied or missing table — skip; do not break UX
+    }
   }
 }
 
