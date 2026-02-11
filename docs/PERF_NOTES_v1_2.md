@@ -149,3 +149,13 @@ LIMIT 100;
   DEPENDENT SUBQUERY 제거 시 체감 속도 개선 효과가 클 가능성 높음.
 - **(선택) job_snapshot_summary 등 요약 테이블/스냅샷 도입**  
   새 테이블/페이지 확장의 실익이 커지는 구간.
+
+---
+
+## E. v1.3-01 적용 후 기대 변화
+
+- **review_queue:** `shuttle_stop_candidate`(c)가 ALL → **ref** (key: idx_cand_doc_job_status). rows·join buffer 감소 기대.
+- **ops_dashboard:** DEPENDENT SUBQUERY의 **c 테이블**이 ALL → **ref**로 바뀌는 것이 목표. idx_cand_doc_job_status 또는 idx_cand_doc_job_status_method 사용 시 doc/job당 풀스캔 제거.
+- **alias_audit:** 기존 ix_shuttle_stop_alias_active 사용 시 ref 유지. idx_alias_active_updated 추가로 **ORDER BY updated_at** 시 Using filesort 제거 가능(covering 여부는 데이터에 따라 다름).
+- 검증: sql/v1.3-01_validation.sql 에서 SHOW INDEX + EXPLAIN 3개 실행 후 결과로 확인.
+- 실패 시 롤백 DDL은 v1.3-01_indexes.sql 하단 주석 참고.
