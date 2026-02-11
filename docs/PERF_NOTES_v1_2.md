@@ -232,7 +232,7 @@ LIMIT 100;
 ## L. v1.3-08 NOT EXISTS j2 USE INDEX 실험
 
 - **목표:** j2에서 key가 ix_job_doc_type_status로 잡히는 것을 idx_joblog_doc_type_status_id로 **강제 시도**. NOT EXISTS 내부만 `FROM shuttle_doc_job_log j2 USE INDEX (idx_joblog_doc_type_status_id)` 적용.
-- **검증:** sql/v1.3-08_explain.sql 실행 후 j2 행의 key 확인. 결과가 바뀌지 않으면(옵티마이저가 힌트 무시 시) **무시됨/효과 없음**으로 기록.
+- **검증:** sql/v1.3-08_explain.sql 실행 후 j2 행의 key 확인. **결과: j2 key가 idx_joblog_doc_type_status_id 로 변경됨** (USE INDEX 적용 효과 있음).
 
 ---
 
@@ -255,7 +255,7 @@ LIMIT 100;
 | v1.3-05 | job_log 인덱스 idx_joblog_doc_type_status_id | j2는 ix_job_doc_type_status 유지(옵티마이저 선택) | — | 채택(인덱스 존재 확정) |
 | v1.3-06 | 검증 통합팩 v1.3-06_validation_pack.sql | 문서/검증 슬롯 통합 | — | 채택 |
 | v1.3-07 | ops_dashboard 기본 정렬 updated, sort=risky 옵션 | 기본 경로에서 derived 정렬 회피 | 기본 경로 filesort 감소 목표 | 채택 |
-| v1.3-08 | j2 USE INDEX(idx_joblog_doc_type_status_id) | j2 key 변경 여부 확인(무시될 수 있음) | — | 실험/확인 필요 |
+| v1.3-08 | j2 USE INDEX(idx_joblog_doc_type_status_id) | j2 key → idx_joblog_doc_type_status_id 로 변경됨 | — | 채택 |
 | v1.3-09 | review_queue sort=simple → ORDER BY c.id ASC | 단순 경로로 정렬 비용 감소 | — | 채택 |
 
 **v1.4 후보 (3줄):**  

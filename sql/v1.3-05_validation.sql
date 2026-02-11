@@ -27,5 +27,9 @@ WHERE j.job_type = 'PARSE_MATCH' AND j.job_status = 'success'
   )
 ORDER BY pending_risky_total DESC, pending_total DESC;
 
--- 실행 결과 붙여넣기 (SHOW INDEX 결과 + EXPLAIN id/table/type/key/rows/Extra):
--- (여기 채움)
+-- ---------- 1) CREATE INDEX 실행 결과 ----------
+-- CREATE INDEX idx_joblog_doc_type_status_id ON shuttle_doc_job_log(...) → 0 row(s) affected, 1 warning: Duplicate index 'idx_joblog_doc_type_status_id' (deprecated). 0.172 sec.
+-- ---------- 2) SHOW INDEX 결과 ----------
+-- Table=shuttle_doc_job_log, Key_name=idx_joblog_doc_type_status_id. 행 4: 1 source_doc_id, 2 job_type, 3 job_status, 4 id.
+-- ---------- 3) EXPLAIN — j2 행 (NOT EXISTS 내부) ----------
+-- id=1, table=j2, type=ref, key=ix_job_doc_type_status, rows=5, Extra=Using where; Not exists; Using index

@@ -23,6 +23,9 @@ WHERE j.job_type = 'PARSE_MATCH' AND j.job_status = 'success'
   )
 ORDER BY j.updated_at DESC;
 
--- (여기 채움)
--- id | select_type | table | type | key | rows | Extra
--- ... (j2 행의 key가 idx_joblog_doc_type_status_id 인지 확인. 바뀌지 않으면 무시됨/효과 없음 기록)
+-- 실행 결과: j2 key=idx_joblog_doc_type_status_id 로 변경됨 (USE INDEX 적용)
+-- id | select_type | table      | type | key   | rows | Extra
+-- 1  | PRIMARY     | j          | ref  | idx_job_type_status | 13 | Using filesort
+-- 1  | PRIMARY     | j2         | ref  | idx_joblog_doc_type_status_id | 5 | Using where; Not exists; Using index
+-- 1  | PRIMARY     | <derived2> | ref  | <auto_key0> | 2 | Using where
+-- 2  | DERIVED     | shuttle_stop_candidate | index | idx_cand_doc_job_status_method | 39 | Using where; Using index

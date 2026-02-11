@@ -16,9 +16,11 @@ WHERE c.status = 'pending'
 ORDER BY (c.match_method IS NULL) DESC, (c.match_method = 'like_prefix') DESC, c.match_score ASC, c.id ASC
 LIMIT 50;
 
--- (여기 채움)
+-- 실행 결과 (sort=default):
 -- id | select_type | table | type | key | rows | Extra
--- ...
+-- 1  | PRIMARY     | <derived2> | ALL | NULL | 2 | Using where; Using temporary; Using filesort
+-- 1  | PRIMARY     | c     | ref  | idx_cand_doc_job_status | 2 | Using index condition; Using where
+-- 2  | DERIVED     | shuttle_doc_job_log | range | ix_job_doc_type_status | 2 | Using where; Using index for group-by
 
 -- ========== 2) sort=simple (ORDER BY c.id ASC) ==========
 EXPLAIN
@@ -35,6 +37,8 @@ WHERE c.status = 'pending'
 ORDER BY c.id ASC
 LIMIT 50;
 
--- (여기 채움)
+-- 실행 결과 (sort=simple):
 -- id | select_type | table | type | key | rows | Extra
--- ...
+-- 1  | PRIMARY     | <derived2> | ALL | NULL | 2 | Using where; Using temporary; Using filesort
+-- 1  | PRIMARY     | c     | ref  | idx_cand_doc_job_status | 2 | Using index condition; Using where
+-- 2  | DERIVED     | shuttle_doc_job_log | range | ix_job_doc_type_status | 2 | Using where; Using index for group-by

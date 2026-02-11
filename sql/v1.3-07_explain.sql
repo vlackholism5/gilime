@@ -24,9 +24,12 @@ WHERE j.job_type = 'PARSE_MATCH' AND j.job_status = 'success'
   )
 ORDER BY j.updated_at DESC;
 
--- (여기 채움)
--- id | select_type | table | type | key | rows | Extra
--- ...
+-- 실행 결과 (sort=updated):
+-- id | select_type | table      | type | key   | rows | Extra
+-- 1  | PRIMARY     | j          | ref  | idx_job_type_status | 13 | Using filesort
+-- 1  | PRIMARY     | j2         | ref  | ix_job_doc_type_status | 5 | Using where; Not exists; Using index
+-- 1  | PRIMARY     | <derived2> | ref  | <auto_key0> | 2 | Using where
+-- 2  | DERIVED     | shuttle_stop_candidate | index | idx_cand_doc_job_status_method | 39 | Using where; Using index
 
 -- ========== 2) sort=risky (ORDER BY pending_risky_total DESC, pending_total DESC) ==========
 EXPLAIN
@@ -51,6 +54,9 @@ WHERE j.job_type = 'PARSE_MATCH' AND j.job_status = 'success'
   )
 ORDER BY pending_risky_total DESC, pending_total DESC;
 
--- (여기 채움)
--- id | select_type | table | type | key | rows | Extra
--- ...
+-- 실행 결과 (sort=risky):
+-- id | select_type | table      | type | key   | rows | Extra
+-- 1  | PRIMARY     | j          | ref  | idx_job_type_status | 13 | Using temporary; Using filesort
+-- 1  | PRIMARY     | j2         | ref  | ix_job_doc_type_status | 5 | Using where; Not exists; Using index
+-- 1  | PRIMARY     | <derived2> | ref  | <auto_key0> | 2 | Using where
+-- 2  | DERIVED     | shuttle_stop_candidate | index | idx_cand_doc_job_status_method | 39 | Using where; Using index

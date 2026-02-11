@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS app_subscriptions (
   target_type VARCHAR(32) NOT NULL,
   target_id VARCHAR(64) NOT NULL,
   alert_type VARCHAR(32) NOT NULL DEFAULT 'strike,event,update',
-  is_active TINYINT(1) NOT NULL DEFAULT 1,
+  is_active TINYINT NOT NULL DEFAULT 1,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uk_app_subscriptions_user_target (user_id, target_type, target_id),
