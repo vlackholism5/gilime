@@ -197,13 +197,17 @@ LIMIT 100;
 | 구분 | 행 수 | Key_name | Column_name 순서(1~4) |
 |------|-------|----------|----------------------|
 | 초기(CREATE INDEX 적용 전) | 0 rows | — | — |
-| CREATE INDEX 적용 후 | (채움) | idx_joblog_doc_type_status_id | 1 source_doc_id, 2 job_type, 3 job_status, 4 id |
+| CREATE INDEX 적용 후 | 4 | idx_joblog_doc_type_status_id | 1 source_doc_id, 2 job_type, 3 job_status, 4 id |
 
 **EXPLAIN — j2 행만 (NOT EXISTS 내부):**
 
 | 구분 | key | rows | Extra |
 |------|-----|------|-------|
-| CREATE INDEX 적용 후 | (채움) | (채움) | (채움) |
+| CREATE INDEX 적용 후 | ix_job_doc_type_status | 5 | Using where; Not exists; Using index |
 
 **판정:** ( ) A) key 변경됨 — j2가 idx_joblog_doc_type_status_id 사용  
-( ) B) key 미변경 — j2가 기존 ix_job_doc_type_status 유지
+( ) B) key 미변경 — j2가 기존 ix_job_doc_type_status 유지  
+→ **확인 필요:** 현재 EXPLAIN상 j2는 ix_job_doc_type_status 사용. A/B 재확인 후 체크.
+
+- CREATE INDEX 실행 시 Warning 1831(duplicate index) 발생 → 이미 존재하던 인덱스였음을 명시. SHOW INDEX 결과로 4컬럼(source_doc_id, job_type, job_status, id) 존재 확정.
+- **v1.3-06 후보(문서만, 코드 변경 보류):** j2가 idx_joblog_doc_type_status_id를 사용하지 않을 경우, NOT EXISTS 서브쿼리 j2에 USE INDEX(idx_joblog_doc_type_status_id) 힌트 적용 후보. 확인 필요.
