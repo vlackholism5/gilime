@@ -167,3 +167,19 @@ LIMIT 100;
 - **DEPENDENT SUBQUERY 제거:** scalar subquery 2개 → candidate 집계 derived table 1개 + LEFT JOIN. doc당 반복 실행 제거.
 - **temp/filesort 감소 목표:** derived table 1회 스캔·집계 후 join으로 정렬 부담 완화. EXPLAIN에서 Using temporary; Using filesort 유무 확인.
 - 검증: sql/v1.3-02_explain.sql 실행 후 결과 공유.
+
+---
+
+## G. v1.3-03 목표/검증 (ops_dashboard agg 인덱스 활용)
+
+- **목표:** candidate 집계 derived(agg)가 idx_cand_doc_job_status 또는 idx_cand_doc_job_status_method 를 사용하도록 FORCE INDEX 적용. GROUP BY (source_doc_id, created_job_id) + WHERE status='pending' 이 인덱스 선두와 일치.
+- **검증 포인트:** EXPLAIN에서 derived3(shuttle_stop_candidate)의 **key**가 기존 idx_cand_status → **idx_cand_doc_job_status** 또는 **idx_cand_doc_job_status_method** 로 바뀌는지 확인.
+- 검증: sql/v1.3-03_explain.sql 실행 후 결과 공유.
+
+---
+
+## H. v1.3-04 목표/검증 (ops_dashboard derived2 temp/filesort 최소화)
+
+- **목표:** latest job per doc을 derived table(t) 대신 NOT EXISTS로만 필터. derived2 제거로 해당 단계의 Using temporary; Using filesort 제거 또는 감소.
+- **검증 포인트:** EXPLAIN에서 derived2 Extra에 **Using temporary / Using filesort** 가 줄었는지 확인. 쿼리 결과 동일성(컬럼·정렬: pending_risky_total DESC, pending_total DESC) 유지.
+- 검증: sql/v1.3-04_explain.sql 실행 후 결과 공유.

@@ -6,7 +6,7 @@ require_admin();
 
 $pdo = pdo();
 
-// (1) Docs needing review: derived table(집계 1회) + join. DEPENDENT SUBQUERY 제거(v1.3-02)
+// (1) Docs needing review: latest job은 NOT EXISTS로만 필터, derived t 제거 → temp/filesort 감소(v1.3-04)
 $docsNeedingReview = [];
 try {
   $stmt = $pdo->query("
@@ -14,21 +14,21 @@ try {
       COALESCE(agg.pending_total, 0) AS pending_total,
       COALESCE(agg.pending_risky_total, 0) AS pending_risky_total
     FROM shuttle_doc_job_log j
-    INNER JOIN (
-      SELECT source_doc_id, MAX(id) AS mid
-      FROM shuttle_doc_job_log
-      WHERE job_type = 'PARSE_MATCH' AND job_status = 'success'
-      GROUP BY source_doc_id
-    ) t ON j.source_doc_id = t.source_doc_id AND j.id = t.mid
     LEFT JOIN (
       SELECT source_doc_id, created_job_id,
         COUNT(*) AS pending_total,
         SUM(CASE WHEN match_method = 'like_prefix' OR match_method IS NULL THEN 1 ELSE 0 END) AS pending_risky_total
-      FROM shuttle_stop_candidate
+      FROM shuttle_stop_candidate FORCE INDEX (idx_cand_doc_job_status_method)
       WHERE status = 'pending'
       GROUP BY source_doc_id, created_job_id
     ) agg ON j.source_doc_id = agg.source_doc_id AND j.id = agg.created_job_id
     WHERE j.job_type = 'PARSE_MATCH' AND j.job_status = 'success'
+      AND NOT EXISTS (
+        SELECT 1 FROM shuttle_doc_job_log j2
+        WHERE j2.source_doc_id = j.source_doc_id
+          AND j2.job_type = 'PARSE_MATCH' AND j2.job_status = 'success'
+          AND j2.id > j.id
+      )
     ORDER BY pending_risky_total DESC, pending_total DESC
   ");
   $docsNeedingReview = $stmt->fetchAll(PDO::FETCH_ASSOC);
