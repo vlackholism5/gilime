@@ -11,6 +11,11 @@
 - **처리 방향:** (1) 정리: 필요 시 수동 UPDATE/삭제 또는 "legacy" 플래그 등 후속 버전에서 정리. (2) 당장 동작에는 영향 없음(매칭/승인 게이트와 무관).
 - **후속:** v1.x에서 데이터 정리 스크립트 또는 마이그레이션 검토 가능.
 
+## MVP2 v1.4 (임시·스텁)
+
+- **MVP2 인증:** 현재 사용자 페이지는 쿠키 기반 anonymous session_id + lazy app_users/app_user_sessions만 사용. 프로덕션용 로그인/회원가입으로 교체 필요 (확인 필요).
+- **알림 수집:** run_alert_ingest_stub.php는 테스트용 더미 이벤트만 삽입. 실제 외부 API/이벤트 연동은 미구현.
+
 ## 운영 원칙 (v1.2)
 
 - **새 페이지는 read-only.** Review Queue / Alias Audit / Ops Dashboard는 조회·링크만 제공. Promote·Approve·Reject는 **route_review에서만** 수행.

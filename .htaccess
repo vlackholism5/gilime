@@ -13,3 +13,7 @@ RewriteRule ^admin/(.*)$ public/admin/$1 [L]
 
 # 3) /admin -> /public/admin/index.php
 RewriteRule ^admin$ public/admin/index.php [L]
+
+# 4) /user/* -> /public/user/* (v1.4 MVP2)
+RewriteRule ^user/(.*)$ public/user/$1 [L]
+RewriteRule ^user$ public/user/home.php [L]

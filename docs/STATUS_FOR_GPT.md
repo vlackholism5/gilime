@@ -16,11 +16,13 @@
 
 ## 현재 버전
 
-- **v1.4-00 (planning-only)** MVP2 v1.4 계획 문서 4종 추가. 코드/테이블 변경 없음.
-- docs/PRD_v1_4_MVP2.md: 문제·범위·Non-goals, Personas(통근자/운영자), 사용자 기능(노선 검색·정류장·구독·공지 피드), 데이터 요구사항·지표.
-- docs/ARCH_v1_4_SYSTEM.md: Mermaid 시스템 구성도, public/user·admin·api·배치·DB, 자동화 파이프라인(수집→파싱→검수→승격→알림), 장애·복구 요약.
-- docs/ERD_v1_4_DRAFT.md: v1.4 신규 테이블 후보 Mermaid ERD(user, user_session, subscriptions, alert_events, alert_deliveries). DDL은 확인 필요.
-- docs/WIREFRAME_v1_4.md: 사용자 3페이지 ASCII 와이어프레임(home, routes, alerts). Admin은 기존 유지.
+- **v1.4-05** MVP2 사용자 페이지·구독·알림 피드·배치 스텁 구현.
+  - **v1.4-01:** public/user/ 폴더, home.php / routes.php / alerts.php, 공통 헤더·네비(Home / Routes / Alerts). .htaccess에 /user/* 라우트. admin index에 User Home 링크(새 탭).
+  - **v1.4-02:** sql/v1.4-02_schema.sql (app_users, app_user_sessions, app_subscriptions, app_alert_events, app_alert_deliveries). sql/v1.4-02_validation.sql. DDL은 PC에서만 실행.
+  - **v1.4-03:** routes.php에서 shuttle_doc_job_log+shuttle_stop_candidate 기반 (doc_id, route_label) 목록, 구독 토글 POST → app_subscriptions insert/update. MVP2 임시 인증: 쿠키 session_id, lazy app_users, app_user_sessions (app/inc/user_session.php).
+  - **v1.4-04:** alerts.php 최근 app_alert_events 50건, GET type 필터(strike/event/update). home.php 최근 5건 알림 + 내 구독 수.
+  - **v1.4-05:** scripts/run_alert_ingest_stub.php 더미 1~3건 app_alert_events 삽입(content_hash 기준 idempotent). 외부 API 연동 없음.
+- **v1.4-00 (planning-only)** MVP2 v1.4 계획 문서 4종. docs/PRD_v1_4_MVP2.md, ARCH_v1_4_SYSTEM.md, ERD_v1_4_DRAFT.md, WIREFRAME_v1_4.md.
 - v1.3-06: SECURITY_BASELINE, ERROR_POLICY, ROUTING_STRUCTURE_v1_4 준비 문서.
 - **v1.2-06** 운영 3페이지 성능 노트/EXPLAIN 문서화. PERF_NOTES_v1_2.md 추가, 핵심 SELECT 3개 EXPLAIN 증거화. 인덱스 후보는 v1.3에서 적용 예정.
 - **v1.2-05** 운영 대시보드 3페이지 확장 완료. Review Queue / Alias Audit / Ops Dashboard (read-only). 새 테이블 없음.
