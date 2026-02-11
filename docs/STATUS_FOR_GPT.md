@@ -16,9 +16,11 @@
 
 ## 현재 버전
 
-- **v1.6-10** (현재) MVP3 운영콘솔 안정화·증거화 완료. v1.6-06 create contract + content_hash + redirect, v1.6-07 audit 필터·요약·드릴다운, v1.6-08 user alerts delivery 가드, v1.6-09 인덱스/EXPLAIN(선택), v1.6-10 gate S5–S7 + Evidence 템플릿. No new tables.
+- **v1.7-03** (현재) Targeting Preview. alert_ops에서 event_id 지정 시 app_subscriptions 기준 매칭( target_id=ref_id_route_label, alert_type LIKE event_type)으로 target_user_cnt·상위 20명 리스트 read-only 프리뷰. 초안도 프리뷰 가능. docs/TARGETING_PREVIEW_v1_7.md, v1.7-03_smoke.md, v1.7-03_GATE.md, sql/v1.7-03_validation.sql. 실제 발송·채널·승인·스케줄러는 Non-goal.
+- **v1.7-02** Admin alert lifecycle Draft/Publish. published_at NULL 허용(스키마 1회 ALTER), alert_ops 초안 생성·Publish 액션·draft_only/published_only 필터, user/alerts는 published_at IS NOT NULL만 노출. sql/v1.7-02_schema.sql, v1.7-02_validation.sql, docs/v1.7-02_smoke.md, v1.7-02_GATE.md. Unpublish·approval workflow·outbound 채널은 Non-goal.
+- **v1.6-10** MVP3 운영콘솔 안정화·증거화 완료. v1.6-06 create contract + content_hash + redirect, v1.6-07 audit 필터·요약·드릴다운, v1.6-08 user alerts delivery 가드, v1.6-09 인덱스/EXPLAIN(선택), v1.6-10 gate S5–S7 + Evidence 템플릿. No new tables.
 - **v1.6** 핵심: admin alert_ops (list + create + contract), alert_event_audit (filters + summary + drilldown), user alerts delivery guard, docs/v1.6_RELEASE_GATE.md S1–S7 + Evidence SQL 블록.
-- **v1.7 (MVP3)** 시작 조건: v1.6 게이트 통과 후. 자동 발송(채널 확장), 타겟팅, 승인 플로우(운영자 승인 후 publish) 등 확장 예정.
+- **v1.7 (MVP3)** 로드맵 확정: docs/v1.7_ROADMAP.md (7개 버전: 01 문서→02 승인/발행→03 타겟팅→04 dispatch→05 retry→06 funnel→07 release gate). v1.6 게이트 통과 후 착수. 착수 전 published_at NULL 여부 확인 쿼리 포함.
 - **v1.5-03** MVP2.5 hardening: observability baseline, alert ref contract, delivery semantics + pagination.
   - **v1.5-01:** Observability baseline (no new tables). docs/OBSERVABILITY_v1_5.md, subscribe_toggle/delivery_written 시 error_log 1줄, app_alert_deliveries·app_subscriptions로 증거. docs/v1.5-01_smoke.md.
   - **v1.5-02:** Alert ref contract. docs/ALERT_REF_CONTRACT_v1_5.md (ref_type route/doc/NULL, Review 링크 규칙). run_alert_ingest_stub ref_type=route·ref_id=1·route_label=R1. sql/v1.5-02_validation.sql (read-only 위반 탐지).

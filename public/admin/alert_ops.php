@@ -7,9 +7,27 @@ $pdo = pdo();
 $base = APP_BASE . '/admin';
 $userBase = APP_BASE . '/user';
 
-// POST: 새 알림 생성 (ref_type=route 고정). v1.6-06: contract 검증 + deterministic content_hash + redirect event_id
+// POST: v1.7-02 Publish action (draft -> published)
 $flash = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+  $publishEventId = isset($_POST['publish_event_id']) ? (int)$_POST['publish_event_id'] : 0;
+  if ($publishEventId > 0) {
+    try {
+      $stmt = $pdo->prepare("UPDATE app_alert_events SET published_at = NOW() WHERE id = :id AND published_at IS NULL");
+      $stmt->execute([':id' => $publishEventId]);
+      if ($stmt->rowCount() > 0) {
+        error_log('OPS alert_published event_id=' . $publishEventId);
+        header('Location: ' . $base . '/alert_ops.php?flash=published&event_id=' . $publishEventId);
+        exit;
+      }
+    } catch (Throwable $e) {
+      error_log('OPS alert_publish_failed: ' . $e->getMessage());
+    }
+    header('Location: ' . $base . '/alert_ops.php?flash=failed&event_id=' . $publishEventId);
+    exit;
+  }
+
+  // POST: 새 알림 생성 (ref_type=route). v1.6-06 + v1.7-02: draft(published_at NULL) or publish
   $eventType = isset($_POST['event_type']) ? trim((string)$_POST['event_type']) : '';
   $title = isset($_POST['title']) ? trim((string)$_POST['title']) : '';
   $body = isset($_POST['body']) ? trim((string)$_POST['body']) : '';
@@ -17,21 +35,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $refId = $refIdRaw !== '' ? (int)$refIdRaw : 0;
   $routeLabel = isset($_POST['route_label']) ? trim((string)$_POST['route_label']) : '';
   $publishedAtRaw = isset($_POST['published_at']) ? trim((string)$_POST['published_at']) : '';
+  $publishNow = isset($_POST['publish_now']) && $_POST['publish_now'] === '1';
   $refType = 'route';
 
-  $valid = true;
-  if ($eventType === '') { $valid = false; }
-  if ($title === '') { $valid = false; }
-  if ($publishedAtRaw === '') { $valid = false; }
-  if ($refId <= 0) { $valid = false; }
-  if ($routeLabel === '') { $valid = false; }
-  $publishedAt = $publishedAtRaw;
-  if ($valid && strtotime($publishedAt) === false) {
-    $valid = false;
+  $valid = $eventType !== '' && $title !== '' && $refId > 0 && $routeLabel !== '';
+  $publishedAt = null;
+  if ($valid) {
+    if ($publishNow) {
+      $publishedAt = date('Y-m-d H:i:s');
+    } elseif ($publishedAtRaw !== '') {
+      if (strtotime($publishedAtRaw) !== false) {
+        $publishedAt = date('Y-m-d H:i:s', strtotime($publishedAtRaw));
+      } else {
+        $valid = false;
+      }
+    }
   }
   if ($valid) {
-    $publishedAt = date('Y-m-d H:i:s', strtotime($publishedAt));
-    $hashInput = implode('|', [$eventType, $title, $refType, (string)$refId, $routeLabel, $publishedAt]);
+    $hashInput = implode('|', [$eventType, $title, $refType, (string)$refId, $routeLabel, $publishedAt ?? '']);
     $contentHash = hash('sha256', $hashInput);
     try {
       $stmt = $pdo->prepare("
@@ -79,11 +100,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $flash = isset($_GET['flash']) ? trim((string)$_GET['flash']) : null;
 $focusEventId = isset($_GET['event_id']) ? (int)$_GET['event_id'] : null;
 
-// Filters (GET)
+// Filters (GET). v1.7-02: draft_only, published_only
 $filterType = isset($_GET['event_type']) && trim((string)$_GET['event_type']) !== '' ? trim((string)$_GET['event_type']) : null;
 $filterRoute = isset($_GET['route_label']) && trim((string)$_GET['route_label']) !== '' ? trim((string)$_GET['route_label']) : null;
 $filterFrom = isset($_GET['published_from']) && trim((string)$_GET['published_from']) !== '' ? trim((string)$_GET['published_from']) : null;
 $filterTo = isset($_GET['published_to']) && trim((string)$_GET['published_to']) !== '' ? trim((string)$_GET['published_to']) : null;
+$filterDraftOnly = isset($_GET['draft_only']) && $_GET['draft_only'] === '1';
+$filterPublishedOnly = isset($_GET['published_only']) && $_GET['published_only'] === '1';
 
 $sql = "SELECT id, event_type, title, ref_type, ref_id, route_label, published_at, created_at FROM app_alert_events WHERE 1=1";
 $params = [];
@@ -95,6 +118,12 @@ if ($filterRoute !== null) {
   $sql .= " AND route_label = :rl";
   $params[':rl'] = $filterRoute;
 }
+if ($filterDraftOnly) {
+  $sql .= " AND published_at IS NULL";
+}
+if ($filterPublishedOnly) {
+  $sql .= " AND published_at IS NOT NULL";
+}
 if ($filterFrom !== null) {
   $sql .= " AND published_at >= :pub_from";
   $params[':pub_from'] = $filterFrom;
@@ -103,12 +132,46 @@ if ($filterTo !== null) {
   $sql .= " AND published_at <= :pub_to";
   $params[':pub_to'] = $filterTo;
 }
-$sql .= " ORDER BY published_at DESC, id DESC LIMIT 200";
+$sql .= " ORDER BY published_at IS NULL DESC, published_at DESC, id DESC LIMIT 200";
 $stmt = $params === [] ? $pdo->query($sql) : $pdo->prepare($sql);
 if ($params !== []) {
   $stmt->execute($params);
 }
 $events = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// v1.7-03: Targeting Preview (read-only). event_id 있을 때만, route 이벤트면 count + list 20
+$previewEvent = null;
+$previewTargetCnt = 0;
+$previewTargetList = [];
+if ($focusEventId > 0) {
+  $stEv = $pdo->prepare("SELECT id, event_type, title, ref_type, ref_id, route_label, published_at FROM app_alert_events WHERE id = :id");
+  $stEv->execute([':id' => $focusEventId]);
+  $previewEvent = $stEv->fetch(PDO::FETCH_ASSOC);
+  if ($previewEvent && (string)($previewEvent['ref_type'] ?? '') === 'route' && isset($previewEvent['ref_id'], $previewEvent['route_label']) && $previewEvent['ref_id'] !== null && $previewEvent['route_label'] !== null) {
+    $refId = (int)$previewEvent['ref_id'];
+    $routeLabel = trim((string)$previewEvent['route_label']);
+    $eventType = trim((string)($previewEvent['event_type'] ?? ''));
+    $targetId = $refId . '_' . $routeLabel;
+    $likePattern = '%' . $eventType . '%';
+    $stCnt = $pdo->prepare("
+      SELECT COUNT(DISTINCT s.user_id) AS target_user_cnt
+      FROM app_subscriptions s
+      WHERE s.is_active = 1 AND s.target_type = 'route' AND s.target_id = :tid AND s.alert_type LIKE :atype
+    ");
+    $stCnt->execute([':tid' => $targetId, ':atype' => $likePattern]);
+    $previewTargetCnt = (int)($stCnt->fetch(PDO::FETCH_ASSOC)['target_user_cnt'] ?? 0);
+    $stList = $pdo->prepare("
+      SELECT u.id AS user_id, u.display_name, u.email, s.target_id AS subscription_target_id, s.alert_type
+      FROM app_subscriptions s
+      JOIN app_users u ON u.id = s.user_id
+      WHERE s.is_active = 1 AND s.target_type = 'route' AND s.target_id = :tid AND s.alert_type LIKE :atype
+      ORDER BY s.user_id
+      LIMIT 20
+    ");
+    $stList->execute([':tid' => $targetId, ':atype' => $likePattern]);
+    $previewTargetList = $stList->fetchAll(PDO::FETCH_ASSOC);
+  }
+}
 
 function h(string $s): string {
   return htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
@@ -170,24 +233,54 @@ function h(string $s): string {
         <label>route_label</label>
         <input type="text" name="route_label" required maxlength="64" value="R1" />
         <label>published_at</label>
-        <input type="datetime-local" name="published_at" required />
+        <input type="datetime-local" name="published_at" /> <span class="muted">(비우면 초안)</span>
+        <label><input type="checkbox" name="publish_now" value="1" /> Publish now</label>
       </div>
       <button type="submit">Create</button>
     </form>
   </div>
 
   <?php if ($flash !== null): ?>
-  <p class="muted"><?= $flash === 'created' ? 'created' : ($flash === 'duplicate ignored' ? 'duplicate ignored' : 'failed') ?></p>
+  <p class="muted"><?= $flash === 'created' ? 'created' : ($flash === 'duplicate ignored' ? 'duplicate ignored' : ($flash === 'published' ? 'published' : 'failed')) ?></p>
   <?php endif; ?>
 
-  <!-- 필터 -->
+  <?php if ($focusEventId > 0 && $previewEvent !== null): ?>
+  <!-- v1.7-03: Targeting Preview (read-only) -->
+  <div class="card" style="margin-bottom:20px; border:1px solid #ddd;">
+    <h3>Targeting Preview</h3>
+    <p class="muted">event_id=<?= (int)$focusEventId ?> · event_type=<?= h($previewEvent['event_type'] ?? '') ?> · ref_id=<?= (int)($previewEvent['ref_id'] ?? 0) ?> · route_label=<?= h($previewEvent['route_label'] ?? '') ?> · published_at=<?= h($previewEvent['published_at'] ?? '') ?></p>
+    <p><strong>Target users: <?= (int)$previewTargetCnt ?></strong></p>
+    <?php if ($previewTargetList !== []): ?>
+    <table>
+      <thead><tr><th>user_id</th><th>display_name</th><th>email</th><th>subscription_target_id</th><th>alert_type</th></tr></thead>
+      <tbody>
+        <?php foreach ($previewTargetList as $u): ?>
+        <tr>
+          <td><?= (int)($u['user_id'] ?? 0) ?></td>
+          <td><?= h($u['display_name'] ?? '') ?></td>
+          <td><?= h($u['email'] ?? '') ?></td>
+          <td><?= h($u['subscription_target_id'] ?? '') ?></td>
+          <td><?= h($u['alert_type'] ?? '') ?></td>
+        </tr>
+        <?php endforeach; ?>
+      </tbody>
+    </table>
+    <?php endif; ?>
+  </div>
+  <?php endif; ?>
+
+  <!-- 필터. v1.7-02: draft_only, published_only -->
   <p class="muted">
     <a href="<?= h($base) ?>/alert_ops.php">전체</a>
+    <a href="<?= h($base) ?>/alert_ops.php?draft_only=1">초안만</a>
+    <a href="<?= h($base) ?>/alert_ops.php?published_only=1">발행만</a>
     <a href="<?= h($base) ?>/alert_ops.php?event_type=strike">strike</a>
     <a href="<?= h($base) ?>/alert_ops.php?event_type=event">event</a>
     <a href="<?= h($base) ?>/alert_ops.php?event_type=update">update</a>
     | route_label: <form method="get" action="<?= h($base) ?>/alert_ops.php" style="display:inline;">
       <input type="hidden" name="event_type" value="<?= h($filterType ?? '') ?>" />
+      <input type="hidden" name="draft_only" value="<?= $filterDraftOnly ? '1' : '' ?>" />
+      <input type="hidden" name="published_only" value="<?= $filterPublishedOnly ? '1' : '' ?>" />
       <input type="text" name="route_label" value="<?= h($filterRoute ?? '') ?>" placeholder="R1" size="6" />
       <input type="text" name="published_from" value="<?= h($filterFrom ?? '') ?>" placeholder="from" size="12" />
       <input type="text" name="published_to" value="<?= h($filterTo ?? '') ?>" placeholder="to" size="12" />
@@ -198,7 +291,7 @@ function h(string $s): string {
   <table>
     <thead>
       <tr>
-        <th>id</th><th>event_type</th><th>title</th><th>ref_type</th><th>ref_id</th><th>route_label</th><th>published_at</th><th>created_at</th><th>Links</th>
+        <th>id</th><th>event_type</th><th>title</th><th>ref_type</th><th>ref_id</th><th>route_label</th><th>published_at</th><th>created_at</th><th>Action</th><th>Links</th>
       </tr>
     </thead>
     <tbody>
@@ -206,6 +299,8 @@ function h(string $s): string {
         $eid = (int)($e['id'] ?? 0);
         $refId = (int)($e['ref_id'] ?? 0);
         $rl = trim((string)($e['route_label'] ?? ''));
+        $publishedAt = $e['published_at'] ?? null;
+        $isDraft = ($publishedAt === null || $publishedAt === '');
         $userAlertsUrl = $rl !== '' ? $userBase . '/alerts.php?route_label=' . urlencode($rl) : '';
         $reviewUrl = ($refId > 0 && $rl !== '') ? $base . '/route_review.php?source_doc_id=' . $refId . '&route_label=' . urlencode($rl) . '&quick_mode=1&show_advanced=0' : ($refId > 0 ? $base . '/doc.php?id=' . $refId : '');
         $highlight = ($focusEventId !== null && $focusEventId === $eid);
@@ -217,8 +312,16 @@ function h(string $s): string {
           <td><?= h($e['ref_type'] ?? '') ?></td>
           <td><?= $refId ?></td>
           <td><?= h($rl) ?></td>
-          <td><?= h($e['published_at'] ?? '') ?></td>
+          <td><?= h($publishedAt ?? '') ?></td>
           <td><?= h($e['created_at'] ?? '') ?></td>
+          <td>
+            <?php if ($isDraft): ?>
+            <form method="post" action="<?= h($base) ?>/alert_ops.php" style="display:inline;">
+              <input type="hidden" name="publish_event_id" value="<?= $eid ?>" />
+              <button type="submit">Publish</button>
+            </form>
+            <?php else: ?>—<?php endif; ?>
+          </td>
           <td>
             <?php if ($userAlertsUrl !== ''): ?><a href="<?= h($userAlertsUrl) ?>" target="_blank" rel="noopener">User Alerts</a><?php endif; ?>
             <?php if ($reviewUrl !== ''): ?> <a href="<?= h($reviewUrl) ?>">Admin Review</a><?php endif; ?>
