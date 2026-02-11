@@ -16,7 +16,10 @@
 
 ## 현재 버전
 
-- **v1.7-09** (현재) Ops Summary. public/admin/ops_summary.php(approvals/events/deliveries/outbound 안내), index 링크, docs/OPS_SUMMARY_v1_7.md, v1.7-09_smoke/GATE, sql/v1.7-09_validation.sql.
+- **v1.7-12** (현재) Ops control. public/admin/ops_control.php(A: retry/backoff·failed top 20·outbound stub CLI, B: metrics ingest CLI·최근 metrics 10, C: quick links), index 링크. docs/v1.7-12_smoke/GATE, sql/v1.7-12_validation.sql.
+- **v1.7-11** Real metrics ingest. scripts/run_alert_ingest_real_metrics.php. docs/REALDATA_INGEST_v1_7.md, v1.7-11_smoke/GATE, sql/v1.7-11_validation.sql.
+- **v1.7-10** Retry/backoff. app_alert_deliveries.retry_count, run_delivery_outbound_stub pending+failed(backoff). docs/RETRY_BACKOFF_v1_7.md, v1.7-10_smoke/GATE, sql/v1.7-10_schema·validation.
+- **v1.7-09** Ops Summary. public/admin/ops_summary.php(approvals/events/deliveries/outbound 안내), index 링크, docs/OPS_SUMMARY_v1_7.md, v1.7-09_smoke/GATE, sql/v1.7-09_validation.sql.
 - **v1.7-08** Subscription alert_type FIND_IN_SET 매칭. alert_ops 4곳, app/inc/subscription_match.php, docs/SUBSCRIPTION_MATCHING_v1_7.md, v1.7-08_smoke/GATE, sql/v1.7-08_validation.sql.
 - **v1.7-07** Outbound stub. app_alert_deliveries(delivered_at, last_error), scripts/run_delivery_outbound_stub.php, docs/OUTBOUND_STUB_v1_7.md, v1.7-07_smoke/GATE, sql/v1.7-07_schema·validation.
 - **v1.7-06** Approver 분리 + 감사로그. app_users.role(user/approver), app_alert_approvals 테이블. Publish는 role=approver만 허용, 그 외 blocked_not_approver·approval 기록. docs/APPROVER_ROLE_v1_7.md, v1.7-06_smoke.md, v1.7-06_GATE.md, sql/v1.7-06_schema.sql, v1.7-06_validation.sql.
