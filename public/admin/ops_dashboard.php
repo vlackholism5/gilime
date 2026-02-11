@@ -6,16 +6,13 @@ require_admin();
 
 $pdo = pdo();
 
-// (1) Docs needing review: doc별 latest_parse_job_id 기준 pending_total, pending_risky_total. pending_risky_total DESC
+// (1) Docs needing review: derived table(집계 1회) + join. DEPENDENT SUBQUERY 제거(v1.3-02)
 $docsNeedingReview = [];
 try {
   $stmt = $pdo->query("
     SELECT j.source_doc_id, j.id AS latest_parse_job_id, j.updated_at,
-      (SELECT COUNT(*) FROM shuttle_stop_candidate c
-       WHERE c.source_doc_id = j.source_doc_id AND c.created_job_id = j.id AND c.status = 'pending') AS pending_total,
-      (SELECT COUNT(*) FROM shuttle_stop_candidate c
-       WHERE c.source_doc_id = j.source_doc_id AND c.created_job_id = j.id AND c.status = 'pending'
-         AND (c.match_method = 'like_prefix' OR c.match_method IS NULL)) AS pending_risky_total
+      COALESCE(agg.pending_total, 0) AS pending_total,
+      COALESCE(agg.pending_risky_total, 0) AS pending_risky_total
     FROM shuttle_doc_job_log j
     INNER JOIN (
       SELECT source_doc_id, MAX(id) AS mid
@@ -23,6 +20,14 @@ try {
       WHERE job_type = 'PARSE_MATCH' AND job_status = 'success'
       GROUP BY source_doc_id
     ) t ON j.source_doc_id = t.source_doc_id AND j.id = t.mid
+    LEFT JOIN (
+      SELECT source_doc_id, created_job_id,
+        COUNT(*) AS pending_total,
+        SUM(CASE WHEN match_method = 'like_prefix' OR match_method IS NULL THEN 1 ELSE 0 END) AS pending_risky_total
+      FROM shuttle_stop_candidate
+      WHERE status = 'pending'
+      GROUP BY source_doc_id, created_job_id
+    ) agg ON j.source_doc_id = agg.source_doc_id AND j.id = agg.created_job_id
     WHERE j.job_type = 'PARSE_MATCH' AND j.job_status = 'success'
     ORDER BY pending_risky_total DESC, pending_total DESC
   ");

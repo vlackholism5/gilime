@@ -159,3 +159,11 @@ LIMIT 100;
 - **alias_audit:** 기존 ix_shuttle_stop_alias_active 사용 시 ref 유지. idx_alias_active_updated 추가로 **ORDER BY updated_at** 시 Using filesort 제거 가능(covering 여부는 데이터에 따라 다름).
 - 검증: sql/v1.3-01_validation.sql 에서 SHOW INDEX + EXPLAIN 3개 실행 후 결과로 확인.
 - 실패 시 롤백 DDL은 v1.3-01_indexes.sql 하단 주석 참고.
+
+---
+
+## F. v1.3-02 적용 후 기대 변화 (ops_dashboard 리팩터)
+
+- **DEPENDENT SUBQUERY 제거:** scalar subquery 2개 → candidate 집계 derived table 1개 + LEFT JOIN. doc당 반복 실행 제거.
+- **temp/filesort 감소 목표:** derived table 1회 스캔·집계 후 join으로 정렬 부담 완화. EXPLAIN에서 Using temporary; Using filesort 유무 확인.
+- 검증: sql/v1.3-02_explain.sql 실행 후 결과 공유.
