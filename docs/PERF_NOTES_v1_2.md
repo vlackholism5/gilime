@@ -241,3 +241,24 @@ LIMIT 100;
 - **목적:** Top Candidates 정렬을 기본(복합: match_method NULL, like_prefix, score, id) 유지하되, **GET sort=simple** 일 때 **ORDER BY c.id ASC** 로 단순화하여 **가벼운 경로** 제공. 운영 시 급한 상황에서 성능 우회 가능.
 - **동작:** UI는 "정렬: 기본" / "정렬: 단순" 링크 2개만. only_risky=1 기본 유지(SoT 영향 없음).
 - 검증: sql/v1.3-09_explain.sql (sort=default vs sort=simple EXPLAIN 각 1건).
+
+---
+
+## N. v1.3 결론 표 (v1.3-01 ~ v1.3-09 요약)
+
+| 버전 | 변경(인덱스/쿼리/힌트) | EXPLAIN key 변화 | temp/filesort | 채택/보류/폐기 |
+|------|------------------------|------------------|---------------|----------------|
+| v1.3-01 | candidate 2개, alias 1개 인덱스 DDL | c→idx_cand_doc_job_status, a→idx_alias_active_updated | ops_dashboard DEPENDENT SUBQUERY c→ref | 채택 |
+| v1.3-02 | ops_dashboard scalar→derived+join | derived agg 1회, DEPENDENT 제거 | derived2 t에서 temp/filesort | 채택 |
+| v1.3-03 | agg FORCE INDEX(idx_cand_doc_job_status_method) | derived3→idx_cand_doc_job_status_method | agg 쪽 개선 | 채택 |
+| v1.3-04 | latest job을 NOT EXISTS로만 필터, derived t 제거 | j, j2, derived2(agg) | j에서 temp/filesort 가능 | 채택 |
+| v1.3-05 | job_log 인덱스 idx_joblog_doc_type_status_id | j2는 ix_job_doc_type_status 유지(옵티마이저 선택) | — | 채택(인덱스 존재 확정) |
+| v1.3-06 | 검증 통합팩 v1.3-06_validation_pack.sql | 문서/검증 슬롯 통합 | — | 채택 |
+| v1.3-07 | ops_dashboard 기본 정렬 updated, sort=risky 옵션 | 기본 경로에서 derived 정렬 회피 | 기본 경로 filesort 감소 목표 | 채택 |
+| v1.3-08 | j2 USE INDEX(idx_joblog_doc_type_status_id) | j2 key 변경 여부 확인(무시될 수 있음) | — | 실험/확인 필요 |
+| v1.3-09 | review_queue sort=simple → ORDER BY c.id ASC | 단순 경로로 정렬 비용 감소 | — | 채택 |
+
+**v1.4 후보 (3줄):**  
+1) job_log 인덱스 정리(중복/정리): ix_job_doc_type_status와 idx_joblog_doc_type_status_id 역할 정리·통합 검토.  
+2) ops_dashboard 집계 테이블 도입 여부: 새 테이블(job_snapshot_summary 등)은 v1.4에서만 검토.  
+3) 대량 데이터 시 LIMIT/필터 운영 가이드: 정렬 옵션(sort=updated/risky, sort=simple) 활용 안내.

@@ -16,9 +16,9 @@
 
 ## 현재 버전
 
-- **v1.3-01** 운영 3페이지 성능 개선 1차. 인덱스 3개 추가(DDL만).
-- shuttle_stop_candidate(idx_cand_doc_job_status, idx_cand_doc_job_status_method), shuttle_stop_alias(idx_alias_active_updated). 코드 변경 없음.
-- 검증: sql/v1.3-01_indexes.sql 적용 후 sql/v1.3-01_validation.sql 실행.
+- **v1.3-10** v1.3 성능/운영 안정 패키지 완료. 검증 통합팩(sql/v1.3-06_validation_pack.sql), ops_dashboard/review_queue 정렬 옵션(sort=updated/risky, sort=simple), j2 USE INDEX 실험, 결론 표·v1.4 후보 문서 고정.
+- v1.3-01~05: 인덱스 4건(candidate 2, alias 1, job_log 1), ops_dashboard derived+NOT EXISTS+정렬 기본값 변경.
+- v1.3-06~09: 검증팩 통합, 정렬 옵션(기본 최신/위험도, 기본/단순), USE INDEX(j2). v1.3-10에서 결론 표·다음 DDL 후보 확정.
 - **v1.2-06** 운영 3페이지 성능 노트/EXPLAIN 문서화. PERF_NOTES_v1_2.md 추가, 핵심 SELECT 3개 EXPLAIN 증거화. 인덱스 후보는 v1.3에서 적용 예정.
 - **v1.2-05** 운영 대시보드 3페이지 확장 완료. Review Queue / Alias Audit / Ops Dashboard (read-only). 새 테이블 없음.
 - v1.2-01~04: review_queue.php(필터/ focus 링크), alias_audit.php(리스크+최근 alias), ops_dashboard.php(문서별 검수 필요·최근 job·promote 후보).

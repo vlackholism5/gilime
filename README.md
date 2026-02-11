@@ -93,7 +93,13 @@ PARSE_MATCH(job) 실행 시 후보(candidates) 생성하면서 **서울시 정�
 
 - v1.2-06: 운영 3페이지 성능 노트/EXPLAIN 문서화 완료 (docs/PERF_NOTES_v1_2.md). 인덱스 후보는 v1.3에서 적용 예정.
 - Review Queue (review_queue.php), Alias Audit (alias_audit.php), Ops Dashboard (ops_dashboard.php). read-only, 승인/승격은 route_review만.
-- v1.3에서 새 테이블(ops_events, alias_audit_log, job_snapshot_summary 등) 도입 후보 검토.
+
+## v1.3 성능/운영 안정
+
+- **검증 통합팩:** sql/v1.3-06_validation_pack.sql (SHOW INDEX 4건 + EXPLAIN 3건). 운영 3페이지 핵심 쿼리 한 파일로 검증.
+- **인덱스:** v1.3-01 candidate 2개·alias 1개, v1.3-05 job_log 1개(idx_joblog_doc_type_status_id). ops_dashboard NOT EXISTS·derived agg 정렬 기본값(최신), sort=risky 옵션. review_queue sort=simple 옵션.
+- **문서:** docs/PERF_NOTES_v1_2.md에 v1.3-01~09 결론 표·v1.4 후보(job_log 인덱스 정리, 집계 테이블 도입 여부, 대량 데이터 LIMIT/필터 가이드) 확정.
+- v1.4에서 새 테이블(ops_events, alias_audit_log, job_snapshot_summary 등) 도입 후보 검토.
 
 ## v0.6-24 관리자 UI 정보구조 정리
 
