@@ -16,6 +16,10 @@
 
 - batch 선별 정책을 고정(only_failed=1: failed+legacy 실패, 기본: success만)하고 dry_run 3줄 요약을 추가.
 
+## v1.7-17 ingest one pdf
+
+- admin 업로드 화면(`upload_pdf.php`)에서 PDF 1건 업로드 후 같은 화면에서 즉시 `Run Parse/Match` 실행 가능.
+
 ## v0.6-11 자동매칭 규칙
 
 PARSE_MATCH(job) 실행 시 후보(candidates) 생성하면서 **서울시 정류장마스터(seoul_bus_stop_master)** 기반으로  
