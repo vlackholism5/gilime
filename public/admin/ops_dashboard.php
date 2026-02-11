@@ -6,10 +6,15 @@ require_admin();
 
 $pdo = pdo();
 
-// (1) Docs needing review: latest job은 NOT EXISTS로만 필터, derived t 제거 → temp/filesort 감소(v1.3-04)
+$sortDocs = isset($_GET['sort']) && $_GET['sort'] === 'risky' ? 'risky' : 'updated';
+
+// (1) Docs needing review: 정렬 기본값 updated(v1.3-07) → filesort 비용 기본 경로에서 회피
 $docsNeedingReview = [];
 try {
-  $stmt = $pdo->query("
+  $orderBy = $sortDocs === 'risky'
+    ? 'pending_risky_total DESC, pending_total DESC'
+    : 'j.updated_at DESC';
+  $sql = "
     SELECT j.source_doc_id, j.id AS latest_parse_job_id, j.updated_at,
       COALESCE(agg.pending_total, 0) AS pending_total,
       COALESCE(agg.pending_risky_total, 0) AS pending_risky_total
@@ -29,8 +34,8 @@ try {
           AND j2.job_type = 'PARSE_MATCH' AND j2.job_status = 'success'
           AND j2.id > j.id
       )
-    ORDER BY pending_risky_total DESC, pending_total DESC
-  ");
+    ORDER BY " . $orderBy;
+  $stmt = $pdo->query($sql);
   $docsNeedingReview = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (Throwable $e) {
   $docsNeedingReview = [];
@@ -109,7 +114,7 @@ function h(string $s): string {
   <h2>Ops Dashboard</h2>
   <p class="muted" style="margin:0 0 12px;">오늘 뭐부터 볼지 1페이지. 실제 promote는 route_review에서만.</p>
 
-  <h3 class="card">Docs needing review</h3>
+  <h3 class="card">Docs needing review <span class="muted">| <a href="<?= APP_BASE ?>/admin/ops_dashboard.php?sort=updated">정렬: 최신</a> <a href="<?= APP_BASE ?>/admin/ops_dashboard.php?sort=risky">정렬: 위험도</a></span></h3>
   <table>
     <thead>
       <tr>

@@ -218,3 +218,11 @@ LIMIT 100;
 
 - **원칙:** 운영 3페이지(review_queue, alias_audit, ops_dashboard) 성능 검증은 **sql/v1.3-06_validation_pack.sql 1개**로 통합. SHOW INDEX 4건 + EXPLAIN 3건 실행 후 각 "(여기 채움)" 블록에 결과 붙여넣기.
 - j2가 idx_joblog_doc_type_status_id를 쓰지 않고 ix_job_doc_type_status를 쓰는 현상은 **확인 필요/가설**로 분리. 옵티마이저 선택 차이 또는 통계에 따른 것으로 두고, 다음 버전(v1.3-07)에서 **힌트 실험(STRAIGHT_JOIN/USE INDEX)** 계획만 명시.
+
+---
+
+## K. v1.3-07 ops_dashboard 정렬 기본값 변경
+
+- **목적:** 정렬 기본값을 **j.updated_at DESC**(최신 문서 우선)로 변경하여, derived agg 기준 정렬(pending_risky_total DESC)에 따른 **filesort 비용을 기본 경로에서 회피**.
+- **동작:** 기본은 "정렬: 최신". GET sort=risky 일 때만 "정렬: 위험도"(pending_risky_total DESC, pending_total DESC) 적용. UI는 표 제목 오른쪽 링크 2개만(정렬: 최신 / 정렬: 위험도).
+- 검증: sql/v1.3-07_explain.sql (sort=updated vs sort=risky EXPLAIN 각 1건).
