@@ -13,6 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $routeLabel = isset($_POST['route_label']) ? trim((string)$_POST['route_label']) : '';
   if ($docId > 0 && $routeLabel !== '' && in_array($action, ['subscribe', 'unsubscribe'], true)) {
     $targetId = $docId . '_' . $routeLabel;
+    $isActive = $action === 'subscribe' ? 1 : 0;
     if ($action === 'subscribe') {
       $pdo->prepare("
         INSERT INTO app_subscriptions (user_id, target_type, target_id, alert_type, is_active)
@@ -24,6 +25,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         UPDATE app_subscriptions SET is_active = 0, updated_at = NOW()
         WHERE user_id = :uid AND target_type = 'route' AND target_id = :target_id
       ")->execute([':uid' => $userId, ':target_id' => $targetId]);
+    }
+    try {
+      error_log(sprintf('OPS subscribe_toggle user_id=%d target_id=%s is_active=%d', $userId, $targetId, $isActive));
+    } catch (Throwable $e) {
+      // do not break UX
     }
   }
   header('Location: ' . APP_BASE . '/user/routes.php');

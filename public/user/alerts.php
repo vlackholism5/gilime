@@ -59,12 +59,13 @@ if (!$hasRouteLabelColumn) {
   unset($row);
 }
 
-// v1.4-06: mark shown as delivered (insert/upsert by unique user_id, event_id, channel)
+// v1.4-06 / v1.5-01: mark shown as delivered (insert/upsert by unique user_id, event_id, channel); log for ops
 foreach ($events as $e) {
   try {
     record_alert_delivery((int)$e['id'], $userId, 'web', 'shown');
+    error_log(sprintf('OPS delivery_written user_id=%d alert_event_id=%d channel=web status=shown', $userId, (int)$e['id']));
   } catch (Throwable $t) {
-    // UNIQUE not yet applied or missing table — skip
+    // UNIQUE not yet applied or missing table — skip; do not break UX
   }
 }
 
