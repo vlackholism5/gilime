@@ -16,9 +16,11 @@
 
 ## 현재 버전
 
-- **v1.3-10** v1.3 성능/운영 안정 패키지 완료. 검증 통합팩(sql/v1.3-06_validation_pack.sql), ops_dashboard/review_queue 정렬 옵션(sort=updated/risky, sort=simple), j2 USE INDEX 실험, 결론 표·v1.4 후보 문서 고정.
-- v1.3-01~05: 인덱스 4건(candidate 2, alias 1, job_log 1), ops_dashboard derived+NOT EXISTS+정렬 기본값 변경.
-- v1.3-06~09: 검증팩 통합, 정렬 옵션(기본 최신/위험도, 기본/단순), USE INDEX(j2). v1.3-10에서 결론 표·다음 DDL 후보 확정.
+- **v1.3-06 (docs-only)** MVP2(v1.4) 전 준비 문서 3종 추가. 코드/테이블 변경 없음.
+- docs/SECURITY_BASELINE.md: admin 접근 정책, 세션 기준선, 최소 감사 로그 범위, OAuth/2FA 등 현재 범위 외 명시. 미검증 항목은 "확인 필요".
+- docs/ERROR_POLICY.md: SQL 실패·파라미터 누락·권한 없음·Not found 시 사용자 표시(muted/리다이렉트)와 로그 기록 정책.
+- docs/ROUTING_STRUCTURE_v1_4.md: v1.4 일괄 확장용 폴더(admin/user/api), URL 규칙(/admin, /user), 신규 페이지 네이밍(home, routes, alerts), 쿼리 파라미터 유지(quick_mode, show_advanced, jump_next, focus_cand_id 등).
+- v1.3-10: v1.3 성능/운영 안정 패키지 완료(검증팩, 정렬 옵션, USE INDEX, 결론 표).
 - **v1.2-06** 운영 3페이지 성능 노트/EXPLAIN 문서화. PERF_NOTES_v1_2.md 추가, 핵심 SELECT 3개 EXPLAIN 증거화. 인덱스 후보는 v1.3에서 적용 예정.
 - **v1.2-05** 운영 대시보드 3페이지 확장 완료. Review Queue / Alias Audit / Ops Dashboard (read-only). 새 테이블 없음.
 - v1.2-01~04: review_queue.php(필터/ focus 링크), alias_audit.php(리스크+최근 alias), ops_dashboard.php(문서별 검수 필요·최근 job·promote 후보).

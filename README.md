@@ -100,6 +100,7 @@ PARSE_MATCH(job) 실행 시 후보(candidates) 생성하면서 **서울시 정�
 - **인덱스:** v1.3-01 candidate 2개·alias 1개, v1.3-05 job_log 1개(idx_joblog_doc_type_status_id). ops_dashboard NOT EXISTS·derived agg 정렬 기본값(최신), sort=risky 옵션. review_queue sort=simple 옵션.
 - **문서:** docs/PERF_NOTES_v1_2.md에 v1.3-01~09 결론 표·v1.4 후보(job_log 인덱스 정리, 집계 테이블 도입 여부, 대량 데이터 LIMIT/필터 가이드) 확정.
 - v1.4에서 새 테이블(ops_events, alias_audit_log, job_snapshot_summary 등) 도입 후보 검토.
+- **MVP2 v1.4 one-shot expansion** 준비: docs/SECURITY_BASELINE.md, docs/ERROR_POLICY.md, docs/ROUTING_STRUCTURE_v1_4.md 로 보안·에러·라우팅 규칙을 문서화하여 v1.4 사용자 페이지·구독·알림 확장 전 기준을 고정.
 
 ## v0.6-24 관리자 UI 정보구조 정리
 
