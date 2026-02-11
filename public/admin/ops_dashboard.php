@@ -29,7 +29,7 @@ try {
     ) agg ON j.source_doc_id = agg.source_doc_id AND j.id = agg.created_job_id
     WHERE j.job_type = 'PARSE_MATCH' AND j.job_status = 'success'
       AND NOT EXISTS (
-        SELECT 1 FROM shuttle_doc_job_log j2
+        SELECT 1 FROM shuttle_doc_job_log j2 USE INDEX (idx_joblog_doc_type_status_id)
         WHERE j2.source_doc_id = j.source_doc_id
           AND j2.job_type = 'PARSE_MATCH' AND j2.job_status = 'success'
           AND j2.id > j.id

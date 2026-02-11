@@ -226,3 +226,10 @@ LIMIT 100;
 - **목적:** 정렬 기본값을 **j.updated_at DESC**(최신 문서 우선)로 변경하여, derived agg 기준 정렬(pending_risky_total DESC)에 따른 **filesort 비용을 기본 경로에서 회피**.
 - **동작:** 기본은 "정렬: 최신". GET sort=risky 일 때만 "정렬: 위험도"(pending_risky_total DESC, pending_total DESC) 적용. UI는 표 제목 오른쪽 링크 2개만(정렬: 최신 / 정렬: 위험도).
 - 검증: sql/v1.3-07_explain.sql (sort=updated vs sort=risky EXPLAIN 각 1건).
+
+---
+
+## L. v1.3-08 NOT EXISTS j2 USE INDEX 실험
+
+- **목표:** j2에서 key가 ix_job_doc_type_status로 잡히는 것을 idx_joblog_doc_type_status_id로 **강제 시도**. NOT EXISTS 내부만 `FROM shuttle_doc_job_log j2 USE INDEX (idx_joblog_doc_type_status_id)` 적용.
+- **검증:** sql/v1.3-08_explain.sql 실행 후 j2 행의 key 확인. 결과가 바뀌지 않으면(옵티마이저가 힌트 무시 시) **무시됨/효과 없음**으로 기록.
