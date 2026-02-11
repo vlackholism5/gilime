@@ -16,12 +16,12 @@
 
 ## 현재 버전
 
-- **v1.4-10** MVP2 알림 배달 로깅·실제 신호 생성·구독 UX 확장.
-  - **v1.4-06:** app_alert_deliveries 기록(helper record_alert_delivery), alerts.php 로드 시 노출 이벤트에 대해 channel=web·status=shown 삽입/갱신. sql/v1.4-06_delivery_unique.sql (UNIQUE user_id, alert_event_id, channel).
-  - **v1.4-07:** routes.php 구독 상태 "(Subscribed)" 표시. home.php 구독 노선 목록(최대 10) + /user/alerts.php?route_label= 링크. alerts.php route_label·subscribed only 필터. sql/v1.4-07_route_label.sql (app_alert_events.route_label 컬럼).
-  - **v1.4-08:** scripts/run_alert_generate_from_metrics.php — shuttle_parse_metrics + shuttle_doc_job_log 최신/직전 PARSE_MATCH 비교, none_matched_cnt/low_confidence_cnt 증가 시 type=update "NONE 증가"/"LOW 증가" 이벤트 삽입(content_hash idempotent). route_label·ref_id 설정.
-  - **v1.4-09:** alerts.php 행별 Review 링크(route_review 또는 doc.php, ref_id·route_label 있으면 route_review).
-  - **v1.4-10:** docs/v1.4-10_smoke.md, STATUS/README/KNOWN_ISSUES 갱신.
+- **v1.5-03** MVP2.5 hardening: observability baseline, alert ref contract, delivery semantics + pagination.
+  - **v1.5-01:** Observability baseline (no new tables). docs/OBSERVABILITY_v1_5.md, subscribe_toggle/delivery_written 시 error_log 1줄, app_alert_deliveries·app_subscriptions로 증거. docs/v1.5-01_smoke.md.
+  - **v1.5-02:** Alert ref contract. docs/ALERT_REF_CONTRACT_v1_5.md (ref_type route/doc/NULL, Review 링크 규칙). run_alert_ingest_stub ref_type=route·ref_id=1·route_label=R1. sql/v1.5-02_validation.sql (read-only 위반 탐지).
+  - **v1.5-03:** Delivery semantics: 렌더된 목록에만 delivery 기록. alerts.php pagination (page, per_page=50), Previous/Next. docs/DELIVERY_SEMANTICS_v1_5.md, docs/v1.5-03_smoke.md.
+- **v1.6** one-shot expansion is being prepared after v1.5 (확인 필요: external ingest, multi-channel delivery, admin ops automation 등).
+- **v1.4-10** MVP2 알림 배달 로깅·실제 신호 생성·구독 UX 확장 (v1.4-06~10).
 - **v1.4-05** MVP2 사용자 페이지·구독·알림 피드·배치 스텁 (home/routes/alerts, app_* 5테이블, run_alert_ingest_stub).
 - **v1.4-00 (planning-only)** MVP2 v1.4 계획 문서 4종. docs/PRD_v1_4_MVP2.md, ARCH_v1_4_SYSTEM.md, ERD_v1_4_DRAFT.md, WIREFRAME_v1_4.md.
 - v1.3-06: SECURITY_BASELINE, ERROR_POLICY, ROUTING_STRUCTURE_v1_4 준비 문서.

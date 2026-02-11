@@ -111,6 +111,13 @@ PARSE_MATCH(job) 실행 시 후보(candidates) 생성하면서 **서울시 정�
 - **배치:** run_alert_ingest_stub.php (더미). run_alert_generate_from_metrics.php — shuttle_parse_metrics 직전 job 대비 NONE/LOW 증가 시 이벤트 삽입(content_hash idempotent). v1.4-07_route_label.sql 적용 후 실행.
 - **스모크:** docs/v1.4-10_smoke.md 참고.
 
+## v1.5 MVP2.5 hardening (v1.5-01 ~ v1.5-03)
+
+- **Observability:** docs/OBSERVABILITY_v1_5.md. 증거는 app_alert_deliveries + (선택) error_log. subscribe_toggle/delivery_written 로그. docs/v1.5-01_smoke.md.
+- **Alert ref contract:** docs/ALERT_REF_CONTRACT_v1_5.md. ref_type=route/doc/NULL 규칙, 스크립트·검증 sql/v1.5-02_validation.sql.
+- **Delivery semantics:** 렌더된 이벤트에만 delivery 기록. alerts.php pagination (50 per page), Previous/Next. docs/DELIVERY_SEMANTICS_v1_5.md, docs/v1.5-03_smoke.md.
+- After v1.5 baseline hardening, **v1.6 one-shot expansion** is being prepared (bigger scope). 예시(확인 필요): external ingest sources, multi-channel delivery, admin ops automation.
+
 ## v0.6-24 관리자 UI 정보구조 정리
 
 - **기능 변경 없음.** 관리자 화면 가독성/정보구조만 정리(운영용 UX 리팩터).

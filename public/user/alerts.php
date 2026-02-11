@@ -10,6 +10,9 @@ $userId = user_session_user_id();
 $typeFilter = isset($_GET['type']) && trim((string)$_GET['type']) !== '' ? trim((string)$_GET['type']) : null;
 $routeFilter = isset($_GET['route_label']) && trim((string)$_GET['route_label']) !== '' ? trim((string)$_GET['route_label']) : null;
 $subscribedOnly = isset($_GET['subscribed']) && $_GET['subscribed'] === '1';
+$page = max(1, (int)($_GET['page'] ?? 1));
+$perPage = 50;
+$offset = ($page - 1) * $perPage;
 
 $hasRouteLabelColumn = false;
 try {
@@ -47,7 +50,7 @@ if ($hasRouteLabelColumn && $subscribedOnly) {
 if ($where !== []) {
   $sql .= " WHERE " . implode(' AND ', $where);
 }
-$sql .= " ORDER BY created_at DESC LIMIT 50";
+$sql .= " ORDER BY created_at DESC LIMIT " . (int)$perPage . " OFFSET " . (int)$offset;
 
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
@@ -78,7 +81,10 @@ $q = array_filter([
   'type' => $typeFilter,
   'route_label' => $routeFilter,
   'subscribed' => $subscribedOnly ? '1' : null,
+  'page' => $page > 1 ? (string)$page : null,
 ]);
+$qPrev = array_merge($q, ['page' => (string)max(1, $page - 1)]);
+$qNext = array_merge($q, ['page' => (string)($page + 1)]);
 ?>
 <!doctype html>
 <html lang="ko">
@@ -148,5 +154,16 @@ $q = array_filter([
       </table>
     <?php endif; ?>
   </div>
+  <?php if ($events !== []): ?>
+  <p class="muted" style="margin-top:12px;">
+    Page <?= (int)$page ?> (<?= (int)$perPage ?> per page)
+    <?php if ($page > 1): ?>
+      <a href="<?= $base ?>/alerts.php?<?= http_build_query($qPrev) ?>">Previous</a>
+    <?php endif; ?>
+    <?php if (count($events) >= $perPage): ?>
+      <a href="<?= $base ?>/alerts.php?<?= http_build_query($qNext) ?>">Next</a>
+    <?php endif; ?>
+  </p>
+  <?php endif; ?>
 </body>
 </html>
