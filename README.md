@@ -119,6 +119,7 @@ PARSE_MATCH(job) 실행 시 후보(candidates) 생성하면서 **서울시 정�
 - **v1.6-10** MVP3 운영콘솔 안정화: alert_ops create contract + content_hash + redirect, alert_event_audit 필터·요약·드릴다운, user alerts delivery 가드. No new tables. docs/v1.6_RELEASE_GATE.md S1–S7 + Evidence SQL 블록.
 - **v1.7-02** Draft/Publish: published_at NULL 허용, alert_ops 초안·Publish 액션·draft_only/published_only 필터, user alerts는 발행된 것만 노출. sql/v1.7-02_*.sql, docs/v1.7-02_smoke.md, v1.7-02_GATE.md.
 - **v1.7-03** Targeting Preview: alert_ops event_id 기준 구독 매칭 target_user_cnt·리스트 20 read-only. docs/TARGETING_PREVIEW_v1_7.md, v1.7-03_smoke.md, v1.7-03_GATE.md, sql/v1.7-03_validation.sql.
+- **v1.7-04** Approval + Publish guard: draft/published 뱃지, Publish 시 target_user_cnt=0 차단(blocked_no_targets). docs/APPROVAL_FLOW_v1_7.md, v1.7-04_smoke.md, v1.7-04_GATE.md, sql/v1.7-04_validation.sql.
 - **v1.7 (MVP3)** 로드맵: docs/v1.7_ROADMAP.md. 7버전(01 문서→02 승인/발행→03 타겟팅→04 dispatch→05 retry→06 funnel→07 release gate). Cursor 프롬프트·PC 실행·Gate 확정.
 
 ## v0.6-24 관리자 UI 정보구조 정리

@@ -7,21 +7,45 @@ $pdo = pdo();
 $base = APP_BASE . '/admin';
 $userBase = APP_BASE . '/user';
 
-// POST: v1.7-02 Publish action (draft -> published)
+// POST: v1.7-02 Publish action. v1.7-04: guard by target_user_cnt (0 = block)
 $flash = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $publishEventId = isset($_POST['publish_event_id']) ? (int)$_POST['publish_event_id'] : 0;
   if ($publishEventId > 0) {
-    try {
-      $stmt = $pdo->prepare("UPDATE app_alert_events SET published_at = NOW() WHERE id = :id AND published_at IS NULL");
-      $stmt->execute([':id' => $publishEventId]);
-      if ($stmt->rowCount() > 0) {
-        error_log('OPS alert_published event_id=' . $publishEventId);
-        header('Location: ' . $base . '/alert_ops.php?flash=published&event_id=' . $publishEventId);
-        exit;
+    $allowPublish = false;
+    $stEv = $pdo->prepare("SELECT id, ref_type, ref_id, route_label, event_type FROM app_alert_events WHERE id = :id AND published_at IS NULL");
+    $stEv->execute([':id' => $publishEventId]);
+    $ev = $stEv->fetch(PDO::FETCH_ASSOC);
+    if ($ev) {
+      $refType = (string)($ev['ref_type'] ?? '');
+      $refId = isset($ev['ref_id']) ? (int)$ev['ref_id'] : null;
+      $routeLabel = isset($ev['route_label']) ? trim((string)$ev['route_label']) : null;
+      if ($refType === 'route' && $refId !== null && $routeLabel !== null && $routeLabel !== '') {
+        $targetId = $refId . '_' . $routeLabel;
+        $eventType = trim((string)($ev['event_type'] ?? ''));
+        $likePattern = '%' . $eventType . '%';
+        $stCnt = $pdo->prepare("SELECT COUNT(DISTINCT s.user_id) AS c FROM app_subscriptions s WHERE s.is_active = 1 AND s.target_type = 'route' AND s.target_id = :tid AND s.alert_type LIKE :atype");
+        $stCnt->execute([':tid' => $targetId, ':atype' => $likePattern]);
+        $targetUserCnt = (int)($stCnt->fetch(PDO::FETCH_ASSOC)['c'] ?? 0);
+        if ($targetUserCnt === 0) {
+          header('Location: ' . $base . '/alert_ops.php?flash=blocked_no_targets&event_id=' . $publishEventId);
+          exit;
+        }
       }
-    } catch (Throwable $e) {
-      error_log('OPS alert_publish_failed: ' . $e->getMessage());
+      $allowPublish = true;
+    }
+    if ($allowPublish) {
+      try {
+        $stmt = $pdo->prepare("UPDATE app_alert_events SET published_at = NOW() WHERE id = :id AND published_at IS NULL");
+        $stmt->execute([':id' => $publishEventId]);
+        if ($stmt->rowCount() > 0) {
+          error_log('OPS alert_published event_id=' . $publishEventId);
+          header('Location: ' . $base . '/alert_ops.php?flash=published&event_id=' . $publishEventId);
+          exit;
+        }
+      } catch (Throwable $e) {
+        error_log('OPS alert_publish_failed: ' . $e->getMessage());
+      }
     }
     header('Location: ' . $base . '/alert_ops.php?flash=failed&event_id=' . $publishEventId);
     exit;
@@ -192,6 +216,9 @@ function h(string $s): string {
     th,td{border-bottom:1px solid #eee;padding:10px;text-align:left;font-size:13px;}
     th{background:#f7f8fa;}
     tr.highlight{background:#fef3cd;}
+    .badge{display:inline-block;padding:2px 6px;font-size:11px;border-radius:4px;}
+    .badge-draft{background:#f0f0f0;color:#555;}
+    .badge-published{background:#e0f0e0;color:#166;}
     .form-inline{margin-bottom:16px;}
     .form-inline label{margin-right:8px;}
     .form-inline input, .form-inline select{margin-right:12px;}
@@ -241,7 +268,7 @@ function h(string $s): string {
   </div>
 
   <?php if ($flash !== null): ?>
-  <p class="muted"><?= $flash === 'created' ? 'created' : ($flash === 'duplicate ignored' ? 'duplicate ignored' : ($flash === 'published' ? 'published' : 'failed')) ?></p>
+  <p class="muted"><?= $flash === 'created' ? 'created' : ($flash === 'duplicate ignored' ? 'duplicate ignored' : ($flash === 'published' ? 'published' : ($flash === 'blocked_no_targets' ? 'blocked_no_targets' : 'failed'))) ?></p>
   <?php endif; ?>
 
   <?php if ($focusEventId > 0 && $previewEvent !== null): ?>
@@ -291,7 +318,7 @@ function h(string $s): string {
   <table>
     <thead>
       <tr>
-        <th>id</th><th>event_type</th><th>title</th><th>ref_type</th><th>ref_id</th><th>route_label</th><th>published_at</th><th>created_at</th><th>Action</th><th>Links</th>
+        <th>id</th><th>event_type</th><th>title</th><th>ref_type</th><th>ref_id</th><th>route_label</th><th>published_at</th><th>State</th><th>created_at</th><th>Action</th><th>Links</th>
       </tr>
     </thead>
     <tbody>
@@ -313,6 +340,7 @@ function h(string $s): string {
           <td><?= $refId ?></td>
           <td><?= h($rl) ?></td>
           <td><?= h($publishedAt ?? '') ?></td>
+          <td><span class="badge badge-<?= $isDraft ? 'draft' : 'published' ?>"><?= $isDraft ? 'draft' : 'published' ?></span></td>
           <td><?= h($e['created_at'] ?? '') ?></td>
           <td>
             <?php if ($isDraft): ?>
