@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../../app/inc/auth.php';
+require_once __DIR__ . '/../../app/inc/error_normalize.php';
 require_admin();
 
 $pdo = pdo();
@@ -19,6 +20,12 @@ $jobsStmt = $pdo->prepare("SELECT * FROM shuttle_doc_job_log WHERE source_doc_id
 $jobsStmt->execute([':id' => $id]);
 $jobs = $jobsStmt->fetchAll();
 
+$lastParseJobStatus = '';
+$lastParseErrorCode = '';
+$lastParseDurationMs = null;
+$lastParseRouteLabel = '';
+$failedTopN = [];
+
 // latest PARSE_MATCH 선택 규칙 (고정): source_doc_id, job_type=PARSE_MATCH, job_status=success, ORDER BY id DESC LIMIT 1
 $latestJobStmt = $pdo->prepare("
   SELECT id
@@ -31,6 +38,34 @@ $latestJobStmt = $pdo->prepare("
 ");
 $latestJobStmt->execute([':id' => $id]);
 $latestParseJobId = (int)(($latestJobStmt->fetch()['id'] ?? 0));
+
+foreach ($jobs as $j) {
+  if ((string)($j['job_type'] ?? '') !== 'PARSE_MATCH') continue;
+  $lastParseJobStatus = (string)($j['job_status'] ?? '');
+  $note = (string)($j['result_note'] ?? '');
+  if ($lastParseJobStatus === 'failed') {
+    $lastParseErrorCode = normalize_error_code($note);
+  }
+  if (preg_match('/duration_ms=(\d+)/', $note, $m)) {
+    $lastParseDurationMs = (int)$m[1];
+  }
+  if (preg_match('/route=([^\s]+)/', $note, $m)) {
+    $lastParseRouteLabel = trim((string)$m[1]);
+  }
+  break;
+}
+
+foreach ($jobs as $j) {
+  $isParseFailed = ((string)($j['job_type'] ?? '') === 'PARSE_MATCH') && ((string)($j['job_status'] ?? '') === 'failed');
+  if (!$isParseFailed) continue;
+  $note = (string)($j['result_note'] ?? '');
+  $code = normalize_error_code($note);
+  $failedTopN[$code] = ($failedTopN[$code] ?? 0) + 1;
+}
+arsort($failedTopN);
+if (count($failedTopN) > 5) {
+  $failedTopN = array_slice($failedTopN, 0, 5, true);
+}
 
 // v0.6-25: 직전 PARSE_MATCH job_id (delta 계산용)
 $prevParseJobId = 0;
@@ -298,6 +333,10 @@ function normalizeStopNameDisplay(string $s): string {
     <div class="k">file_path</div><div><?= h((string)$doc['file_path']) ?></div>
     <div class="k">ocr_status</div><div><?= h((string)$doc['ocr_status']) ?></div>
     <div class="k">parse_status</div><div><?= h((string)$doc['parse_status']) ?></div>
+    <div class="k">last_parse_status</div><div><?= h($lastParseJobStatus !== '' ? $lastParseJobStatus : 'n/a') ?></div>
+    <div class="k">last_parse_error_code</div><div><?= h($lastParseErrorCode !== '' ? $lastParseErrorCode : '-') ?></div>
+    <div class="k">last_parse_duration_ms</div><div><?= $lastParseDurationMs !== null ? (int)$lastParseDurationMs : '—' ?></div>
+    <div class="k">last_parse_route_label</div><div><?= h($lastParseRouteLabel !== '' ? $lastParseRouteLabel : '—') ?></div>
     <div class="k">validation_status</div><div><?= h((string)$doc['validation_status']) ?></div>
     <div class="k">latest_parse_job_id</div><div><?= (int)$latestParseJobId ?></div>
     <?php if ($lastJobLogAt !== null): ?>
@@ -314,7 +353,25 @@ function normalizeStopNameDisplay(string $s): string {
       <button class="btn" type="submit">Run Parse/Match</button>
     </form>
     <span class="muted" style="margin-left:8px;">job_log 기록 + candidate 자동 생성</span>
+    <span class="muted" style="margin-left:8px;">입력 정책: uploads 루트 내 PDF(.pdf, 최대 10MB)만 허용</span>
   </div>
+
+  <?php if ($failedTopN): ?>
+  <h3 style="margin-top:18px;">PARSE_MATCH Failure TopN (recent 50 jobs)</h3>
+  <table>
+    <thead>
+      <tr><th>error_code</th><th>cnt</th></tr>
+    </thead>
+    <tbody>
+      <?php foreach ($failedTopN as $code => $cnt): ?>
+      <tr>
+        <td><?= h((string)$code) ?></td>
+        <td><?= (int)$cnt ?></td>
+      </tr>
+      <?php endforeach; ?>
+    </tbody>
+  </table>
+  <?php endif; ?>
 
   <!-- C. latest job 요약 (Routes) -->
   <h3 style="margin-top:18px;">Routes (latest PARSE_MATCH)</h3>
