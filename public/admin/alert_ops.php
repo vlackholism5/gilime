@@ -7,23 +7,31 @@ $pdo = pdo();
 $base = APP_BASE . '/admin';
 $userBase = APP_BASE . '/user';
 
-// POST: 새 알림 생성 (ref_type=route 고정)
+// POST: 새 알림 생성 (ref_type=route 고정). v1.6-06: contract 검증 + deterministic content_hash + redirect event_id
 $flash = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $eventType = isset($_POST['event_type']) ? trim((string)$_POST['event_type']) : '';
   $title = isset($_POST['title']) ? trim((string)$_POST['title']) : '';
   $body = isset($_POST['body']) ? trim((string)$_POST['body']) : '';
-  $refId = isset($_POST['ref_id']) ? (int)$_POST['ref_id'] : 0;
+  $refIdRaw = isset($_POST['ref_id']) ? trim((string)$_POST['ref_id']) : '';
+  $refId = $refIdRaw !== '' ? (int)$refIdRaw : 0;
   $routeLabel = isset($_POST['route_label']) ? trim((string)$_POST['route_label']) : '';
   $publishedAtRaw = isset($_POST['published_at']) ? trim((string)$_POST['published_at']) : '';
-  $publishedAt = $publishedAtRaw !== '' ? $publishedAtRaw : date('Y-m-d H:i:s');
-  if (strtotime($publishedAt) === false) {
-    $publishedAt = date('Y-m-d H:i:s');
+  $refType = 'route';
+
+  $valid = true;
+  if ($eventType === '') { $valid = false; }
+  if ($title === '') { $valid = false; }
+  if ($publishedAtRaw === '') { $valid = false; }
+  if ($refId <= 0) { $valid = false; }
+  if ($routeLabel === '') { $valid = false; }
+  $publishedAt = $publishedAtRaw;
+  if ($valid && strtotime($publishedAt) === false) {
+    $valid = false;
   }
-  if ($eventType !== '' && $title !== '' && $refId > 0 && $routeLabel !== '') {
-    $title50 = mb_substr($title, 0, 50);
-    $hashInput = sprintf('admin_create_%s_%d_%s_%s_%s',
-      $eventType, $refId, $routeLabel, $title50, date('YmdHis', strtotime($publishedAt)));
+  if ($valid) {
+    $publishedAt = date('Y-m-d H:i:s', strtotime($publishedAt));
+    $hashInput = implode('|', [$eventType, $title, $refType, (string)$refId, $routeLabel, $publishedAt]);
     $contentHash = hash('sha256', $hashInput);
     try {
       $stmt = $pdo->prepare("
@@ -39,11 +47,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ':chash' => $contentHash,
         ':pub' => $publishedAt,
       ]);
-      if ($stmt->rowCount() > 0) {
-        $flash = 'created';
+      $inserted = $stmt->rowCount() > 0;
+      $eventId = null;
+      if ($inserted) {
+        $eventId = (int)$pdo->lastInsertId();
       } else {
-        $flash = 'duplicate ignored';
+        $stmtRow = $pdo->prepare("SELECT id FROM app_alert_events WHERE content_hash = :chash LIMIT 1");
+        $stmtRow->execute([':chash' => $contentHash]);
+        $r = $stmtRow->fetch(PDO::FETCH_ASSOC);
+        if ($r) {
+          $eventId = (int)$r['id'];
+        }
       }
+      $flash = $inserted ? 'created' : 'duplicate ignored';
+      $q = 'flash=' . urlencode($flash);
+      if ($eventId !== null) {
+        $q .= '&event_id=' . $eventId;
+      }
+      header('Location: ' . $base . '/alert_ops.php?' . $q);
+      exit;
     } catch (Throwable $e) {
       $flash = 'failed';
       error_log('OPS alert_create_failed: ' . $e->getMessage());
@@ -55,6 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   exit;
 }
 $flash = isset($_GET['flash']) ? trim((string)$_GET['flash']) : null;
+$focusEventId = isset($_GET['event_id']) ? (int)$_GET['event_id'] : null;
 
 // Filters (GET)
 $filterType = isset($_GET['event_type']) && trim((string)$_GET['event_type']) !== '' ? trim((string)$_GET['event_type']) : null;
@@ -105,6 +128,7 @@ function h(string $s): string {
     table{border-collapse:collapse;width:100%;background:#fff;}
     th,td{border-bottom:1px solid #eee;padding:10px;text-align:left;font-size:13px;}
     th{background:#f7f8fa;}
+    tr.highlight{background:#fef3cd;}
     .form-inline{margin-bottom:16px;}
     .form-inline label{margin-right:8px;}
     .form-inline input, .form-inline select{margin-right:12px;}
@@ -145,8 +169,8 @@ function h(string $s): string {
         <input type="number" name="ref_id" required min="1" value="1" />
         <label>route_label</label>
         <input type="text" name="route_label" required maxlength="64" value="R1" />
-        <label>published_at (optional)</label>
-        <input type="datetime-local" name="published_at" />
+        <label>published_at</label>
+        <input type="datetime-local" name="published_at" required />
       </div>
       <button type="submit">Create</button>
     </form>
@@ -179,12 +203,14 @@ function h(string $s): string {
     </thead>
     <tbody>
       <?php foreach ($events as $e):
+        $eid = (int)($e['id'] ?? 0);
         $refId = (int)($e['ref_id'] ?? 0);
         $rl = trim((string)($e['route_label'] ?? ''));
         $userAlertsUrl = $rl !== '' ? $userBase . '/alerts.php?route_label=' . urlencode($rl) : '';
         $reviewUrl = ($refId > 0 && $rl !== '') ? $base . '/route_review.php?source_doc_id=' . $refId . '&route_label=' . urlencode($rl) . '&quick_mode=1&show_advanced=0' : ($refId > 0 ? $base . '/doc.php?id=' . $refId : '');
+        $highlight = ($focusEventId !== null && $focusEventId === $eid);
       ?>
-        <tr>
+        <tr<?= $highlight ? ' id="event-' . $eid . '" class="highlight"' : '' ?>>
           <td><?= (int)$e['id'] ?></td>
           <td><?= h($e['event_type'] ?? '') ?></td>
           <td><?= h($e['title'] ?? '') ?></td>
