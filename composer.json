@@ -1,0 +1,14 @@
+{
+  "name": "gilime/mvp",
+  "description": "Gilime MVP - Shuttle Bus Alert System",
+  "type": "project",
+  "require": {
+    "php": ">=7.4",
+    "smalot/pdfparser": "^2.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "Gilime\\": "app/"
+    }
+  }
+}

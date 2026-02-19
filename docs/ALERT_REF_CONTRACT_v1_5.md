@@ -53,7 +53,7 @@
 
 ## 5. Validation
 
-- `sql/v1.5-02_validation.sql` (read-only):  
+- `sql/releases/v1.5/validation/v1.5-02_validation.sql` (read-only):  
   - ref_type='route' 이면서 ref_id IS NULL OR route_label IS NULL 인 행  
   - ref_type='doc' 이면서 ref_id IS NULL 인 행  
   - 조회 후 수정은 주석으로 제안만, 기본은 UPDATE 없음.

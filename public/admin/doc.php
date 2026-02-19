@@ -1,13 +1,15 @@
 <?php
 declare(strict_types=1);
 
-require_once __DIR__ . '/../../app/inc/auth.php';
-require_once __DIR__ . '/../../app/inc/error_normalize.php';
+require_once __DIR__ . '/../../app/inc/auth/auth.php';
+require_once __DIR__ . '/../../app/inc/lib/error_normalize.php';
+require_once __DIR__ . '/../../app/inc/admin/admin_header.php';
 require_admin();
 
 $pdo = pdo();
 
 $id = (int)($_GET['id'] ?? 0);
+$justParsed = isset($_GET['just_parsed']) && $_GET['just_parsed'] === '1';
 if ($id <= 0) { http_response_code(400); exit('bad id'); }
 
 $stmt = $pdo->prepare("SELECT * FROM shuttle_source_doc WHERE id=:id");
@@ -281,7 +283,7 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8')
 // v0.6-30: route_review와 동일한 신뢰도 분류 (표시 전용)
 function matchConfidenceLabel(?string $matchMethod): string {
   if ($matchMethod === null || $matchMethod === '') return 'NONE';
-  if (in_array($matchMethod, ['exact', 'alias_live_rematch', 'alias_exact'], true)) return 'HIGH';
+  if (in_array($matchMethod, ['exact', 'alias_live_rematch', 'alias_exact', 'route_stop_master'], true)) return 'HIGH';
   if (in_array($matchMethod, ['normalized', 'alias_normalized'], true)) return 'MED';
   if ($matchMethod === 'like_prefix') return 'LOW';
   return 'NONE';
@@ -295,25 +297,42 @@ function normalizeStopNameDisplay(string $s): string {
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
-  <title>관리자 - 문서 <?= (int)$id ?></title>
+  <title>관리자 - 문서 파싱·노선 매칭 현황 (문서 #<?= (int)$id ?>)</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link rel="stylesheet" href="<?= APP_BASE ?>/public/assets/css/gilaime_ui.css" />
 </head>
 <body class="gilaime-app">
   <main class="container-fluid py-4">
-  <div class="g-top">
-    <p class="mb-0"><a href="<?= APP_BASE ?>/admin/index.php">← 뒤로</a></p>
-    <a class="btn btn-outline-secondary btn-sm" href="<?= APP_BASE ?>/admin/logout.php">로그아웃</a>
-  </div>
+  <?php render_admin_nav(); ?>
+  <?php render_admin_header([
+    ['label' => '문서 허브', 'url' => 'index.php'],
+    ['label' => '문서 #' . $id, 'url' => null],
+  ], false); ?>
 
   <?php if (!empty($_SESSION['flash'])): ?>
     <div class="alert alert-info py-2"><?= h((string)$_SESSION['flash']) ?></div>
     <?php unset($_SESSION['flash']); ?>
   <?php endif; ?>
+  <?php if ($justParsed && $latestParseJobId > 0): ?>
+    <div class="alert alert-success py-2">
+      <strong>파싱 성공.</strong> 다음: <a href="<?= APP_BASE ?>/admin/review_queue.php?only_risky=1&doc_id=<?= (int)$id ?>">검수 대기열</a>
+      <?php if ($routes && count($routes) > 0): $firstRl = (string)$routes[0]['route_label']; ?>
+      또는 <a href="<?= APP_BASE ?>/admin/route_review.php?source_doc_id=<?= (int)$id ?>&route_label=<?= urlencode($firstRl) ?>&show_advanced=0">노선 검수 (<?= h($firstRl) ?>)</a>
+      <?php endif; ?>
+      로 진행하세요.
+    </div>
+  <?php endif; ?>
+  <?php if ($lastParseJobStatus === 'failed'): ?>
+    <div class="alert alert-warning py-2">
+      최근 파싱/매칭이 실패했습니다.
+      오류 코드: <strong><?= h($lastParseErrorCode !== '' ? $lastParseErrorCode : 'UNKNOWN') ?></strong>.
+      파일 경로/PDF 형식/용량을 확인한 뒤 아래 <strong>재실행</strong> 버튼으로 다시 시도하세요.
+    </div>
+  <?php endif; ?>
 
-  <div class="g-page-head mb-3">
-    <h2 class="h3">문서 #<?= (int)$id ?></h2>
-    <p class="helper mb-0">상태를 확인하고 즉시 다음 액션(파싱/검수)을 실행합니다.</p>
+  <div class="g-page-head">
+    <h2 class="h3">문서 파싱 · 노선 매칭 현황</h2>
+    <p class="helper mb-0">문서 #<?= (int)$id ?> · 상태를 확인하고 파싱/매칭 실행 또는 노선 검수로 진행합니다.</p>
   </div>
   <details class="kbd-help mb-3">
     <summary>단축키 안내</summary>
@@ -325,39 +344,55 @@ function normalizeStopNameDisplay(string $s): string {
   <div class="card-body g-meta-grid">
     <div class="g-meta-key">출처(source_name)</div><div><?= h((string)$doc['source_name']) ?></div>
     <div class="g-meta-key">제목(title)</div><div><?= h((string)$doc['title']) ?></div>
-    <div class="g-meta-key">file_path</div><div><?= h((string)$doc['file_path']) ?></div>
-    <div class="g-meta-key">ocr_status</div><div><?= h((string)$doc['ocr_status']) ?></div>
-    <div class="g-meta-key">parse_status</div><div><?= h((string)$doc['parse_status']) ?></div>
-    <div class="g-meta-key">last_parse_status</div><div><?= h($lastParseJobStatus !== '' ? $lastParseJobStatus : 'n/a') ?></div>
-    <div class="g-meta-key">last_parse_error_code</div><div><?= h($lastParseErrorCode !== '' ? $lastParseErrorCode : '-') ?></div>
-    <div class="g-meta-key">last_parse_duration_ms</div><div><?= $lastParseDurationMs !== null ? (int)$lastParseDurationMs : '—' ?></div>
-    <div class="g-meta-key">last_parse_route_label</div><div><?= h($lastParseRouteLabel !== '' ? $lastParseRouteLabel : '—') ?></div>
-    <div class="g-meta-key">validation_status</div><div><?= h((string)$doc['validation_status']) ?></div>
-    <div class="g-meta-key">latest_parse_job_id</div><div><?= (int)$latestParseJobId ?></div>
+    <div class="g-meta-key">파일 경로(file_path)</div><div><?= h((string)$doc['file_path']) ?></div>
+    <div class="g-meta-key">OCR 상태(ocr_status)</div><div><?= h((string)$doc['ocr_status']) ?></div>
+    <div class="g-meta-key">파싱 상태(parse_status)</div><div><?= h((string)$doc['parse_status']) ?></div>
+    <div class="g-meta-key">최근 파싱 상태(last_parse_status)</div><div><?= h($lastParseJobStatus !== '' ? $lastParseJobStatus : 'n/a') ?></div>
+    <div class="g-meta-key">최근 파싱 오류코드(last_parse_error_code)</div><div><?= h($lastParseErrorCode !== '' ? $lastParseErrorCode : '-') ?></div>
+    <div class="g-meta-key">최근 파싱 소요(ms)</div><div><?= $lastParseDurationMs !== null ? (int)$lastParseDurationMs : '—' ?></div>
+    <div class="g-meta-key">최근 파싱 노선(last_parse_route_label)</div><div><?= h($lastParseRouteLabel !== '' ? $lastParseRouteLabel : '—') ?></div>
+    <div class="g-meta-key">검증 상태(validation_status)</div><div><?= h((string)$doc['validation_status']) ?></div>
+    <div class="g-meta-key">최신 파싱 Job ID</div><div><?= (int)$latestParseJobId ?></div>
     <?php if ($lastJobLogAt !== null): ?>
     <div class="g-meta-key">마지막 검수 시각</div><div><?= h($lastJobLogAt) ?></div>
     <?php endif; ?>
-    <div class="g-meta-key">Alias Audit</div><div><a href="<?= APP_BASE ?>/admin/alias_audit.php">Alias Audit</a></div>
-    <div class="g-meta-key">Alert Ops</div><div><a href="<?= APP_BASE ?>/admin/alert_ops.php">Alert Ops</a></div>
+    <div class="g-meta-key">별칭 감사</div><div><a href="<?= APP_BASE ?>/admin/alias_audit.php">별칭 감사</a></div>
+    <div class="g-meta-key">알림 운영</div><div><a href="<?= APP_BASE ?>/admin/alert_ops.php">알림 운영</a></div>
   </div>
   </div>
 
   <!-- B. 실행 버튼 영역 (상단 고정) -->
   <div class="card g-card mb-3">
-  <div class="card-body d-flex flex-wrap align-items-center gap-2">
-    <form method="post" action="<?= APP_BASE ?>/admin/run_job.php" class="d-inline">
-      <input type="hidden" name="source_doc_id" value="<?= (int)$id ?>" />
-      <button class="btn btn-gilaime-primary btn-sm" type="submit">파싱/매칭 실행</button>
-    </form>
-    <span class="text-muted-g small">job_log 기록 + candidate 자동 생성</span>
-    <span class="text-muted-g small">입력 정책: uploads 루트 내 PDF(.pdf, 최대 10MB)만 허용</span>
+  <div class="card-body">
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+      <form method="post" action="<?= APP_BASE ?>/admin/run_job.php" class="d-inline" data-loading-msg="파싱/매칭 처리 중... 잠시만 기다려 주세요.">
+        <input type="hidden" name="source_doc_id" value="<?= (int)$id ?>" />
+        <button class="btn btn-gilaime-primary btn-sm" type="submit">
+          <?= $lastParseJobStatus === 'failed' ? '재실행' : '파싱/매칭 실행' ?>
+        </button>
+      </form>
+      <a class="btn btn-outline-secondary btn-sm" href="<?= APP_BASE ?>/admin/index.php?parse_status=failed">실패건 보기</a>
+      <?php if ($latestParseJobId > 0): ?>
+      <a class="btn btn-gilaime-primary btn-sm" href="<?= APP_BASE ?>/admin/review_queue.php?only_risky=1&doc_id=<?= (int)$id ?>">검수 대기열 바로가기</a>
+      <?php if ($routes && count($routes) > 0): $firstRl = (string)$routes[0]['route_label']; ?>
+      <a class="btn btn-gilaime-primary btn-sm" href="<?= APP_BASE ?>/admin/route_review.php?source_doc_id=<?= (int)$id ?>&route_label=<?= urlencode($firstRl) ?>&show_advanced=0">첫 노선 검수 (<?= h($firstRl) ?>)</a>
+      <?php endif; ?>
+      <?php endif; ?>
+    </div>
+    <p class="text-muted-g small mb-0">
+      파싱 결과 코드(<strong><?= h($lastParseErrorCode !== '' ? $lastParseErrorCode : '-') ?></strong>)
+      · 처리시간 <?= $lastParseDurationMs !== null ? (int)$lastParseDurationMs . 'ms' : '—' ?>.
+      실패 시 오류 코드를 확인한 뒤 파일 경로/PDF 형식/용량을 점검하고 위 <strong>재실행</strong> 버튼을 클릭하세요.
+      동일 문서 재실행 시 이전 후보(is_active=1)는 비활성화되고 새 job_id로 후보가 생성됩니다. UI는 최신 success job 기준으로 표시됩니다.
+      배치 재처리: <code>php scripts/php/run_parse_match_batch.php --only_failed=1 --limit=20</code>
+    </p>
   </div>
   </div>
 
   <?php if ($failedTopN): ?>
-  <h3 class="h5 mt-4">PARSE_MATCH Failure TopN (recent 50 jobs)</h3>
+  <h3 class="h5 mt-4">PARSE_MATCH 실패 TopN (최근 50개 작업)</h3>
   <div class="table-responsive">
-  <table class="table table-hover align-middle g-table">
+  <table class="table table-hover align-middle g-table g-table-dense">
     <thead>
       <tr><th>error_code</th><th>cnt</th></tr>
     </thead>
@@ -374,24 +409,24 @@ function normalizeStopNameDisplay(string $s): string {
   <?php endif; ?>
 
   <!-- C. latest job 요약 (Routes) -->
-  <h3 class="h5 mt-4">Routes (latest PARSE_MATCH)</h3>
+  <h3 class="h5 mt-4">노선 목록 (최신 PARSE_MATCH)</h3>
   <p class="text-muted-g small mb-2">기준: latest PARSE_MATCH 스냅샷 (job_id=<?= (int)$latestParseJobId ?>)</p>
   <div class="g-routes mb-3">
     <?php if ($routes): ?>
       <?php foreach ($routes as $r): $rl = (string)$r['route_label']; ?>
         <a class="g-pill" href="<?= APP_BASE ?>/admin/route_review.php?source_doc_id=<?= (int)$id ?>&route_label=<?= urlencode($rl) ?>&show_advanced=0">
-          <?= h($rl) ?> 검수하기
+          노선검수 <?= h($rl) ?>
         </a>
       <?php endforeach; ?>
     <?php else: ?>
-      <span class="text-muted-g small">아직 candidate가 없습니다. Run Parse/Match를 먼저 실행하세요.</span>
+      <span class="text-muted-g small">아직 후보가 없습니다. 파싱/매칭을 먼저 실행하세요.</span>
     <?php endif; ?>
   </div>
 
   <!-- D. PARSE_MATCH Metrics (latest job) -->
-  <h3 class="h5 mt-4">PARSE_MATCH Metrics (latest job)</h3>
-  <p class="text-muted-g small mb-1">이 표는 route_review에서 보는 것과 동일한 기준(latest snapshot)이다. job_id=<?= (int)$latestParseJobId ?><?= $prevParseJobId > 0 ? ', prev_job_id=' . $prevParseJobId : '' ?></p>
-  <p class="text-muted-g small mb-2">delta는 직전 PARSE_MATCH job 대비 변화량이다. prev job이 없으면 delta는 표시되지 않는다.</p>
+  <h3 class="h5 mt-4">PARSE_MATCH 지표 (최신 작업)</h3>
+  <p class="text-muted-g small mb-1">이 표는 route_review와 동일한 기준(latest snapshot)입니다. job_id=<?= (int)$latestParseJobId ?><?= $prevParseJobId > 0 ? ', prev_job_id=' . $prevParseJobId : '' ?></p>
+  <p class="text-muted-g small mb-2">delta는 직전 PARSE_MATCH 작업 대비 변화량입니다. 이전 작업이 없으면 delta는 표시되지 않습니다.</p>
   <p class="text-muted-g small mb-2">route_label을 클릭하면 해당 노선의 검수 화면(route_review)으로 이동합니다.</p>
   <?php if ($prevParseJobId > 0 && $totalLowDelta > 0): ?>
   <p class="text-muted-g small mb-1">주의: LOW(like_prefix) 후보가 직전 job 대비 +<?= $totalLowDelta ?> 증가했습니다.</p>
@@ -399,23 +434,33 @@ function normalizeStopNameDisplay(string $s): string {
   <?php if ($prevParseJobId > 0 && $totalNoneDelta > 0): ?>
   <p class="text-muted-g small mb-2">주의: NONE(미매칭) 후보가 직전 job 대비 +<?= $totalNoneDelta ?> 증가했습니다.</p>
   <?php endif; ?>
+  <?php
+  $totalCand = 0; $totalLowNone = 0;
+  foreach ($metrics as $m) { $totalCand += (int)$m['cand_total']; $totalLowNone += (int)$m['low_cnt'] + (int)$m['none_cnt']; }
+  $lowNoneRatio = $totalCand > 0 ? ($totalLowNone / $totalCand) * 100 : 0;
+  ?>
+  <?php if ($metrics && $lowNoneRatio > 30): ?>
+  <div class="alert alert-warning py-2 mb-2">
+    <strong>품질 기준선 경고:</strong> LOW+NONE 비중이 <?= (int)round($lowNoneRatio) ?>%입니다. 승격 전 검수에서 LOW/NONE 후보를 반드시 확인하세요.
+  </div>
+  <?php endif; ?>
   <div class="table-responsive">
-  <table class="table table-hover align-middle g-table">
+  <table class="table table-hover align-middle g-table g-table-dense">
     <thead>
       <tr>
-        <th>route_label</th>
-        <th>cand_total</th>
-        <th>auto_matched_cnt</th>
-        <th>low_confidence_cnt</th>
-        <th>none_matched_cnt</th>
-        <th>alias_used_cnt</th>
-        <th>high_cnt</th>
-        <th>med_cnt</th>
-        <th>low_cnt</th>
-        <th>none_cnt</th>
-        <th>auto_delta</th>
-        <th>low_delta</th>
-        <th>none_delta</th>
+        <th>노선 라벨</th>
+        <th>후보 수</th>
+        <th>자동 매칭 수</th>
+        <th>낮은 신뢰도 수</th>
+        <th>미매칭 수</th>
+        <th>별칭 사용 수</th>
+        <th>HIGH 수</th>
+        <th>MED 수</th>
+        <th>LOW 수</th>
+        <th>NONE 수</th>
+        <th>자동 매칭 증감</th>
+        <th>LOW 증감</th>
+        <th>NONE 증감</th>
       </tr>
     </thead>
     <tbody>
@@ -446,26 +491,26 @@ function normalizeStopNameDisplay(string $s): string {
         </tr>
         <?php endforeach; ?>
       <?php else: ?>
-        <tr><td colspan="13" class="text-muted-g small">no metrics (Run Parse/Match 먼저 실행하세요)</td></tr>
+        <tr><td colspan="13" class="text-muted-g small">지표가 없습니다 (파싱/매칭 먼저 실행)</td></tr>
       <?php endif; ?>
     </tbody>
   </table>
   </div>
 
   <!-- v0.6-29: Review Progress (latest job) -->
-  <h3 class="h5 mt-4">Review Progress (latest job)</h3>
-  <p class="text-muted-g small mb-2">pending이 0이 되면 Promote 가능 여부를 route_review에서 확인하세요.</p>
+  <h3 class="h5 mt-4">검수 진행률 (최신 작업)</h3>
+  <p class="text-muted-g small mb-2">pending이 0이 되면 승격(Promote) 가능 여부를 route_review에서 확인하세요.</p>
   <div class="table-responsive">
-  <table class="table table-hover align-middle g-table">
+  <table class="table table-hover align-middle g-table g-table-dense">
     <thead>
       <tr>
-        <th>route_label</th>
-        <th>cand_total</th>
-        <th>pending_cnt</th>
-        <th>approved_cnt</th>
-        <th>rejected_cnt</th>
-        <th>done_cnt</th>
-        <th>done_rate(%)</th>
+        <th>노선 라벨</th>
+        <th>후보 수</th>
+        <th>대기 수</th>
+        <th>승인 수</th>
+        <th>거절 수</th>
+        <th>완료 수</th>
+        <th>완료율(%)</th>
       </tr>
     </thead>
     <tbody>
@@ -484,14 +529,14 @@ function normalizeStopNameDisplay(string $s): string {
         </tr>
         <?php endforeach; ?>
       <?php else: ?>
-        <tr><td colspan="7" class="text-muted-g small">no data (Run Parse/Match 먼저 실행하세요)</td></tr>
+        <tr><td colspan="7" class="text-muted-g small">데이터가 없습니다 (파싱/매칭 먼저 실행)</td></tr>
       <?php endif; ?>
     </tbody>
   </table>
   </div>
 
   <!-- v0.6-31: Next Actions (Summary + Top20 + only_risky 토글) -->
-  <h3 class="h5 mt-4">Next Actions</h3>
+  <h3 class="h5 mt-4">다음 작업</h3>
   <?php
   $nextActionsBase = APP_BASE . '/admin/doc.php?id=' . (int)$id;
   $startRouteLabel = $nextActionsSummary[0]['route_label'] ?? '';
@@ -499,30 +544,32 @@ function normalizeStopNameDisplay(string $s): string {
   <?php if ($startRouteLabel !== ''): ?>
   <p class="mb-2">
     <a class="btn btn-outline-secondary btn-sm" href="<?= APP_BASE ?>/admin/route_review.php?source_doc_id=<?= (int)$id ?>&route_label=<?= urlencode($startRouteLabel) ?>&quick_mode=1&show_advanced=0">오늘 작업 시작</a>
+    <a class="btn btn-outline-secondary btn-sm" href="<?= APP_BASE ?>/admin/route_review.php?source_doc_id=<?= (int)$id ?>&route_label=<?= urlencode($startRouteLabel) ?>&show_advanced=0">검수 화면 열기</a>
+    <a class="btn btn-outline-secondary btn-sm" target="_blank" href="<?= APP_BASE ?>/user/journey.php?route_label=<?= urlencode($startRouteLabel) ?>">사용자 경로안내 확인</a>
     <span class="text-muted-g small ms-2">pending_risky 가장 많은 노선(<?= h($startRouteLabel) ?>)으로 이동</span>
-    <span class="mx-2">|</span><a href="<?= APP_BASE ?>/admin/review_queue.php?only_risky=1">Queue로 이동</a>
+    <span class="mx-2">|</span><a href="<?= APP_BASE ?>/admin/review_queue.php?only_risky=1">검수 대기열로 이동</a>
   </p>
   <?php endif; ?>
   <p class="mb-2">
     <?php if ($onlyRisky): ?>
-    <a href="<?= $nextActionsBase ?>">전체 pending 보기</a>
+    <a href="<?= $nextActionsBase ?>">전체 대기 보기</a>
     <?php else: ?>
     <a href="<?= $nextActionsBase ?>&only_risky=1">리스크 후보만 보기</a>
     <?php endif; ?>
   </p>
 
   <!-- Next Actions Summary (by route) -->
-  <h4 class="h6 mt-3 mb-2">Next Actions Summary (by route)</h4>
+  <h4 class="h6 mt-3 mb-2">다음 작업 요약 (노선별)</h4>
   <?php if ($nextActionsSummary): ?>
   <div class="table-responsive">
-  <table class="table table-hover align-middle g-table">
+  <table class="table table-hover align-middle g-table g-table-dense">
     <thead>
       <tr>
-        <th>route_label</th>
-        <th>pending_total</th>
-        <th>pending_low_cnt</th>
-        <th>pending_none_cnt</th>
-        <th>pending_risky_cnt</th>
+        <th>노선 라벨</th>
+        <th>전체 대기</th>
+        <th>LOW 대기</th>
+        <th>NONE 대기</th>
+        <th>리스크 대기</th>
       </tr>
     </thead>
     <tbody>
@@ -541,23 +588,23 @@ function normalizeStopNameDisplay(string $s): string {
   </table>
   </div>
   <?php else: ?>
-  <p class="text-muted-g small">no pending candidates</p>
+  <p class="text-muted-g small">대기 후보가 없습니다</p>
   <?php endif; ?>
 
-  <h4 class="h6 mt-3 mb-2">Next Actions (Top 20 pending candidates) <?= $onlyRisky ? '(LOW/NONE only)' : '(all pending)' ?></h4>
-  <p class="text-muted-g small mb-2"><?= $onlyRisky ? '이 표는 pending 중 LOW/NONE만 대상으로 Top 20입니다.' : '이 표는 pending 후보 중 리스크 우선순위(LOW/NONE/score) 기준 Top 20입니다.' ?></p>
+  <h4 class="h6 mt-3 mb-2">다음 작업 (대기 후보 상위 20개) <?= $onlyRisky ? '(LOW/NONE만)' : '(전체 대기)' ?></h4>
+  <p class="text-muted-g small mb-2"><?= $onlyRisky ? '이 표는 대기(pending) 후보 중 LOW/NONE만 대상으로 상위 20건입니다.' : '이 표는 대기(pending) 후보 중 리스크 우선순위(LOW/NONE/score) 기준 상위 20건입니다.' ?></p>
   <?php if ($topPendingCandidates): ?>
   <div class="table-responsive">
-  <table class="table table-hover align-middle g-table">
+  <table class="table table-hover align-middle g-table g-table-dense">
     <thead>
       <tr>
-        <th>route_label</th>
+        <th>노선 라벨</th>
         <th>원문 정류장명</th>
         <th>정규화</th>
         <th>매칭 결과</th>
         <th>근거</th>
         <th>신뢰도</th>
-        <th>Action</th>
+        <th>처리 위치</th>
       </tr>
     </thead>
     <tbody>
@@ -581,26 +628,26 @@ function normalizeStopNameDisplay(string $s): string {
   </table>
   </div>
   <?php else: ?>
-  <p class="text-muted-g small">no pending candidates</p>
+  <p class="text-muted-g small">대기 후보가 없습니다</p>
   <?php endif; ?>
 
   <!-- v0.6-26: PARSE_MATCH Metrics History (최근 5회) -->
-  <h3 class="h5 mt-4">PARSE_MATCH Metrics History (recent 5 jobs)</h3>
+  <h3 class="h5 mt-4">PARSE_MATCH 지표 이력 (최근 5개 작업)</h3>
   <div class="table-responsive">
-  <table class="table table-hover align-middle g-table">
+  <table class="table table-hover align-middle g-table g-table-dense">
     <thead>
       <tr>
-        <th>parse_job_id</th>
-        <th>route_label</th>
-        <th>cand_total</th>
-        <th>auto_matched_cnt</th>
-        <th>low_confidence_cnt</th>
-        <th>none_matched_cnt</th>
-        <th>alias_used_cnt</th>
-        <th>high_cnt</th>
-        <th>med_cnt</th>
-        <th>low_cnt</th>
-        <th>none_cnt</th>
+        <th>파싱 Job ID</th>
+        <th>노선 라벨</th>
+        <th>후보 수</th>
+        <th>자동 매칭 수</th>
+        <th>낮은 신뢰도 수</th>
+        <th>미매칭 수</th>
+        <th>별칭 사용 수</th>
+        <th>HIGH 수</th>
+        <th>MED 수</th>
+        <th>LOW 수</th>
+        <th>NONE 수</th>
       </tr>
     </thead>
     <tbody>
@@ -623,19 +670,19 @@ function normalizeStopNameDisplay(string $s): string {
         </tr>
         <?php endforeach; ?>
       <?php else: ?>
-        <tr><td colspan="11" class="text-muted-g small">no history</td></tr>
+        <tr><td colspan="11" class="text-muted-g small">이력이 없습니다</td></tr>
       <?php endif; ?>
     </tbody>
   </table>
   </div>
 
-  <h3 class="h5 mt-4">ocr_text (preview)</h3>
+  <h3 class="h5 mt-4">ocr_text (미리보기)</h3>
   <pre class="g-pre"><?= h(substr((string)($doc['ocr_text'] ?? ''), 0, 4000)) ?></pre>
 
-  <h3 class="h5">Jobs</h3>
+  <h3 class="h5">작업 이력</h3>
   <div class="table-responsive">
-  <table class="table table-hover align-middle g-table">
-    <thead><tr><th>id</th><th>type</th><th>status</th><th>note</th><th>updated</th></tr></thead>
+  <table class="table table-hover align-middle g-table g-table-dense mb-0">
+    <thead><tr><th>ID</th><th>유형</th><th>상태</th><th>메모</th><th>수정 시각</th></tr></thead>
     <tbody>
       <?php foreach ($jobs as $j): ?>
       <tr>
@@ -647,15 +694,35 @@ function normalizeStopNameDisplay(string $s): string {
       </tr>
       <?php endforeach; ?>
       <?php if (!$jobs): ?>
-      <tr><td colspan="5" class="text-muted-g small">no jobs</td></tr>
+      <tr><td colspan="5" class="text-muted-g small">작업 이력이 없습니다</td></tr>
       <?php endif; ?>
     </tbody>
   </table>
   </div>
 
   <p class="text-muted-g small mt-3">
-    Doc 상세 → Run Parse/Match → latest PARSE_MATCH 스냅샷 기준 route 탐지 → route_review 진입
+    파싱·매칭 현황 → 파싱/매칭 실행 → 최신 PARSE_MATCH 스냅샷 기준 노선 탐지 → 노선 검수 화면 진입
   </p>
   </main>
+
+  <div id="g-loading-overlay" class="g-loading-overlay" hidden aria-live="polite">
+    <div class="g-loading-spinner" aria-hidden="true"></div>
+    <span id="g-loading-msg">처리 중...</span>
+  </div>
+  <script>
+  (function(){
+    var overlay = document.getElementById('g-loading-overlay');
+    var msgEl = document.getElementById('g-loading-msg');
+    document.querySelectorAll('form[data-loading-msg]').forEach(function(f){
+      f.addEventListener('submit', function(){
+        var msg = f.getAttribute('data-loading-msg') || '처리 중...';
+        if (msgEl) msgEl.textContent = msg;
+        overlay.removeAttribute('hidden');
+        var btn = f.querySelector('button[type="submit"]');
+        if (btn) { btn.disabled = true; btn.textContent = '처리 중...'; }
+      });
+    });
+  })();
+  </script>
 </body>
 </html>

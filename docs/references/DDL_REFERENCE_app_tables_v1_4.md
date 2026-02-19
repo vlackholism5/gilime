@@ -1,7 +1,7 @@
 # DDL Reference: app_* tables (v1.4)
 
 GPT/구현 시 **테이블·컬럼명을 이 문서와 100% 동일하게** 사용하세요.  
-실제 적용 DDL: `sql/v1.4-02_schema.sql` + `sql/v1.4-06_delivery_unique.sql` + `sql/v1.4-07_route_label.sql`.
+실제 적용 DDL: `sql/releases/v1.4/schema/v1.4-02_schema.sql` + `sql/releases/v1.4/schema/v1.4-06_delivery_unique.sql` + `sql/releases/v1.4/schema/v1.4-07_route_label.sql`.
 
 ---
 

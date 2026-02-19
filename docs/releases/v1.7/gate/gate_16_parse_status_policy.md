@@ -7,7 +7,7 @@
 - [ ] `dry_run=1` 3줄 요약 출력 확인
 
 ## 최소 검증
-- `php -l scripts/run_parse_match_batch.php`
+- `php -l scripts/php/run_parse_match_batch.php`
 - `--only_failed=1 --dry_run=1` 실행
 - `--dry_run=1` 실행(기본 정책 확인)
 

@@ -5,7 +5,7 @@
 | Gate | 항목 | PASS 기준 | 증거(파일/SQL/스크린샷) | 결과(OK/FAIL/확인 필요) |
 |------|------|-----------|--------------------------|--------------------------|
 | G1 | Git 원격 동기화 | main에 v1.5 커밋 3개가 push 되어 있음 | `git log --oneline -n 10` | |
-| G2 | Alert Ref Contract 위반 0 | v1.5-02_validation.sql 3쿼리 모두 0 rows | `sql/v1.5-02_validation.sql` 실행 결과 | |
+| G2 | Alert Ref Contract 위반 0 | v1.5-02_validation.sql 3쿼리 모두 0 rows | `sql/releases/v1.5/validation/v1.5-02_validation.sql` 실행 결과 | |
 | G3 | Delivery semantics | page=1 최초 접속 시 deliveries 증가, 새로고침 시 추가 증가 없음 | Workbench SELECT 결과 + 브라우저 확인 | |
 | G4 | Pagination | page=1 → Next → Previous 동작, 페이지별 deliveries 기록이 렌더된 항목만 반영 | 브라우저 확인 + deliveries COUNT | |
 | G5 | Observability 최소선 | routes subscribe_toggle / alerts delivery_written error_log 존재 | 코드 확인 + (가능 시) error_log | |

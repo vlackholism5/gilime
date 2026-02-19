@@ -1,0 +1,15 @@
+# v1.7-12 Smoke (Ops control) + 번들 v1.7-10~12
+
+## 번들 스모크 (5~8단계)
+
+1. **`sql/releases/v1.7/schema/schema_10_retry_backoff.sql` 적용** (Workbench). retry_count 컬럼 없으면 ALTER 실행.
+2. **failed delivery 1건 확보** (선택): 기존에 failed가 있으면 생략. 없으면 stub 실행 시 일부 실패하거나, 또는 수동으로 1건 pending → stub 실패 유도 후 failed 확인.
+3. **Outbound stub 실행:** `php scripts/php/run_delivery_outbound_stub.php --limit=200` — 출력에 processed, sent, failed, skipped_backoff 확인.
+4. **Real metrics ingest 실행:** `php scripts/php/run_alert_ingest_real_metrics.php --since_minutes=1440 --limit=200` — inserted / skipped_duplicate 확인.
+5. **Admin ops 페이지:** /admin/ops_control.php 접속 — A(상태별·failed top 20·CLI 안내), B(metrics ingest CLI·최근 metrics 10), C(quick links) 표시 확인.
+6. **Validation SQL 순서 실행:** `sql/releases/v1.7/validation/validation_10_retry_backoff.sql`, `sql/releases/v1.7/validation/validation_11_real_metrics_ingest.sql`, `sql/releases/v1.7/validation/validation_12_ops_control.sql` — 컬럼 존재, status/retry 분포, content_hash 중복 0 rows, ref contract 0 rows 확인.
+
+## v1.7-12 단독
+
+- Ops Control 링크: index.php에서 Ops Control 클릭 → ops_control.php 로드.
+- Gate quick links에서 Alert Ops / Alert Audit / Ops Summary 이동 확인.

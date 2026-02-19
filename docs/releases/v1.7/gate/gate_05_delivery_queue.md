@@ -1,0 +1,15 @@
+# v1.7-05 Gate (Deliveries pre-write)
+
+## Gate 항목
+
+| # | 항목 | Evidence |
+|---|------|----------|
+| **G1** | Publish 시 deliveries pending 적재 | route 이벤트 Publish 후 해당 EID로 pending 건수 >= target 수. flash=published_with_queue&queued_cnt=N. |
+| **G2** | user/alerts에서 pending→shown | 접속 시 pending row만 UPDATE shown, sent_at=NOW(). 새 row 생성 없음. |
+| **G3** | 중복 0 rows | (user_id, alert_event_id, channel) GROUP BY HAVING COUNT(*)>1 → 0 rows. |
+| **G4** | 새로고침 시 shown 불변 | 동일 페이지 재요청 시 deliveries 추가 INSERT 없음, shown 유지. |
+| **G5** | 문서/검증 SQL | docs/releases/v1.7/specs/spec_05_delivery_queue.md, smoke/gate, sql/releases/v1.7/validation/validation_05_delivery_queue.sql. |
+
+## Non-goals
+
+- 이메일/SMS·재시도 워커·다중 채널 금지.

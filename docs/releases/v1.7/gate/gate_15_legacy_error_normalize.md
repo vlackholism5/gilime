@@ -1,7 +1,7 @@
 # v1.7-15 Gate: Legacy error normalization
 
 ## 체크리스트
-- [ ] `app/inc/error_normalize.php` 추가
+- [ ] `app/inc/lib/error_normalize.php` 추가
 - [ ] `doc.php` Failure TopN 집계가 정규화 함수를 사용
 - [ ] `last_parse_error_code`가 실패 로그 기준 정규화 코드 표시
 

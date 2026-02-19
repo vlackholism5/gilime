@@ -106,10 +106,10 @@ mkdir -p data/derived/source_docs
 **실행 방법 (프로젝트 루트에서):**
 
 ```bash
-node scripts/ensure-data-dirs.js
+node scripts/node/ensure-data-dirs.js
 ```
 
-스크립트 경로: `scripts/ensure-data-dirs.js`
+스크립트 경로: `scripts/node/ensure-data-dirs.js`
 
 ---
 
@@ -123,14 +123,14 @@ node scripts/ensure-data-dirs.js
 
 2. **Import 실행 (Cursor 터미널, 프로젝트 루트에서):**
    ```bash
-   php scripts/import_seoul_bus_stop_master_full.php
+   php scripts/php/import_seoul_bus_stop_master_full.php
    ```
 
 3. **성공 예:**  
    `OK: imported 11462 rows` (inserted / updated / skipped 로그 포함)
 
 4. **검증 (Workbench):**  
-   `sql/v0.6-20_validation.sql` 주석 해제 후 9개 쿼리 실행
+   `sql/archive/v0.6/validation/v0.6-20_validation.sql` 주석 해제 후 9개 쿼리 실행
 
 5. **특징:**  
    - Idempotent (중복 실행 시 UPSERT)
@@ -139,9 +139,36 @@ node scripts/ensure-data-dirs.js
 
 ---
 
+### v1.7-18: 서울시 노선/노선정류장 마스터 실데이터 (inbound CSV → DB)
+
+1. **사전 작업 (스키마 적용):**  
+   Workbench에서 아래 SQL 실행
+   - `sql/releases/v1.7/schema/schema_18_seoul_route_public_data.sql`
+
+2. **CSV 파일 위치:**  
+   - `data/inbound/seoul/bus/route_master/서울시 노선마스터 정보.csv`
+   - `data/inbound/seoul/bus/route_stop_master/서울시 노선 정류장마스터 정보.csv`  
+   ⚠️ **Git 커밋 금지** (inbound는 .gitignore 대상)
+
+3. **Import 실행 (프로젝트 루트):**
+   ```bash
+   php scripts/php/import_seoul_bus_route_master_full.php
+   php scripts/php/import_seoul_bus_route_stop_master_full.php
+   ```
+
+4. **검증 (Workbench):**  
+   `sql/releases/v1.7/validation/validation_18_seoul_route_public_data.sql` 주석 해제 후 실행
+
+5. **특징:**  
+   - Idempotent (UPSERT, route_master는 route_id 기준 / route_stop_master는 route_id+seq 기준)
+   - UTF-8/EUC-KR 입력 자동 대응
+   - 현재 단계는 적재/검증까지이며, 사용자 경로 계산과의 결합은 다음 단계에서 진행
+
+---
+
 ### v0.6-10: 테스트용 더미 (이전 방식)
 
-1. DDL 적용: Workbench에서 `sql/v0.6-10_seoul_stop_master.sql` 실행.
+1. DDL 적용: Workbench에서 `sql/archive/v0.6/schema/v0.6-10_seoul_stop_master.sql` 실행.
 2. 더미 데이터 10건만 생성 (강남역, 서울역, 홍대입구역 등)
 
 **커밋 정책:** inbound 제외 유지, raw/derived·스크립트·SQL은 커밋 대상.

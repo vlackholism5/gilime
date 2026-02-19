@@ -1,14 +1,27 @@
 <?php
 declare(strict_types=1);
-require_once __DIR__ . '/../../app/inc/auth.php';
+require_once __DIR__ . '/../../app/inc/auth/auth.php';
+require_once __DIR__ . '/../../app/inc/admin/admin_header.php';
 require_admin();
 
-$docs = pdo()->query("
+$parseStatusFilter = isset($_GET['parse_status']) ? trim((string)$_GET['parse_status']) : '';
+$sql = "
   SELECT id, source_name, title, file_path, ocr_status, parse_status, validation_status, updated_at
   FROM shuttle_source_doc
-  ORDER BY id DESC
-  LIMIT 200
-")->fetchAll();
+";
+$params = [];
+if ($parseStatusFilter !== '' && in_array($parseStatusFilter, ['pending', 'failed', 'running', 'success'], true)) {
+  $sql .= " WHERE parse_status = :parse_status";
+  $params[':parse_status'] = $parseStatusFilter;
+}
+$sql .= " ORDER BY id DESC LIMIT 200";
+if ($params) {
+  $st = pdo()->prepare($sql);
+  $st->execute($params);
+  $docs = $st->fetchAll();
+} else {
+  $docs = pdo()->query($sql)->fetchAll();
+}
 
 $routeStmt = pdo()->prepare("
   SELECT DISTINCT route_label
@@ -27,12 +40,18 @@ $routeStmt = pdo()->prepare("
 </head>
 <body class="gilaime-app">
   <main class="container-fluid py-4">
-  <div class="top d-flex justify-content-between align-items-start gap-3 flex-wrap">
+  <?php render_admin_nav(); ?>
+  <?php render_admin_header([['label' => '문서 허브', 'url' => null]], false); ?>
+  <div class="g-page-header-row">
     <div class="g-page-head">
       <h2>문서 허브</h2>
-      <p class="helper">문서 상태를 확인하고 검수/운영 화면으로 이동합니다.</p>
+      <p class="helper mb-0">문서 상태를 확인하고 검수/운영 화면으로 이동합니다.</p>
     </div>
     <div class="d-flex gap-2 flex-wrap">
+      <a class="btn btn-outline-secondary btn-sm" href="<?= APP_BASE ?>/admin/index.php?parse_status=failed">실패건 보기</a>
+      <?php if ($parseStatusFilter !== ''): ?>
+      <a class="btn btn-outline-secondary btn-sm" href="<?= APP_BASE ?>/admin/index.php">전체 보기</a>
+      <?php endif; ?>
       <a class="btn btn-outline-secondary btn-sm" href="<?= APP_BASE ?>/admin/review_queue.php?only_risky=1">검수 대기</a>
       <a class="btn btn-outline-secondary btn-sm" href="<?= APP_BASE ?>/admin/alias_audit.php">Alias 감사</a>
       <a class="btn btn-outline-secondary btn-sm" href="<?= APP_BASE ?>/admin/alert_ops.php">알림 운영</a>
@@ -42,7 +61,6 @@ $routeStmt = pdo()->prepare("
       <a class="btn btn-outline-secondary btn-sm" href="<?= APP_BASE ?>/admin/upload_pdf.php">PDF 업로드</a>
       <a class="btn btn-outline-secondary btn-sm" href="<?= APP_BASE ?>/admin/ops_dashboard.php">운영 대시보드</a>
       <a class="btn btn-outline-secondary btn-sm" href="<?= APP_BASE ?>/user/home.php" target="_blank" rel="noopener">사용자 홈</a>
-      <a href="<?= APP_BASE ?>/admin/logout.php">로그아웃</a>
     </div>
   </div>
   <details class="kbd-help mb-3">
@@ -57,7 +75,7 @@ $routeStmt = pdo()->prepare("
     <thead>
       <tr>
         <th class="mono">ID</th><th>출처</th><th>제목</th><th>파일 경로</th>
-        <th>OCR</th><th>파싱</th><th>검증</th><th>수정 시각</th><th>노선</th>
+        <th>OCR</th><th>파싱</th><th>검증</th><th>수정 시각</th><th>파싱·매칭 현황 · 노선검수</th>
       </tr>
     </thead>
     <tbody>
@@ -79,13 +97,14 @@ $routeStmt = pdo()->prepare("
           <td><?= htmlspecialchars((string)$d['parse_status']) ?></td>
           <td><?= htmlspecialchars((string)$d['validation_status']) ?></td>
           <td><?= htmlspecialchars((string)$d['updated_at']) ?></td>
-          <td class="d-flex flex-wrap gap-2">
+          <td class="d-flex flex-wrap gap-2 align-items-center">
+            <a class="btn btn-sm btn-gilaime-primary" href="<?= APP_BASE ?>/admin/doc.php?id=<?= (int)$d['id'] ?>">파싱·매칭 현황</a>
             <?php if (!$routes): ?>
-              <span class="text-muted">(없음)</span>
+              <span class="text-muted-g small">(노선 없음)</span>
             <?php else: ?>
               <?php foreach ($routes as $r): ?>
                 <a class="btn btn-sm btn-outline-secondary" href="<?= APP_BASE ?>/admin/route_review.php?source_doc_id=<?= (int)$d['id'] ?>&route_label=<?= urlencode((string)$r['route_label']) ?>">
-                  검수 <?= htmlspecialchars((string)$r['route_label']) ?>
+                  노선검수 <?= htmlspecialchars((string)$r['route_label']) ?>
                 </a>
               <?php endforeach; ?>
             <?php endif; ?>

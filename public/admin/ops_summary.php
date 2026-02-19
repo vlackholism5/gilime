@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
-require_once __DIR__ . '/../../app/inc/auth.php';
+require_once __DIR__ . '/../../app/inc/auth/auth.php';
+require_once __DIR__ . '/../../app/inc/admin/admin_header.php';
 require_admin();
 
 $pdo = pdo();
@@ -40,6 +41,50 @@ $recentDeliveries = $pdo->query("
 function h(string $s): string {
   return htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
 }
+
+function inboundFilePath(string $rel): string {
+  return __DIR__ . '/../../' . ltrim($rel, '/');
+}
+
+function dataReady(string $rel): bool {
+  return is_file(inboundFilePath($rel));
+}
+
+function tableCountSafe(PDO $pdo, string $table): ?int {
+  try {
+    $existsStmt = $pdo->prepare("
+      SELECT COUNT(*) AS c
+      FROM information_schema.TABLES
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = :t
+    ");
+    $existsStmt->execute([':t' => $table]);
+    $exists = (int)($existsStmt->fetch(PDO::FETCH_ASSOC)['c'] ?? 0);
+    if ($exists === 0) return null;
+    $cnt = $pdo->query("SELECT COUNT(*) AS c FROM {$table}")->fetch(PDO::FETCH_ASSOC);
+    return (int)($cnt['c'] ?? 0);
+  } catch (Throwable $ignore) {
+    return null;
+  }
+}
+
+$stopMasterRel = 'data/inbound/seoul/bus/stop_master/서울시_정류장마스터_정보.csv';
+$routeMasterRel = 'data/inbound/seoul/bus/route_master/서울시 노선마스터 정보.csv';
+$routeStopMasterRel = 'data/inbound/seoul/bus/route_stop_master/서울시 노선 정류장마스터 정보.csv';
+$stopMasterReady = dataReady($stopMasterRel);
+$routeMasterReady = dataReady($routeMasterRel);
+$routeStopReady = dataReady($routeStopMasterRel);
+$stopMasterCount = tableCountSafe($pdo, 'seoul_bus_stop_master');
+$routeMasterCount = tableCountSafe($pdo, 'seoul_bus_route_master');
+$routeStopCount = tableCountSafe($pdo, 'seoul_bus_route_stop_master');
+$routeStopStopIdNullCount = null;
+if ($routeStopCount !== null && $routeStopCount > 0) {
+  try {
+    $row = $pdo->query("SELECT COUNT(*) AS c FROM seoul_bus_route_stop_master WHERE stop_id IS NULL")->fetch(PDO::FETCH_ASSOC);
+    $routeStopStopIdNullCount = (int)($row['c'] ?? 0);
+  } catch (Throwable $e) {
+  }
+}
 ?>
 <!doctype html>
 <html lang="ko">
@@ -51,7 +96,12 @@ function h(string $s): string {
 </head>
 <body class="gilaime-app">
   <main class="container-fluid py-4">
-  <div class="g-top">
+  <?php render_admin_nav(); ?>
+  <?php render_admin_header([
+    ['label' => '문서 허브', 'url' => 'index.php'],
+    ['label' => '운영 요약', 'url' => null],
+  ], false); ?>
+  <div class="g-page-header-row">
     <div class="g-page-head">
       <h2 class="h3">운영 요약</h2>
       <p class="helper mb-0">승인/이벤트/배달 상태를 한 화면에서 확인합니다.</p>
@@ -67,7 +117,7 @@ function h(string $s): string {
     <div class="card-body">
     <h3 class="h5">1. 승인 이력 (최근 20)</h3>
     <div class="table-responsive">
-    <table class="table table-hover align-middle g-table mb-0">
+    <table class="table table-hover align-middle g-table g-table-dense mb-0">
       <thead>
         <tr>
           <th>id</th><th>event_id</th><th>actor</th><th>action</th><th>note</th><th>event_type</th><th>route</th><th>created</th>
@@ -87,7 +137,7 @@ function h(string $s): string {
           </tr>
         <?php endforeach; ?>
         <?php if (!$approvals): ?>
-          <tr><td colspan="8" class="text-muted-g small">(none)</td></tr>
+          <tr><td colspan="8" class="text-muted-g small">데이터가 없습니다</td></tr>
         <?php endif; ?>
       </tbody>
     </table>
@@ -99,7 +149,7 @@ function h(string $s): string {
     <div class="card-body">
     <h3 class="h5">2. 이벤트 (최근 50) — 초안: <?= $draftCnt ?>, 발행: <?= $publishedCnt ?></h3>
     <div class="table-responsive">
-    <table class="table table-hover align-middle g-table mb-0">
+    <table class="table table-hover align-middle g-table g-table-dense mb-0">
       <thead>
         <tr>
           <th>id</th><th>event_type</th><th>title</th><th>route</th><th>status</th><th>created</th>
@@ -117,7 +167,7 @@ function h(string $s): string {
           </tr>
         <?php endforeach; ?>
         <?php if (!$events): ?>
-          <tr><td colspan="6" class="text-muted-g small">(none)</td></tr>
+          <tr><td colspan="6" class="text-muted-g small">데이터가 없습니다</td></tr>
         <?php endif; ?>
       </tbody>
     </table>
@@ -139,7 +189,7 @@ function h(string $s): string {
       ?>
     </p>
     <div class="table-responsive">
-    <table class="table table-hover align-middle g-table mb-0">
+    <table class="table table-hover align-middle g-table g-table-dense mb-0">
       <thead>
         <tr>
           <th>id</th><th>event_id</th><th>user_id</th><th>channel</th><th>status</th><th>sent_at</th><th>delivered_at</th><th>last_error</th><th>created</th>
@@ -160,7 +210,7 @@ function h(string $s): string {
           </tr>
         <?php endforeach; ?>
         <?php if (!$recentDeliveries): ?>
-          <tr><td colspan="9" class="text-muted-g small">(none)</td></tr>
+          <tr><td colspan="9" class="text-muted-g small">데이터가 없습니다</td></tr>
         <?php endif; ?>
       </tbody>
     </table>
@@ -172,8 +222,65 @@ function h(string $s): string {
     <div class="card-body">
     <h3 class="h5">4. Outbound Stub 실행 안내</h3>
     <p>대기(pending) → 발송됨(sent) 처리 스텁: 터미널에서 아래 명령 실행.</p>
-    <p><code class="small">php scripts/run_delivery_outbound_stub.php --limit=200</code></p>
+    <p><code class="small g-nowrap">php scripts/run_delivery_outbound_stub.php --limit=200</code></p>
     <p class="text-muted-g small mb-0">실제 이메일/SMS/푸시 연동 없음. pending만 sent로 전환하는 운영 스텁.</p>
+    </div>
+  </section>
+
+  <section class="card g-card mt-4">
+    <div class="card-body">
+    <h3 class="h5">5. 서울시 노선 데이터 반영 준비 상태 (v1.7-18)</h3>
+    <div class="table-responsive">
+    <table class="table table-hover align-middle g-table g-table-dense mb-0">
+      <thead>
+        <tr><th>항목</th><th>상태</th><th>값/경로</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>inbound 정류장 마스터 CSV</td>
+          <td><?= $stopMasterReady ? '준비됨' : '없음' ?></td>
+          <td><code class="small"><?= h($stopMasterRel) ?></code></td>
+        </tr>
+        <tr>
+          <td>inbound 노선 마스터 CSV</td>
+          <td><?= $routeMasterReady ? '준비됨' : '없음' ?></td>
+          <td><code class="small"><?= h($routeMasterRel) ?></code></td>
+        </tr>
+        <tr>
+          <td>inbound 노선-정류장 마스터 CSV</td>
+          <td><?= $routeStopReady ? '준비됨' : '없음' ?></td>
+          <td><code class="small"><?= h($routeStopMasterRel) ?></code></td>
+        </tr>
+        <tr>
+          <td>DB 적재 건수 (seoul_bus_stop_master)</td>
+          <td><?= $stopMasterCount === null ? '스키마 미적용/확인불가' : '확인됨' ?></td>
+          <td><?= $stopMasterCount === null ? '—' : (int)$stopMasterCount . '건' ?></td>
+        </tr>
+        <tr>
+          <td>DB 적재 건수 (seoul_bus_route_master)</td>
+          <td><?= $routeMasterCount === null ? '스키마 미적용/확인불가' : '확인됨' ?></td>
+          <td><?= $routeMasterCount === null ? '—' : (int)$routeMasterCount . '건' ?></td>
+        </tr>
+        <tr>
+          <td>DB 적재 건수 (seoul_bus_route_stop_master)</td>
+          <td><?= $routeStopCount === null ? '스키마 미적용/확인불가' : '확인됨' ?></td>
+          <td><?= $routeStopCount === null ? '—' : (int)$routeStopCount . '건' ?></td>
+        </tr>
+        <?php if ($routeStopStopIdNullCount !== null): ?>
+        <tr>
+          <td>route_stop stop_id NULL 건수</td>
+          <td><?= $routeStopStopIdNullCount > 0 && $routeStopCount > 0 && ($routeStopStopIdNullCount / $routeStopCount) > 0.05 ? '경고(&gt;5%)' : '정상' ?></td>
+          <td><?= (int)$routeStopStopIdNullCount ?>건 (<?= $routeStopCount > 0 ? round(100 * $routeStopStopIdNullCount / $routeStopCount, 1) : 0 ?>%)</td>
+        </tr>
+        <?php endif; ?>
+      </tbody>
+    </table>
+    </div>
+    <p class="mt-3 mb-1"><strong>실행 순서(터미널):</strong></p>
+    <p class="mb-1"><code class="small g-nowrap">php scripts/php/import_seoul_bus_stop_master_full.php</code></p>
+    <p class="mb-1"><code class="small g-nowrap">php scripts/php/import_seoul_bus_route_master_full.php</code></p>
+    <p class="mb-1"><code class="small g-nowrap">php scripts/php/import_seoul_bus_route_stop_master_full.php</code></p>
+    <p class="text-muted-g small mb-0">검증 SQL: <code class="small">sql/releases/v1.7/validation/validation_18_seoul_route_public_data.sql</code></p>
     </div>
   </section>
   </main>

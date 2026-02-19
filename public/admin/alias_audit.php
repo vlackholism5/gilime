@@ -1,7 +1,8 @@
 <?php
 declare(strict_types=1);
 
-require_once __DIR__ . '/../../app/inc/auth.php';
+require_once __DIR__ . '/../../app/inc/auth/auth.php';
+require_once __DIR__ . '/../../app/inc/admin/admin_header.php';
 require_admin();
 
 $pdo = pdo();
@@ -58,41 +59,36 @@ function h(string $s): string {
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
-  <title>Admin - Alias Audit</title>
-  <style>
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:24px;background:#f9fafb;}
-    a{color:#0b57d0;text-decoration:none;}
-    a:hover{text-decoration:underline;}
-    table{border-collapse:collapse;width:100%;margin-top:10px;background:#fff;}
-    th,td{border-bottom:1px solid #eee;padding:10px;text-align:left;font-size:13px;}
-    th{background:#f7f8fa;font-weight:600;}
-    .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
-    .muted{color:#666;font-size:12px;}
-    .card{margin-bottom:20px;}
-  </style>
+  <title>관리자 - 별칭 감사</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="<?= APP_BASE ?>/public/assets/css/gilaime_ui.css" />
 </head>
-<body>
-  <div class="top">
-    <div>
-      <a href="<?= APP_BASE ?>/admin/index.php">Docs</a>
-      <span class="muted"> / Alias Audit</span>
-    </div>
-    <a href="<?= APP_BASE ?>/admin/logout.php">Logout</a>
+<body class="gilaime-app">
+  <main class="container-fluid py-4">
+  <?php render_admin_nav(); ?>
+  <?php render_admin_header([
+    ['label' => '문서 허브', 'url' => 'index.php'],
+    ['label' => '별칭 감사', 'url' => null],
+  ], false); ?>
+
+  <div class="g-page-head">
+    <h2 class="h3">별칭 감사</h2>
+    <p class="helper mb-0">읽기 전용. 승인/승격은 노선 검수 화면에서만 수행합니다.</p>
   </div>
 
-  <h2>Alias Audit</h2>
-  <p class="muted" style="margin:0 0 12px;">read-only. 승인/승격은 route_review에서만.</p>
-
-  <h3 class="card">Alias Issues (blocked/rejected logs)</h3>
-  <p class="muted" style="margin:0 0 8px;">alias_text 길이 2 이하(legacy) 또는 canonical 미존재. 최대 100건.</p>
-  <table>
+  <h3 class="h5 mb-2">별칭 이슈 (차단/거절 로그)</h3>
+  <p class="text-muted-g small mb-2">alias_text 길이 2 이하(legacy) 또는 canonical 미존재. 최대 100건.</p>
+  <div class="card g-card mb-3">
+  <div class="card-body">
+  <div class="table-responsive">
+  <table class="table table-hover align-middle g-table g-table-dense mb-0">
     <thead>
       <tr>
         <th>id</th>
-        <th>alias_text</th>
-        <th>canonical_text</th>
+        <th>별칭 텍스트</th>
+        <th>표준 텍스트</th>
         <th>이슈</th>
-        <th>updated_at</th>
+        <th>수정 시각</th>
         <th>링크</th>
       </tr>
     </thead>
@@ -115,7 +111,7 @@ function h(string $s): string {
       ?>
       <?php if ($aliasIssues): ?>
         <?php foreach ($aliasIssues as $r):
-          $issueLabel = isset($r['issue']) ? $r['issue'] : (mb_strlen(trim((string)($r['alias_text'] ?? ''))) <= 2 ? 'alias_text<=2' : '—');
+          $issueLabel = isset($r['issue']) ? $r['issue'] : (mb_strlen(trim((string)($r['alias_text'] ?? ''))) <= 2 ? '별칭 길이 2 이하' : '—');
         ?>
         <tr>
           <td><?= (int)($r['id'] ?? 0) ?></td>
@@ -123,27 +119,33 @@ function h(string $s): string {
           <td><?= h((string)($r['canonical_text'] ?? '')) ?></td>
           <td><?= h($issueLabel) ?></td>
           <td><?= !empty($r['updated_at']) ? h((string)$r['updated_at']) : '—' ?></td>
-          <td><a href="<?= APP_BASE ?>/admin/review_queue.php?only_risky=1">Queue</a></td>
+          <td><a href="<?= APP_BASE ?>/admin/review_queue.php?only_risky=1">검수 대기열</a></td>
         </tr>
         <?php endforeach; ?>
       <?php else: ?>
-        <tr><td colspan="6" class="muted">no issues (또는 테이블 확인 필요)</td></tr>
+        <tr><td colspan="6" class="text-muted-g small">이슈가 없습니다</td></tr>
       <?php endif; ?>
     </tbody>
   </table>
+  </div>
+  </div>
+  </div>
 
-  <h3 class="card">Recent Alias Writes</h3>
-  <p class="muted" style="margin:0 0 8px;">최근 50건. doc/route는 candidate 사용 시 route_review에서 연결.</p>
-  <table>
+  <h3 class="h5 mb-2">최근 별칭 등록/수정</h3>
+  <p class="text-muted-g small mb-2">최근 50건. doc/route는 candidate 사용 시 route_review에서 연결됩니다.</p>
+  <div class="card g-card">
+  <div class="card-body">
+  <div class="table-responsive">
+  <table class="table table-hover align-middle g-table g-table-dense mb-0">
     <thead>
       <tr>
         <th>id</th>
-        <th>alias_text</th>
-        <th>canonical_text</th>
-        <th>rule_version</th>
-        <th>is_active</th>
-        <th>created_at</th>
-        <th>updated_at</th>
+        <th>별칭 텍스트</th>
+        <th>표준 텍스트</th>
+        <th>규칙 버전</th>
+        <th>활성 여부</th>
+        <th>생성 시각</th>
+        <th>수정 시각</th>
       </tr>
     </thead>
     <tbody>
@@ -160,9 +162,13 @@ function h(string $s): string {
         </tr>
         <?php endforeach; ?>
       <?php else: ?>
-        <tr><td colspan="7" class="muted">no data (또는 테이블 확인 필요)</td></tr>
+        <tr><td colspan="7" class="text-muted-g small">데이터가 없습니다</td></tr>
       <?php endif; ?>
     </tbody>
   </table>
+  </div>
+  </div>
+  </div>
+  </main>
 </body>
 </html>

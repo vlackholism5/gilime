@@ -20,6 +20,15 @@
 
 - admin 업로드 화면(`upload_pdf.php`)에서 PDF 1건 업로드 후 같은 화면에서 즉시 `Run Parse/Match` 실행 가능.
 
+## v1.7-18 seoul route public data import
+
+- 서울시 버스 `route_master`/`route_stop_master` 적재 스키마 추가: `sql/releases/v1.7/schema/schema_18_seoul_route_public_data.sql`
+- Import 스크립트 2개 추가:
+  - `scripts/php/import_seoul_bus_route_master_full.php`
+  - `scripts/php/import_seoul_bus_route_stop_master_full.php`
+- 검증 SQL: `sql/releases/v1.7/validation/validation_18_seoul_route_public_data.sql`
+- 운영 확인 UI: `public/admin/ops_summary.php` 섹션 "서울시 노선 데이터 반영 준비 상태 (v1.7-18)"
+
 ## v0.6-11 자동매칭 규칙
 
 PARSE_MATCH(job) 실행 시 후보(candidates) 생성하면서 **서울시 정류장마스터(seoul_bus_stop_master)** 기반으로  
@@ -68,7 +77,7 @@ PARSE_MATCH(job) 실행 시 후보(candidates) 생성하면서 **서울시 정�
 
 - **매칭 신뢰도 컬럼:** route_review Candidates에 표시 전용. exact/alias_live_rematch/alias_exact → HIGH, normalized/alias_normalized → MED, like_prefix → LOW, 그 외/NULL → NONE (텍스트만, 신규 CSS 없음).
 - **summary 4개 카운트:** latest 스냅샷 기준 auto_matched_cnt, low_confidence_cnt(like_prefix), none_matched_cnt, alias_used_cnt. promote 전 모호매칭 비중 파악용. only_unmatched=1일 때도 동일 latest 기준으로 표시.
-- **검증:** sql/v0.6-18_validation.sql 에 검증 쿼리 7개(주석 블록). 매칭 로직/SoT 변경 없음.
+- **검증:** sql/archive/v0.6/validation/v0.6-18_validation.sql 에 검증 쿼리 7개(주석 블록). 매칭 로직/SoT 변경 없음.
 
 ## v0.6-19 LOW(like_prefix) 필터 + Promote 경고
 
@@ -79,17 +88,17 @@ PARSE_MATCH(job) 실행 시 후보(candidates) 생성하면서 **서울시 정�
 
 ## v0.6-20 seoul_bus_stop_master 실데이터 import
 
-- **Import 스크립트:** `scripts/import_seoul_bus_stop_master_full.php` (euc-kr CSV → UTF-8 변환, UPSERT, idempotent)
+- **Import 스크립트:** `scripts/php/import_seoul_bus_stop_master_full.php` (euc-kr CSV → UTF-8 변환, UPSERT, idempotent)
 - **입력 파일:** `data/inbound/seoul/bus/stop_master/서울시_정류장마스터_정보.csv` (Git 커밋 금지, 로컬 전용)
-- **실행:** `php scripts/import_seoul_bus_stop_master_full.php` (Cursor 터미널)
-- **검증:** `sql/v0.6-20_validation.sql` (9개 쿼리: 건수, 인덱스, EXPLAIN, match_method 분포)
-- **인덱스:** `sql/v0.6-20_stop_master_indexes.sql` (stop_name 인덱스 확인, 추가 인덱스는 v0.6-21로 미룸)
+- **실행:** `php scripts/php/import_seoul_bus_stop_master_full.php` (Cursor 터미널)
+- **검증:** `sql/archive/v0.6/validation/v0.6-20_validation.sql` (9개 쿼리: 건수, 인덱스, EXPLAIN, match_method 분포)
+- **인덱스:** `sql/archive/v0.6/schema/v0.6-20_stop_master_indexes.sql` (stop_name 인덱스 확인, 추가 인덱스는 v0.6-21로 미룸)
 
 ## v0.6-21 운영 안전장치 강화 (LOW 승인 + alias 검증)
 
 - **LOW 승인 게이트:** match_method='like_prefix'인 pending 후보는 **체크박스 "LOW(like_prefix) 확인함"** 체크 후에만 Approve 가능. 미체크 시 서버에서 차단, 에러: "LOW... 확인 체크 후 승인할 수 있습니다." (DB UPDATE 없음)
 - **alias 등록 검증 강화:** (a) canonical_text가 stop_master에 **존재**해야만 저장. 없으면 차단, 에러: "alias blocked: canonical not found". (b) alias_text(정규화 후) **길이 <=2** 이면 저장 차단, 에러: "alias blocked: alias_text too short". 검증 통과 시에만 alias 저장 + live rematch.
-- **검증:** `sql/v0.6-21_validation.sql` (8개 쿼리: LOW pending/approved, alias canonical 존재, alias_text 길이 분포, 회귀 확인)
+- **검증:** `sql/archive/v0.6/validation/v0.6-21_validation.sql` (8개 쿼리: LOW pending/approved, alias canonical 존재, alias_text 길이 분포, 회귀 확인)
 - **매칭 로직/SoT 불변:** 승인/등록 단계 게이트만 강화.
 
 ## v0.6-22 PARSE_MATCH 품질 지표 저장
@@ -98,7 +107,7 @@ PARSE_MATCH(job) 실행 시 후보(candidates) 생성하면서 **서울시 정�
 - **저장 컬럼:** cand_total, auto_matched_cnt, low_confidence_cnt, none_matched_cnt, alias_used_cnt, high_cnt, med_cnt, low_cnt, none_cnt. 분류는 v0.6-18과 동일(HIGH/MED/LOW/NONE).
 - **run_job.php:** PARSE_MATCH 성공 후 DB 집계 쿼리로 metrics 계산 → UPSERT 저장 (PHP 루프 금지). 저장 실패 시 PARSE_MATCH는 성공 유지(비치명적).
 - **doc.php:** "PARSE_MATCH Metrics (latest job)" 테이블 추가. latest_parse_job_id 기준 route별 품질 지표 표시. route_review는 기존 그대로 유지.
-- **검증:** `sql/v0.6-22_validation.sql` (8개 쿼리: 테이블 존재, metrics row count, candidate 집계와 일치, UPSERT idempotent 확인).
+- **검증:** `sql/archive/v0.6/validation/v0.6-22_validation.sql` (8개 쿼리: 테이블 존재, metrics row count, candidate 집계와 일치, UPSERT idempotent 확인).
 - **SQL 실행:** Cursor PC 앱(Workbench)에서만. 매칭 로직/SoT 불변.
 
 ## v0.6-23 RC 종료
@@ -116,12 +125,12 @@ PARSE_MATCH(job) 실행 시 후보(candidates) 생성하면서 **서울시 정�
 
 ## v1.3 성능/운영 안정
 
-- **검증 통합팩:** sql/v1.3-06_validation_pack.sql (SHOW INDEX 4건 + EXPLAIN 3건). 운영 3페이지 핵심 쿼리 한 파일로 검증.
+- **검증 통합팩:** sql/releases/v1.3/validation/v1.3-06_validation_pack.sql (SHOW INDEX 4건 + EXPLAIN 3건). 운영 3페이지 핵심 쿼리 한 파일로 검증.
 - **인덱스:** v1.3-01 candidate 2개·alias 1개, v1.3-05 job_log 1개(idx_joblog_doc_type_status_id). ops_dashboard NOT EXISTS·derived agg 정렬 기본값(최신), sort=risky 옵션. review_queue sort=simple 옵션.
 - **문서:** docs/PERF_NOTES_v1_2.md에 v1.3-01~09 결론 표·v1.4 후보(job_log 인덱스 정리, 집계 테이블 도입 여부, 대량 데이터 LIMIT/필터 가이드) 확정.
 - v1.4에서 새 테이블(ops_events, alias_audit_log, job_snapshot_summary 등) 도입 후보 검토.
 - **MVP2 v1.4 one-shot expansion** 준비: docs/SECURITY_BASELINE.md, docs/ERROR_POLICY.md, docs/ROUTING_STRUCTURE_v1_4.md 로 보안·에러·라우팅 규칙을 문서화하여 v1.4 사용자 페이지·구독·알림 확장 전 기준을 고정.
-- **v1.4 계획 문서** (docs/v1.4-00): PRD_v1_4_MVP2.md, ARCH_v1_4_SYSTEM.md, ERD_v1_4_DRAFT.md, WIREFRAME_v1_4.md 생성 완료.
+- **v1.4 계획 문서** (docs/v1.4-00): docs/references/PRD_v1_4_MVP2.md, ARCH_v1_4_SYSTEM.md, ERD_v1_4_DRAFT.md, WIREFRAME_v1_4.md 생성 완료.
 
 ## v1.4 MVP2 사용자 페이지·구독·알림 (v1.4-10)
 
@@ -129,21 +138,21 @@ PARSE_MATCH(job) 실행 시 후보(candidates) 생성하면서 **서울시 정�
 - **DB 테이블:** app_* 5개. DDL: v1.4-02_schema.sql, v1.4-06_delivery_unique.sql (배달 UNIQUE), v1.4-07_route_label.sql (app_alert_events.route_label). PC에서만 실행.
 - **구독·알림:** routes.php Subscribe/Unsubscribe, "(Subscribed)" 표시. alerts.php type·route_label·subscribed only 필터, Review 링크(route_review/doc). 배달 로깅: app_alert_deliveries (노출 시 channel=web, status=shown).
 - **배치:** run_alert_ingest_stub.php (더미). run_alert_generate_from_metrics.php — shuttle_parse_metrics 직전 job 대비 NONE/LOW 증가 시 이벤트 삽입(content_hash idempotent). v1.4-07_route_label.sql 적용 후 실행.
-- **스모크:** docs/v1.4-10_smoke.md 참고.
+- **스모크:** docs/releases/v1.4/smoke/v1.4-10_smoke.md 참고.
 
 ## v1.5 MVP2.5 hardening (v1.5-01 ~ v1.5-03)
 
 - **Observability:** docs/OBSERVABILITY_v1_5.md. 증거는 app_alert_deliveries + (선택) error_log. subscribe_toggle/delivery_written 로그. docs/v1.5-01_smoke.md.
-- **Alert ref contract:** docs/ALERT_REF_CONTRACT_v1_5.md. ref_type=route/doc/NULL 규칙, 스크립트·검증 sql/v1.5-02_validation.sql.
+- **Alert ref contract:** docs/ALERT_REF_CONTRACT_v1_5.md. ref_type=route/doc/NULL 규칙, 스크립트·검증 sql/releases/v1.5/validation/v1.5-02_validation.sql.
 - **Delivery semantics:** 렌더된 이벤트에만 delivery 기록. alerts.php pagination (50 per page), Previous/Next. docs/DELIVERY_SEMANTICS_v1_5.md, docs/v1.5-03_smoke.md.
-- **v1.6-10** MVP3 운영콘솔 안정화: alert_ops create contract + content_hash + redirect, alert_event_audit 필터·요약·드릴다운, user alerts delivery 가드. No new tables. docs/v1.6_RELEASE_GATE.md S1–S7 + Evidence SQL 블록.
+- **v1.6-10** MVP3 운영콘솔 안정화: alert_ops create contract + content_hash + redirect, alert_event_audit 필터·요약·드릴다운, user alerts delivery 가드. No new tables. docs/releases/v1.6/gate/v1.6_RELEASE_GATE.md S1–S7 + Evidence SQL 블록.
 - **v1.7-02** Draft/Publish: published_at NULL 허용, alert_ops 초안·Publish 액션·draft_only/published_only 필터, user alerts는 발행된 것만 노출. sql/releases/v1.7/schema/schema_02_draft_publish_nullable.sql, sql/releases/v1.7/validation/validation_02_draft_publish.sql, docs/releases/v1.7/smoke/smoke_02_draft_publish.md, docs/releases/v1.7/gate/gate_02_draft_publish.md.
 - **v1.7-03** Targeting Preview: alert_ops event_id 기준 구독 매칭 target_user_cnt·리스트 20 read-only. docs/releases/v1.7/specs/spec_03_targeting_preview.md, docs/releases/v1.7/smoke/smoke_03_targeting_preview.md, docs/releases/v1.7/gate/gate_03_targeting_preview.md, sql/releases/v1.7/validation/validation_03_targeting_preview.sql.
 - **v1.7-04** Approval + Publish guard: draft/published 뱃지, Publish 시 target_user_cnt=0 차단(blocked_no_targets). docs/releases/v1.7/specs/spec_04_approval_flow.md, docs/releases/v1.7/smoke/smoke_04_publish_guard.md, docs/releases/v1.7/gate/gate_04_publish_guard.md, sql/releases/v1.7/validation/validation_04_publish_guard.sql.
 - **v1.7-05** Deliveries pre-write: Publish 시 pending 적재, user/alerts에서 pending→shown만 UPDATE. docs/releases/v1.7/specs/spec_05_delivery_queue.md, docs/releases/v1.7/smoke/smoke_05_delivery_queue.md, docs/releases/v1.7/gate/gate_05_delivery_queue.md, sql/releases/v1.7/schema/schema_05_deliveries_index.sql, sql/releases/v1.7/validation/validation_05_delivery_queue.sql.
 - **v1.7-06** Approver role + approval audit: app_users.role, app_alert_approvals, Publish approver만 허용. docs/releases/v1.7/specs/spec_06_approver_role.md, docs/releases/v1.7/smoke/smoke_06_approver_role.md, docs/releases/v1.7/gate/gate_06_approver_role.md, sql/releases/v1.7/schema/schema_06_approver_role_audit.sql, sql/releases/v1.7/validation/validation_06_approver_role.sql.
 - **v1.7-07** Outbound stub: app_alert_deliveries(delivered_at, last_error), scripts/run_delivery_outbound_stub.php. docs/releases/v1.7/specs/spec_07_outbound_stub.md, docs/releases/v1.7/smoke/smoke_07_outbound_stub.md, docs/releases/v1.7/gate/gate_07_outbound_stub.md, sql/releases/v1.7/schema/schema_07_outbound_stub.sql, sql/releases/v1.7/validation/validation_07_outbound_stub.sql.
-- **v1.7-08** Subscription alert_type FIND_IN_SET: alert_ops 4곳, app/inc/subscription_match.php. docs/releases/v1.7/specs/spec_08_subscription_matching.md, docs/releases/v1.7/smoke/smoke_08_subscription_matching.md, docs/releases/v1.7/gate/gate_08_subscription_matching.md, sql/releases/v1.7/validation/validation_08_subscription_matching.sql.
+- **v1.7-08** Subscription alert_type FIND_IN_SET: alert_ops 4곳, app/inc/alert/subscription_match.php. docs/releases/v1.7/specs/spec_08_subscription_matching.md, docs/releases/v1.7/smoke/smoke_08_subscription_matching.md, docs/releases/v1.7/gate/gate_08_subscription_matching.md, sql/releases/v1.7/validation/validation_08_subscription_matching.sql.
 - **v1.7-09** Ops Summary: public/admin/ops_summary.php(approvals/events/deliveries/outbound 안내), index 링크. docs/releases/v1.7/specs/spec_09_ops_summary.md, docs/releases/v1.7/smoke/smoke_09_ops_summary.md, docs/releases/v1.7/gate/gate_09_ops_summary.md, sql/releases/v1.7/validation/validation_09_ops_summary.sql.
 - **v1.7-10** Retry/backoff: app_alert_deliveries.retry_count, run_delivery_outbound_stub pending+failed(backoff). docs/releases/v1.7/specs/spec_10_retry_backoff.md, docs/releases/v1.7/smoke/smoke_10_retry_backoff.md, docs/releases/v1.7/gate/gate_10_retry_backoff.md, sql/releases/v1.7/schema/schema_10_retry_backoff.sql, sql/releases/v1.7/validation/validation_10_retry_backoff.sql.
 - **v1.7-11** Real metrics ingest: run_alert_ingest_real_metrics.php. docs/releases/v1.7/specs/spec_11_real_metrics_ingest.md, docs/releases/v1.7/smoke/smoke_11_real_metrics_ingest.md, docs/releases/v1.7/gate/gate_11_real_metrics_ingest.md, sql/releases/v1.7/validation/validation_11_real_metrics_ingest.sql.
@@ -205,7 +214,7 @@ PARSE_MATCH(job) 실행 시 후보(candidates) 생성하면서 **서울시 정�
 
 ## 로컬 설정 (DB 비밀값)
 
-- DB 비밀값은 코드에 넣지 않음. `app/inc/config.local.php.example` 를 복사해 `config.local.php` 로 만들고, `DB_HOST`/`DB_USER`/`DB_PASS` 등 실제 값 입력. (`config.local.php` 는 .gitignore 대상.)
+- DB 비밀값은 코드에 넣지 않음. `app/inc/config/config.local.php.example` 를 복사해 `config.local.php` 로 만들고, `DB_HOST`/`DB_USER`/`DB_PASS` 등 실제 값 입력. (`config.local.php` 는 .gitignore 대상.)
 
 ## XAMPP(htdocs)에서 실행
 1) `C:\xampp\htdocs\gilime_mvp_01\` 에 이 폴더를 그대로 복사

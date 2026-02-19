@@ -1,7 +1,8 @@
 <?php
 declare(strict_types=1);
 
-require_once __DIR__ . '/../../app/inc/auth.php';
+require_once __DIR__ . '/../../app/inc/auth/auth.php';
+require_once __DIR__ . '/../../app/inc/admin/admin_header.php';
 require_admin();
 
 $pdo = pdo();
@@ -36,6 +37,10 @@ $error = null;
 /** v0.6-12: 표시용 정규화명 (trim + collapse space) */
 function normalizeStopNameDisplay(string $s): string {
   return trim(preg_replace('/\s+/', ' ', $s));
+}
+
+function normalizeCompareKey(string $s): string {
+  return mb_strtolower(normalizeStopNameDisplay($s), 'UTF-8');
 }
 
 /** v0.6-15: stop_master 퀵 검색 (exact → normalized → like_prefix, normalized 2글자 이하면 like_prefix 미적용), 최대 10건 */
@@ -161,7 +166,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
             $_SESSION['flash'] = 'alias saved + candidate rematched (id=' . $candId . ', stop_id=' . $match['stop_id'] . ')';
           } elseif ($match && !$isLatest) {
-            $_SESSION['flash'] = 'alias 등록: "' . htmlspecialchars($aliasText, ENT_QUOTES, 'UTF-8') . '" → "' . htmlspecialchars($canonicalText, ENT_QUOTES, 'UTF-8') . '" (stale candidate라 rematch 생략)';
+            $_SESSION['flash'] = '별칭 등록: "' . htmlspecialchars($aliasText, ENT_QUOTES, 'UTF-8') . '" → "' . htmlspecialchars($canonicalText, ENT_QUOTES, 'UTF-8') . '" (이전 스냅샷 후보라 재매칭 생략)';
           }
         }
       } else {
@@ -190,7 +195,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // B) stale candidate 완전 차단: created_job_id != latest 이면 업데이트 불가
     if ($latestParseJobId > 0 && $candJobId !== $latestParseJobId) {
-      $error = 'stale candidate: latest parse_job_id=' . $latestParseJobId . ', candidate_job_id=' . $candJobId;
+      $error = '이전 스냅샷 후보입니다: latest parse_job_id=' . $latestParseJobId . ', candidate_job_id=' . $candJobId;
     } else {
       if ($action === 'approve') {
         $matchedStopId = trim((string)($_POST['matched_stop_id'] ?? ''));
@@ -417,6 +422,89 @@ $routeStops = $routeStmt->fetchAll();
 // D) 현재 active 스냅샷의 PROMOTE job_id (created_job_id)
 $activePromoteJobId = !empty($routeStops) ? (int)($routeStops[0]['created_job_id'] ?? 0) : 0;
 
+// v1.7-18: 공공데이터(route_master/route_stop_master) 참고 매칭
+$publicRouteCandidates = [];
+$publicRouteResolved = null;
+$publicRouteStops = [];
+$publicCompare = [
+  'shuttle_cnt' => count($routeStops),
+  'public_cnt' => 0,
+  'name_overlap_cnt' => 0,
+  'head_seq_match_cnt' => 0,
+];
+try {
+  $exactStmt = $pdo->prepare("
+    SELECT route_id, route_name, route_type, start_stop_name, end_stop_name
+    FROM seoul_bus_route_master
+    WHERE route_name = :exact
+    ORDER BY route_id DESC
+    LIMIT 5
+  ");
+  $exactStmt->execute([':exact' => $routeLabel]);
+  $exactRows = $exactStmt->fetchAll(PDO::FETCH_ASSOC);
+  foreach ($exactRows as $r) {
+    $r['match_type'] = 'exact';
+    $publicRouteCandidates[] = $r;
+  }
+
+  if ($publicRouteCandidates === []) {
+    $prefixStmt = $pdo->prepare("
+      SELECT route_id, route_name, route_type, start_stop_name, end_stop_name
+      FROM seoul_bus_route_master
+      WHERE route_name LIKE CONCAT(:prefix, '%')
+      ORDER BY route_id DESC
+      LIMIT 5
+    ");
+    $prefixStmt->execute([':prefix' => $routeLabel]);
+    $prefixRows = $prefixStmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($prefixRows as $r) {
+      $r['match_type'] = 'prefix';
+      $publicRouteCandidates[] = $r;
+    }
+  }
+
+  if ($publicRouteCandidates !== []) {
+    $publicRouteResolved = $publicRouteCandidates[0];
+    $publicStopsStmt = $pdo->prepare("
+      SELECT seq_in_route, stop_id, stop_name
+      FROM seoul_bus_route_stop_master
+      WHERE route_id = :rid
+      ORDER BY seq_in_route ASC
+      LIMIT 500
+    ");
+    $publicStopsStmt->execute([':rid' => (int)$publicRouteResolved['route_id']]);
+    $publicRouteStops = $publicStopsStmt->fetchAll(PDO::FETCH_ASSOC);
+    $publicCompare['public_cnt'] = count($publicRouteStops);
+
+    $shuttleNameMap = [];
+    foreach ($routeStops as $rs) {
+      $k = normalizeCompareKey((string)($rs['stop_name'] ?? ''));
+      if ($k !== '') $shuttleNameMap[$k] = true;
+    }
+    $publicNameMap = [];
+    foreach ($publicRouteStops as $ps) {
+      $k = normalizeCompareKey((string)($ps['stop_name'] ?? ''));
+      if ($k !== '') $publicNameMap[$k] = true;
+    }
+    $publicCompare['name_overlap_cnt'] = count(array_intersect_key($shuttleNameMap, $publicNameMap));
+
+    $headLimit = min(count($routeStops), count($publicRouteStops), 50);
+    $headMatch = 0;
+    for ($i = 0; $i < $headLimit; $i++) {
+      $sName = normalizeCompareKey((string)($routeStops[$i]['stop_name'] ?? ''));
+      $pName = normalizeCompareKey((string)($publicRouteStops[$i]['stop_name'] ?? ''));
+      if ($sName === '' || $pName === '') break;
+      if ($sName !== $pName) break;
+      $headMatch++;
+    }
+    $publicCompare['head_seq_match_cnt'] = $headMatch;
+  }
+} catch (Throwable $ignore) {
+  $publicRouteCandidates = [];
+  $publicRouteResolved = null;
+  $publicRouteStops = [];
+}
+
 // v0.6-9: PROMOTE 히스토리 최근 10건 + base_job_id, route_label, 해당 parse 스냅샷 후보/승인 수
 $promoHistStmt = $pdo->prepare("
   SELECT j.id AS promote_job_id,
@@ -627,7 +715,7 @@ if ($showReco && $onlyUnmatched) {
 /** v0.6-18: 매칭 신뢰도 표시 전용 (텍스트만) */
 function matchConfidenceLabel(?string $matchMethod): string {
   if ($matchMethod === null || $matchMethod === '') return 'NONE';
-  if (in_array($matchMethod, ['exact', 'alias_live_rematch', 'alias_exact'], true)) return 'HIGH';
+  if (in_array($matchMethod, ['exact', 'alias_live_rematch', 'alias_exact', 'route_stop_master'], true)) return 'HIGH';
   if (in_array($matchMethod, ['normalized', 'alias_normalized'], true)) return 'MED';
   if ($matchMethod === 'like_prefix') return 'LOW';
   return 'NONE';
@@ -639,123 +727,166 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8')
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
-  <title>Admin - Route Review</title>
-  <style>
-    body{font-family:system-ui, -apple-system, Segoe UI, Roboto, sans-serif; padding:24px; background:#f9fafb; max-width:1800px; margin:0 auto;}
-    a{color:#0b57d0;text-decoration:none;}
-    a:hover{text-decoration:underline;}
-    .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px; padding:16px; background:#fff; border-radius:12px; box-shadow:0 1px 3px rgba(0,0,0,0.08);}
-    .top h2{margin:4px 0 0; font-size:22px; font-weight:600;}
-    .meta{display:grid;grid-template-columns:160px 1fr;gap:12px;margin:0 0 16px; padding:16px; background:#fff; border-radius:12px; box-shadow:0 1px 3px rgba(0,0,0,0.08);}
-    .k{color:#666; font-weight:500;}
-    table{border-collapse:collapse;width:100%;margin-top:10px; background:#fff;}
-    th,td{border-bottom:1px solid #eee;padding:10px;text-align:left;font-size:13px;vertical-align:top;}
-    th{background:#f7f8fa; font-weight:600; color:#444;}
-    .badge{display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px; font-weight:500; text-transform:uppercase;}
-    .badge.pending{background:#fff4e5; color:#b56b00; border:1px solid #ffcc80;}
-    .badge.approved{background:#e7f5e9; color:#1b7a3b; border:1px solid #81c784;}
-    .badge.rejected{background:#fee; color:#c62828; border:1px solid #ef5350;}
-    .badge.HIGH{background:#e7f5e9; color:#1b7a3b; border:1px solid #81c784;}
-    .badge.MED{background:#e3f2fd; color:#1565c0; border:1px solid #64b5f6;}
-    .badge.LOW{background:#fff4e5; color:#b56b00; border:1px solid #ffcc80;}
-    .badge.NONE{background:#f5f5f5; color:#757575; border:1px solid #ccc;}
-    .row-actions{display:flex;gap:8px;align-items:flex-start;flex-direction:column; padding:8px 0;}
-    .row-actions form{display:flex;gap:6px;align-items:center; background:#fafafa; padding:8px; border-radius:8px; width:100%;}
-    input[type=text]{padding:7px 10px;border:1px solid #ddd;border-radius:6px; font-size:13px;}
-    button{padding:7px 12px;border:1px solid #0b57d0;border-radius:6px;background:#0b57d0; color:#fff; cursor:pointer; font-weight:500; font-size:12px;}
-    button:hover{background:#094bbd;}
-    button:disabled{opacity:.5; cursor:not-allowed; background:#ccc; border-color:#ccc;}
-    button.secondary{background:#fff; color:#0b57d0; border:1px solid #0b57d0;}
-    button.secondary:hover{background:#f0f4ff;}
-    .err{color:#b00020;margin:10px 0; padding:12px; background:#fee; border-radius:8px; border:1px solid #ef5350;}
-    .flash{margin:10px 0;padding:12px 16px;border:1px solid #81c784;border-radius:8px;background:#e7f5e9; color:#1b7a3b;}
-    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
-    .card{border:1px solid #e0e0e0;border-radius:12px;padding:16px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.08);}
-    .card h3{margin:0 0 12px; font-size:16px; font-weight:600; color:#333;}
-    .muted{color:#666;font-size:12px;}
-    .summary-grid{display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; margin-bottom:16px;}
-    .summary-item{padding:12px; background:#fff; border:1px solid #e0e0e0; border-radius:8px; text-align:center;}
-    .summary-item .label{font-size:11px; color:#666; text-transform:uppercase; margin-bottom:4px;}
-    .summary-item .value{font-size:20px; font-weight:600; color:#333;}
-    .summary-item.warn .value{color:#b56b00;}
-    .summary-item.ok .value{color:#1b7a3b;}
-    .cand-selected{background:#f0f4ff;}
-  </style>
+  <title>관리자 - 노선 검수</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="<?= APP_BASE ?>/public/assets/css/gilaime_ui.css" />
 </head>
-<body>
-  <div class="top">
-    <div>
-      <div class="muted">
-        <a href="<?= APP_BASE ?>/admin/index.php">Docs</a>
-        &nbsp; / &nbsp;
-        <a href="<?= APP_BASE ?>/admin/doc.php?id=<?= (int)$doc['id'] ?>">Doc #<?= (int)$doc['id'] ?></a>
-      </div>
-      <h2 style="margin:6px 0 0;">Route Review</h2>
-      <div class="muted">source_doc_id=<?= (int)$sourceDocId ?>, route_label=<?= h($routeLabel) ?></div>
-    </div>
-    <div>
-      <a href="<?= APP_BASE ?>/admin/logout.php">Logout</a>
-    </div>
+<body class="gilaime-app">
+  <main class="container-fluid py-4 rr-wrap">
+  <?php render_admin_nav(); ?>
+  <?php render_admin_header([
+    ['label' => '문서 허브', 'url' => 'index.php'],
+    ['label' => '문서 #' . (int)$doc['id'], 'url' => 'doc.php?id=' . (int)$doc['id']],
+    ['label' => '노선 검수: ' . $routeLabel, 'url' => null],
+  ], false); ?>
+  <div class="g-page-head">
+    <h2 class="h3 rr-top-title">노선 검수</h2>
+    <p class="helper mb-0">source_doc_id=<?= (int)$sourceDocId ?>, route_label=<?= h($routeLabel) ?></p>
   </div>
 
-  <?php if ($flash): ?><div class="flash"><?= h((string)$flash) ?></div><?php endif; ?>
-  <?php if ($error): ?><div class="err"><?= h((string)$error) ?></div><?php endif; ?>
+  <?php if ($flash): ?><div class="alert alert-success py-2"><?= h((string)$flash) ?></div><?php endif; ?>
+  <?php if ($error): ?><div class="alert alert-danger py-2"><?= h((string)$error) ?></div><?php endif; ?>
 
   <!-- A. 상단: 상태 요약(카드) -->
-  <div class="meta">
-    <div class="k">title</div><div><?= h((string)$doc['title']) ?></div>
-    <div class="k">file_path</div><div><?= h((string)$doc['file_path']) ?></div>
-    <div class="k">ocr / parse / validation</div>
+  <div class="card g-card mb-3">
+  <div class="card-body rr-meta">
+    <div class="rr-k">title</div><div><?= h((string)$doc['title']) ?></div>
+    <div class="rr-k">file_path</div><div><?= h((string)$doc['file_path']) ?></div>
+    <div class="rr-k">ocr / parse / validation</div>
     <div>
       <span class="badge"><?= h((string)$doc['ocr_status']) ?></span>
       <span class="badge"><?= h((string)$doc['parse_status']) ?></span>
       <span class="badge"><?= h((string)$doc['validation_status']) ?></span>
     </div>
-    <div class="k">updated</div><div><?= h((string)$doc['updated_at']) ?></div>
-    <div class="k">latest_parse_job_id</div><div><?= (int)$latestParseJobId ?></div>
-    <div class="k">스냅샷 비교</div>
-    <div>Candidate 스냅샷: parse_job_id=<?= (int)$latestParseJobId ?> | Active route_stop: PROMOTE job_id=<?= $activePromoteJobId ?></div>
+    <div class="rr-k">updated</div><div><?= h((string)$doc['updated_at']) ?></div>
+    <div class="rr-k">latest_parse_job_id</div><div><?= (int)$latestParseJobId ?></div>
+    <div class="rr-k">스냅샷 비교</div>
+    <div>후보 스냅샷: parse_job_id=<?= (int)$latestParseJobId ?> | 활성 route_stop: PROMOTE job_id=<?= $activePromoteJobId ?></div>
+  </div>
   </div>
 
-  <div class="summary-grid">
-    <div class="summary-item">
-      <div class="label">Total</div>
-      <div class="value"><?= (int)$sum['cand_total'] ?></div>
+  <div class="rr-summary-grid">
+    <div class="rr-summary-item">
+      <div class="rr-summary-label">전체 후보</div>
+      <div class="rr-summary-value"><?= (int)$sum['cand_total'] ?></div>
     </div>
-    <div class="summary-item <?= (int)$sum['cand_approved'] > 0 ? 'ok' : '' ?>">
-      <div class="label">Approved</div>
-      <div class="value"><?= (int)$sum['cand_approved'] ?></div>
+    <div class="rr-summary-item <?= (int)$sum['cand_approved'] > 0 ? 'ok' : '' ?>">
+      <div class="rr-summary-label">승인</div>
+      <div class="rr-summary-value"><?= (int)$sum['cand_approved'] ?></div>
     </div>
-    <div class="summary-item <?= (int)$sum['cand_pending'] > 0 ? 'warn' : '' ?>">
-      <div class="label">Pending</div>
-      <div class="value"><?= (int)$sum['cand_pending'] ?></div>
+    <div class="rr-summary-item <?= (int)$sum['cand_pending'] > 0 ? 'warn' : '' ?>">
+      <div class="rr-summary-label">대기</div>
+      <div class="rr-summary-value"><?= (int)$sum['cand_pending'] ?></div>
     </div>
-    <div class="summary-item">
-      <div class="label">Route Stops</div>
-      <div class="value"><?= (int)$sum['route_stop_cnt'] ?></div>
+    <div class="rr-summary-item">
+      <div class="rr-summary-label">노선 정류장</div>
+      <div class="rr-summary-value"><?= (int)$sum['route_stop_cnt'] ?></div>
     </div>
   </div>
 
   <?php if ($latestParseJobId > 0): ?>
-  <div class="summary-grid">
-    <div class="summary-item ok">
-      <div class="label">Auto Matched</div>
-      <div class="value"><?= (int)$sum['auto_matched_cnt'] ?></div>
+  <div class="rr-summary-grid">
+    <div class="rr-summary-item ok">
+      <div class="rr-summary-label">자동 매칭</div>
+      <div class="rr-summary-value"><?= (int)$sum['auto_matched_cnt'] ?></div>
     </div>
-    <div class="summary-item warn">
-      <div class="label">Low Confidence</div>
-      <div class="value"><?= (int)$sum['low_confidence_cnt'] ?></div>
+    <div class="rr-summary-item warn">
+      <div class="rr-summary-label">낮은 신뢰도</div>
+      <div class="rr-summary-value"><?= (int)$sum['low_confidence_cnt'] ?></div>
     </div>
-    <div class="summary-item">
-      <div class="label">None Matched</div>
-      <div class="value"><?= (int)$sum['none_matched_cnt'] ?></div>
+    <div class="rr-summary-item">
+      <div class="rr-summary-label">미매칭</div>
+      <div class="rr-summary-value"><?= (int)$sum['none_matched_cnt'] ?></div>
     </div>
-    <div class="summary-item">
-      <div class="label">Alias Used</div>
-      <div class="value"><?= (int)$sum['alias_used_cnt'] ?></div>
+    <div class="rr-summary-item">
+      <div class="rr-summary-label">별칭 사용</div>
+      <div class="rr-summary-value"><?= (int)$sum['alias_used_cnt'] ?></div>
     </div>
   </div>
   <?php endif; ?>
+
+  <div class="card g-card mb-3">
+    <div class="card-body">
+      <h3 class="h5 rr-section-title">서울시 공공데이터 비교 (참고)</h3>
+      <?php if ($publicRouteResolved === null): ?>
+        <p class="text-muted-g small mb-2">`route_master`에서 현재 route_label(<?= h($routeLabel) ?>)에 대한 exact/prefix 매칭을 찾지 못했습니다.</p>
+      <?php else: ?>
+        <p class="text-muted-g small mb-2">
+          선택 노선: 공공 route_id=<strong><?= (int)$publicRouteResolved['route_id'] ?></strong>,
+          route_name=<strong><?= h((string)$publicRouteResolved['route_name']) ?></strong>,
+          매칭 방식=<strong><?= h((string)$publicRouteResolved['match_type']) ?></strong>
+        </p>
+        <div class="rr-summary-grid">
+          <div class="rr-summary-item">
+            <div class="rr-summary-label">셔틀 정류장 수</div>
+            <div class="rr-summary-value"><?= (int)$publicCompare['shuttle_cnt'] ?></div>
+          </div>
+          <div class="rr-summary-item">
+            <div class="rr-summary-label">공공 정류장 수</div>
+            <div class="rr-summary-value"><?= (int)$publicCompare['public_cnt'] ?></div>
+          </div>
+          <div class="rr-summary-item">
+            <div class="rr-summary-label">정류장명 교집합</div>
+            <div class="rr-summary-value"><?= (int)$publicCompare['name_overlap_cnt'] ?></div>
+          </div>
+          <div class="rr-summary-item">
+            <div class="rr-summary-label">선두 순차 일치</div>
+            <div class="rr-summary-value"><?= (int)$publicCompare['head_seq_match_cnt'] ?></div>
+          </div>
+        </div>
+      <?php endif; ?>
+
+      <?php if ($publicRouteCandidates !== []): ?>
+      <div class="table-responsive mt-3">
+        <table class="table table-hover align-middle g-table g-table-dense mb-0">
+          <thead><tr><th>route_id</th><th>route_name</th><th>매칭</th><th>기점</th><th>종점</th></tr></thead>
+          <tbody>
+            <?php foreach ($publicRouteCandidates as $pr): ?>
+            <tr>
+              <td><?= (int)$pr['route_id'] ?></td>
+              <td><?= h((string)$pr['route_name']) ?></td>
+              <td><?= h((string)$pr['match_type']) ?></td>
+              <td><?= h((string)($pr['start_stop_name'] ?? '')) ?></td>
+              <td><?= h((string)($pr['end_stop_name'] ?? '')) ?></td>
+            </tr>
+            <?php endforeach; ?>
+          </tbody>
+        </table>
+      </div>
+      <?php endif; ?>
+    </div>
+  </div>
+
+  <!-- v1.7-19: GPT 검수 워크플로우 (CSV/JSON 내보내기 → GPT 검수 → 일괄 반영) -->
+  <div class="card g-card mb-3">
+    <div class="card-body">
+      <h3 class="h5 rr-section-title">GPT 검수 (수동 버튼 대체)</h3>
+      <p class="rr-mb-8 text-muted-g small">
+        CSV/JSON 내보내기 → GPT API로 검수 → 검수 결과 파일 업로드 → 일괄 반영 (또는 <strong>GPT 검수 실행</strong> 버튼으로 한 번에)
+      </p>
+      <div class="d-flex flex-wrap gap-3 align-items-center">
+        <form method="post" action="<?= APP_BASE ?>/admin/run_gpt_review.php" class="d-inline" data-loading-msg="GPT 검수 처리 중... 1~2분 소요될 수 있습니다.">
+          <input type="hidden" name="source_doc_id" value="<?= (int)$sourceDocId ?>" />
+          <input type="hidden" name="route_label" value="<?= h($routeLabel) ?>" />
+          <button type="submit" class="btn btn-gilaime-primary btn-sm">GPT 검수 실행</button>
+        </form>
+        <span class="ms-2">|</span>
+        <span>내보내기:</span>
+        <a class="btn btn-outline-secondary btn-sm" href="<?= APP_BASE ?>/admin/export_candidates.php?source_doc_id=<?= (int)$sourceDocId ?>&route_label=<?= urlencode($routeLabel) ?>&format=csv">CSV 다운로드</a>
+        <a class="btn btn-outline-secondary btn-sm" href="<?= APP_BASE ?>/admin/export_candidates.php?source_doc_id=<?= (int)$sourceDocId ?>&route_label=<?= urlencode($routeLabel) ?>&format=json">JSON 다운로드</a>
+        <span class="ms-2">|</span>
+        <form method="post" action="<?= APP_BASE ?>/admin/import_candidate_review.php" enctype="multipart/form-data" class="d-inline-flex align-items-center gap-2">
+          <input type="hidden" name="source_doc_id" value="<?= (int)$sourceDocId ?>" />
+          <input type="hidden" name="route_label" value="<?= h($routeLabel) ?>" />
+          <input type="file" name="review_file" accept=".csv,.json" class="form-control form-control-sm g-form-file-input" required />
+          <button type="submit" class="btn btn-gilaime-primary btn-sm">검수 결과 일괄 반영</button>
+        </form>
+      </div>
+      <p class="text-muted-g small mt-2 mb-0">
+        GPT 검수 실행: DB 후보 → Python GPT API → 결과 DB 반영. 반영 파일 형식: candidate_id, action (approve|reject), matched_stop_id (approve 시 필수), matched_stop_name (선택)
+      </p>
+    </div>
+  </div>
 
   <!-- B. 중단: 필터/검색 -->
   <?php
@@ -803,9 +934,10 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8')
   $urlJumpNextOff = APP_BASE . '/admin/route_review.php?' . http_build_query($toggleGet);
   $jumpNextActive = (int)($_GET['jump_next'] ?? 0) === 1;
   ?>
-  <div class="card" style="margin-bottom:16px;">
-    <h3 style="margin:0 0 8px;">필터 / Quick Search</h3>
-    <p style="margin:0 0 6px;">
+  <div class="card g-card mb-3">
+    <div class="card-body">
+    <h3 class="h5 rr-section-title">필터 / 빠른 검색</h3>
+    <p class="rr-mb-8">
       <?php if ($showAdvanced): ?>
       <a href="<?= h($urlAdvancedOff) ?>">고급 옵션 숨기기</a>
       &nbsp;|&nbsp;
@@ -875,7 +1007,7 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8')
       <?php if ($topParam > 0): $qsOnUrl .= '&top=' . $topParam; endif; ?>
       <?php if ($showReco): $qsOnUrl .= '&show_reco=1'; endif; ?>
       <?php if ($showAdvanced): $qsOnUrl .= '&show_advanced=1'; endif; ?>
-      <a href="<?= $qsOnUrl ?>">Quick Search 표시</a>
+      <a href="<?= $qsOnUrl ?>">빠른 검색 표시</a>
       <?php endif; ?>
       <?php endif; ?>
       <?php if (!$showAdvanced): ?>
@@ -883,9 +1015,9 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8')
       <a href="<?= h($urlAdvancedOn) ?>">고급 옵션 보기</a>
       <?php endif; ?>
     </p>
-    <p class="muted" style="margin:0 0 10px; font-size:12px;">현재: <?= h($filterState) ?></p>
+    <p class="text-muted-g small rr-mb-12">현재: <?= h($filterState) ?></p>
     <?php if ($showQs): ?>
-    <form method="get" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+    <form method="get" class="g-form-inline">
       <input type="hidden" name="source_doc_id" value="<?= (int)$sourceDocId ?>" />
       <input type="hidden" name="route_label" value="<?= h($routeLabel) ?>" />
       <?php if ($quickMode): ?><input type="hidden" name="quick_mode" value="1" /><?php endif; ?>
@@ -895,31 +1027,35 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8')
       <?php if (!empty($onlyRisky)): ?><input type="hidden" name="only_risky" value="1" /><?php endif; ?>
       <?php if ($topParam > 0): ?><input type="hidden" name="top" value="<?= (int)$topParam ?>" /><?php endif; ?>
       <?php if ($showReco): ?><input type="hidden" name="show_reco" value="1" /><?php endif; ?>
-      <input type="text" name="q" value="<?= h($searchQuery) ?>" placeholder="stop_name 검색" size="20" />
-      <button type="submit">Search</button>
+      <input class="form-control form-control-sm w-auto" type="text" name="q" value="<?= h($searchQuery) ?>" placeholder="stop_name 검색" size="20" />
+      <button class="btn btn-outline-secondary btn-sm" type="submit">검색</button>
     </form>
-    <p class="muted" style="margin:4px 0 0; font-size:11px;">alias 입력 전 stop_master 존재 확인용 (exact → normalized → like_prefix)</p>
+    <p class="rr-muted-xs rr-mt-12">alias 입력 전 stop_master 존재 확인용 (exact → normalized → like_prefix)</p>
     <?php if ($searchQuery !== ''): ?>
-    <table style="margin-top:10px;">
+    <div class="table-responsive rr-mt-12">
+    <table class="table table-hover align-middle g-table g-table-dense mb-0">
       <thead><tr><th>stop_id</th><th>stop_name</th><th>match_type</th></tr></thead>
       <tbody>
         <?php foreach ($stopMasterSearchResults as $r): ?>
         <tr><td><?= h($r['stop_id']) ?></td><td><?= h($r['stop_name']) ?></td><td><?= h($r['match_type']) ?></td></tr>
         <?php endforeach; ?>
         <?php if (!$stopMasterSearchResults): ?>
-        <tr><td colspan="3" class="muted">no results</td></tr>
+        <tr><td colspan="3" class="text-muted-g small">검색 결과가 없습니다</td></tr>
         <?php endif; ?>
       </tbody>
     </table>
+    </div>
     <?php endif; ?>
     <?php endif; ?>
+    </div>
   </div>
 
   <!-- C. 하단: Candidates 테이블 + Actions -->
-  <div class="grid2">
-    <div class="card"<?= $nextRouteUrl !== '' ? ' data-next-route-url="' . h($nextRouteUrl) . '"' : '' ?>>
-      <h3 style="margin:0 0 8px;">Candidates</h3>
-      <p class="muted" style="margin:0 0 12px; font-size:12px;">추천 canonical 계산: <?php
+  <div class="rr-grid2">
+    <div class="card g-card"<?= $nextRouteUrl !== '' ? ' data-next-route-url="' . h($nextRouteUrl) . '"' : '' ?>>
+      <div class="card-body">
+      <h3 class="h5 rr-section-title">후보 목록</h3>
+      <p class="text-muted-g small rr-mb-12">추천 canonical 계산: <?php
 if ($showReco && $onlyUnmatched) {
   echo 'ON (limit=' . (int)$recLimitParam . '), cache hits=' . $recHit . ', misses=' . $recMiss . ', skipped=' . $recSkippedDisplay;
 } elseif (!$showReco) {
@@ -929,23 +1065,24 @@ if ($showReco && $onlyUnmatched) {
 }
 ?></p>
       <?php if ((int)$sum['cand_pending'] > 0 && count($cands) === 0): ?>
-      <p class="muted" style="margin:0 0 8px; font-size:12px;">현재 필터로 숨겨진 pending 후보가 있습니다. '전체 보기'를 눌러 확인하세요.</p>
+      <p class="text-muted-g small rr-mb-8">현재 필터로 숨겨진 pending 후보가 있습니다. '전체 보기'를 눌러 확인하세요.</p>
       <?php endif; ?>
-      <p class="muted" style="margin:0 0 8px; font-size:12px;">단축키: a=Approve, r=Reject, n=다음 노선, t=자동점프 토글, j/k=행이동</p>
-      <p class="muted" style="margin:0 0 8px; font-size:12px;" id="shortcut-hint"></p>
-      <table>
+      <p class="text-muted-g small rr-mb-8">단축키: a=승인, r=거절, n=다음 노선, t=자동점프 토글, j/k=행이동</p>
+      <p class="text-muted-g small rr-mb-8" id="shortcut-hint"></p>
+      <div class="table-responsive">
+      <table class="table table-hover align-middle g-table g-table-dense mb-0">
         <thead>
           <tr>
             <th>#</th>
-            <th>seq</th>
+            <th>순번</th>
             <th>원문 정류장명</th>
-            <th>추천 canonical</th>
+            <th>추천 표준명</th>
             <th>정규화</th>
-            <th>status</th>
+            <th>상태</th>
             <th>신뢰도</th>
             <th>매칭 결과</th>
             <th>근거</th>
-            <th>action</th>
+            <th>처리</th>
           </tr>
         </thead>
         <tbody>
@@ -956,15 +1093,15 @@ if ($showReco && $onlyUnmatched) {
           <tr class="cand-row" data-cand-id="<?= (int)$c['id'] ?>"<?= (string)$c['status'] === 'pending' ? ' data-pending="1"' : '' ?>>
             <td><?= (int)$c['id'] ?></td>
             <td><?= (int)$c['seq_in_route'] ?></td>
-            <td><input type="text" readonly value="<?= h((string)($c['raw_stop_name'] ?? '')) ?>" style="width:100%;max-width:180px;box-sizing:border-box;" title="선택 후 복사" /></td>
-            <td><?= $recommendedCanonical !== '' ? h($recommendedCanonical) : '<span class="muted">—</span>' ?></td>
+            <td><input class="form-control form-control-sm rr-copy-input" type="text" readonly value="<?= h((string)($c['raw_stop_name'] ?? '')) ?>" title="선택 후 복사" /></td>
+            <td><?= $recommendedCanonical !== '' ? h($recommendedCanonical) : '<span class="text-muted-g small">—</span>' ?></td>
             <td><?= h(normalizeStopNameDisplay((string)($c['raw_stop_name'] ?? ''))) ?></td>
             <td><span class="badge <?= h((string)$c['status']) ?>"><?= h((string)$c['status']) ?></span></td>
             <td><span class="badge <?= h(matchConfidenceLabel($c['match_method'] ?? null)) ?>"><?= h(matchConfidenceLabel($c['match_method'] ?? null)) ?></span></td>
             <td><?= h((string)($c['matched_stop_id'] ?? '')) ?><?= (string)($c['matched_stop_name'] ?? '') !== '' ? ' ' . h((string)$c['matched_stop_name']) : '' ?></td>
             <td><?= h((string)($c['match_method'] ?? '')) ?><?= isset($c['match_score']) ? ' (' . h((string)$c['match_score']) . ')' : '' ?></td>
             <td>
-              <div class="row-actions">
+              <div class="rr-row-actions">
                 <?php
                 $isLatestSnapshot = ((int)($c['created_job_id'] ?? 0) === $latestParseJobId);
                 if ((string)$c['status'] === 'pending' && $isLatestSnapshot):
@@ -972,43 +1109,44 @@ if ($showReco && $onlyUnmatched) {
                   <form method="post">
                     <input type="hidden" name="action" value="approve" />
                     <input type="hidden" name="candidate_id" value="<?= (int)$c['id'] ?>" />
-                    <input type="text" name="matched_stop_id" value="<?= h((string)($c['matched_stop_id'] ?? '')) ?>" placeholder="stop_id (ex: ST0001)" style="flex:1;" />
+                    <input class="form-control form-control-sm rr-input-flex" type="text" name="matched_stop_id" value="<?= h((string)($c['matched_stop_id'] ?? '')) ?>" placeholder="stop_id (ex: ST0001)" />
                     <?php if ((string)($c['match_method'] ?? '') === 'like_prefix'): ?>
-                    <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:#b56b00;">
+                    <label class="rr-inline-label">
                       <input type="checkbox" name="confirm_low" value="1" />
                       LOW(like_prefix) 확인함
                     </label>
                     <?php endif; ?>
-                    <button type="submit">Approve</button>
+                    <button class="btn btn-gilaime-primary btn-sm" type="submit">승인</button>
                   </form>
                   <form method="post">
                     <input type="hidden" name="action" value="reject" />
                     <input type="hidden" name="candidate_id" value="<?= (int)$c['id'] ?>" />
-                    <input type="text" name="rejected_reason" value="manual reject" placeholder="reason" style="flex:1;" />
-                    <button type="submit" class="secondary">Reject</button>
+                    <input class="form-control form-control-sm rr-input-flex" type="text" name="rejected_reason" value="manual reject" placeholder="reason" />
+                    <button class="btn btn-outline-secondary btn-sm" type="submit">거절</button>
                   </form>
                   <form method="post">
                     <input type="hidden" name="action" value="register_alias" />
                     <input type="hidden" name="candidate_id" value="<?= (int)$c['id'] ?>" />
-                    <input type="text" name="canonical_text" value="<?= h((string)($c['matched_stop_name'] ?? '')) ?>" placeholder="<?= h($canonPlaceholder) ?>" title="stop_master 정식 정류장명" style="flex:1;" />
-                    <button type="submit" class="secondary">alias 등록</button>
+                    <input class="form-control form-control-sm rr-input-flex" type="text" name="canonical_text" value="<?= h((string)($c['matched_stop_name'] ?? '')) ?>" placeholder="<?= h($canonPlaceholder) ?>" title="stop_master 정식 정류장명" />
+                    <button class="btn btn-outline-secondary btn-sm" type="submit">alias 등록</button>
                   </form>
                 <?php elseif ((string)$c['status'] === 'pending' && !$isLatestSnapshot): ?>
-                  <span class="muted">stale (이전 스냅샷, 승인/거절 불가)</span>
+                  <span class="text-muted-g small">이전 스냅샷(stale): 승인/거절 불가</span>
                 <?php else: ?>
-                  <span class="muted">no action</span>
+                  <span class="text-muted-g small">수행 가능한 동작 없음</span>
                 <?php endif; ?>
               </div>
             </td>
           </tr>
           <?php endforeach; ?>
           <?php if (!$cands): ?>
-          <tr><td colspan="10" class="muted">no candidates</td></tr>
+          <tr><td colspan="10" class="text-muted-g small">후보가 없습니다</td></tr>
           <?php endif; ?>
         </tbody>
       </table>
+      </div>
 
-      <div style="margin-top:12px;">
+      <div class="rr-mt-12">
         <?php
         // v0.6-19: Promote 전 LOW 비중 경고
         $showLowWarning = false;
@@ -1025,42 +1163,45 @@ if ($showReco && $onlyUnmatched) {
         ?>
         
         <?php if ($showLowWarning): ?>
-        <div style="padding:12px; background:#fff4e5; border:1px solid #ffcc80; border-radius:8px; margin-bottom:12px;">
-          <strong style="color:#b56b00;">주의:</strong>
-          <span style="color:#b56b00;">like_prefix(LOW) 비중이 높습니다 (<?= (int)$sum['low_confidence_cnt'] ?> / <?= (int)$sum['auto_matched_cnt'] ?> 자동매칭). Promote 전 후보 재검토 권장.</span>
+        <div class="rr-warning-box">
+          <strong>주의:</strong>
+          <span>like_prefix(LOW) 비중이 높습니다 (<?= (int)$sum['low_confidence_cnt'] ?> / <?= (int)$sum['auto_matched_cnt'] ?> 자동매칭). Promote 전 후보 재검토 권장.</span>
         </div>
         <?php endif; ?>
         
-        <form method="post" action="<?= APP_BASE ?>/admin/promote.php" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <form method="post" action="<?= APP_BASE ?>/admin/promote.php" class="rr-promote-row">
           <input type="hidden" name="source_doc_id" value="<?= (int)$sourceDocId ?>" />
           <input type="hidden" name="route_label" value="<?= h($routeLabel) ?>" />
           <input type="hidden" name="parse_job_id" value="<?= (int)$latestParseJobId ?>" />
 
           <?php if ($canPromote): ?>
-            <button type="submit">Promote Approved → Route Stops</button>
-            <span class="muted">approved만 승격합니다. 기존 active route_stop은 비활성화 후 신규 스냅샷으로 추가됩니다.</span>
+            <button class="btn btn-gilaime-primary btn-sm" type="submit">승인 후보를 Route Stops로 승격</button>
+            <span class="text-muted-g small">승인된 후보만 승격합니다. 기존 active route_stop은 비활성화 후 신규 스냅샷으로 추가됩니다.</span>
           <?php else: ?>
-            <button type="button" disabled style="opacity:.45;cursor:not-allowed;">
-              Promote Approved → Route Stops
+            <button class="btn btn-outline-secondary btn-sm" type="button" disabled>
+              승인 후보를 Route Stops로 승격
             </button>
-            <span class="muted"><?= h($promoteBlockReason) ?></span>
+            <span class="text-muted-g small"><?= h($promoteBlockReason) ?></span>
           <?php endif; ?>
         </form>
       </div>
     </div>
+    </div>
 
-    <div class="card">
-      <h3 style="margin:0 0 8px;">Route Stops</h3>
+    <div class="card g-card">
+      <div class="card-body">
+      <h3 class="h5 rr-section-title">노선 정류장</h3>
       <?php if ($activePromoteJobId > 0): ?>
-      <p class="muted" style="margin:0 0 8px;">현재 active 스냅샷: PROMOTE job_id (created_job_id) = <?= $activePromoteJobId ?></p>
+      <p class="text-muted-g small rr-mb-8">현재 active 스냅샷: PROMOTE job_id (created_job_id) = <?= $activePromoteJobId ?></p>
       <?php endif; ?>
-      <table>
+      <div class="table-responsive">
+      <table class="table table-hover align-middle g-table g-table-dense mb-0">
         <thead>
           <tr>
-            <th>order</th>
-            <th>stop_id</th>
-            <th>stop_name</th>
-            <th>created_job_id</th>
+            <th>순서</th>
+            <th>정류장 ID</th>
+            <th>정류장명</th>
+            <th>생성 Job ID</th>
           </tr>
         </thead>
         <tbody>
@@ -1073,22 +1214,25 @@ if ($showReco && $onlyUnmatched) {
           </tr>
           <?php endforeach; ?>
           <?php if (!$routeStops): ?>
-          <tr><td colspan="4" class="muted">no route stops</td></tr>
+          <tr><td colspan="4" class="text-muted-g small">노선 정류장이 없습니다</td></tr>
           <?php endif; ?>
         </tbody>
       </table>
+      </div>
+      </div>
     </div>
   </div>
 
-  <h3 style="margin-top:20px;">PROMOTE 히스토리 (최근 10건)</h3>
-  <table>
+  <h3 class="h5 rr-mt-20">승격(PROMOTE) 이력 (최근 10건)</h3>
+  <div class="table-responsive">
+  <table class="table table-hover align-middle g-table g-table-dense mb-0">
     <thead>
       <tr>
-        <th>promote_job_id</th>
-        <th>created_at</th>
-        <th>rows</th>
-        <th>base_job_id (parse)</th>
-        <th>result_note</th>
+        <th>승격 Job ID</th>
+        <th>생성 시각</th>
+        <th>반영 행 수</th>
+        <th>기준 Job ID(parse)</th>
+        <th>결과 메모</th>
       </tr>
     </thead>
     <tbody>
@@ -1100,24 +1244,25 @@ if ($showReco && $onlyUnmatched) {
       <tr>
         <td><?= (int)$ph['promote_job_id'] ?></td>
         <td><?= h((string)$ph['created_at']) ?></td>
-        <td><?= (int)$ph['rows_cnt'] ?><?php if ((int)$ph['rows_cnt'] === 0): ?> <span class="muted" title="legacy">(legacy, 스냅샷 연결키 없음)</span><?php endif; ?></td>
+        <td><?= (int)$ph['rows_cnt'] ?><?php if ((int)$ph['rows_cnt'] === 0): ?> <span class="text-muted-g small" title="레거시">(레거시, 스냅샷 연결키 없음)</span><?php endif; ?></td>
         <td>
           <?php if ($baseId > 0): ?>
-            <?= $baseId ?> <span class="muted">(후보 <?= $baseCandTotal ?> / 승인 <?= $baseCandApproved ?>)</span>
+            <?= $baseId ?> <span class="text-muted-g small">(후보 <?= $baseCandTotal ?> / 승인 <?= $baseCandApproved ?>)</span>
           <?php else: ?>
-            <span class="muted">—</span>
+            <span class="text-muted-g small">—</span>
           <?php endif; ?>
         </td>
         <td><?= h((string)($ph['result_note'] ?? '')) ?></td>
       </tr>
       <?php endforeach; ?>
       <?php if (!$promoHistory): ?>
-      <tr><td colspan="5" class="muted">no PROMOTE history</td></tr>
+      <tr><td colspan="5" class="text-muted-g small">승격(PROMOTE) 이력이 없습니다</td></tr>
       <?php endif; ?>
     </tbody>
   </table>
+  </div>
 
-  <p class="muted" style="margin-top:14px;">
+  <p class="text-muted-g small rr-mt-14">
     운영 기준: PARSE_MATCH(job_id 스냅샷) → candidate 승인 → promote로 route_stop 반영 → job_log로 추적.
   </p>
 
@@ -1211,7 +1356,7 @@ if ($showReco && $onlyUnmatched) {
       } else if (key === 'r') {
         submitActionOnSelected('reject', e);
       } else if (key === 'n') {
-        var card = document.querySelector('.grid2 .card[data-next-route-url]');
+        var card = document.querySelector('.rr-grid2 .card[data-next-route-url]');
         if (card) {
           var url = card.getAttribute('data-next-route-url');
           if (url) {
@@ -1250,5 +1395,28 @@ if ($showReco && $onlyUnmatched) {
   // 5) show_reco=1+only_unmatched=1일 때만 추천 TopN 계산 및 meta hit/miss/skipped.
   // 6) LOW 승인 체크/alias 검증/stale 차단/promote 게이트 동일.
   ?>
+
+  <div id="g-loading-overlay" class="g-loading-overlay" hidden aria-live="polite">
+    <div class="g-loading-spinner" aria-hidden="true"></div>
+    <span id="g-loading-msg">처리 중...</span>
+  </div>
+  <script>
+  (function(){
+    var overlay = document.getElementById('g-loading-overlay');
+    var msgEl = document.getElementById('g-loading-msg');
+    if (overlay && msgEl) {
+      document.querySelectorAll('form[data-loading-msg]').forEach(function(f){
+        f.addEventListener('submit', function(){
+          var msg = f.getAttribute('data-loading-msg') || '처리 중...';
+          msgEl.textContent = msg;
+          overlay.removeAttribute('hidden');
+          var btn = f.querySelector('button[type="submit"]');
+          if (btn) { btn.disabled = true; btn.textContent = '처리 중...'; }
+        });
+      });
+    }
+  })();
+  </script>
+  </main>
 </body>
 </html>

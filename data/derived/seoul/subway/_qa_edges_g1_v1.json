@@ -1,0 +1,33 @@
+{
+  "input_path": "C:\\xampp\\htdocs\\gilime_mvp_01\\data\\public\\서울교통공사_역간거리.csv",
+  "input_rows": 278,
+  "parsed_rows": 270,
+  "written_rows": 270,
+  "resolved_columns": {
+    "line_code": "호선",
+    "from_station_cd": null,
+    "to_station_cd": "역명",
+    "distance_m": "거리(km)",
+    "time_sec": "시간(분)"
+  },
+  "csv_headers": [
+    "호선",
+    "역명",
+    "시간(분)",
+    "거리(km)",
+    "누계(km)"
+  ],
+  "drop_reasons": {
+    "missing_from": 8
+  },
+  "by_line": {
+    "1": 9,
+    "2": 51,
+    "3": 33,
+    "4": 25,
+    "5": 55,
+    "6": 39,
+    "7": 41,
+    "8": 17
+  }
+}

@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
-require_once __DIR__ . '/../../app/inc/auth.php';
+require_once __DIR__ . '/../../app/inc/auth/auth.php';
+require_once __DIR__ . '/../../app/inc/admin/admin_header.php';
 require_admin();
 
 $pdo = pdo();
@@ -265,21 +266,18 @@ function h(string $s): string {
 </head>
 <body class="gilaime-app">
   <main class="container-fluid py-4">
-  <div class="g-top">
-    <div>
-      <a href="<?= h($base) ?>/index.php">문서 허브</a>
-      <span class="text-muted-g"> / 알림 운영</span>
-      <span class="text-muted-g ms-2">권한: <?= h($currentUserRole) ?></span>
-    </div>
-    <div class="d-flex gap-2">
-      <a class="btn btn-outline-secondary btn-sm" href="<?= h($base) ?>/alert_event_audit.php">알림 감사</a>
-      <a class="btn btn-outline-secondary btn-sm" href="<?= h($base) ?>/logout.php">로그아웃</a>
-    </div>
-  </div>
+  <?php render_admin_nav(); ?>
+  <?php render_admin_header([
+    ['label' => '문서 허브', 'url' => 'index.php'],
+    ['label' => '알림 운영', 'url' => null],
+  ], false); ?>
 
-  <div class="g-page-head mb-3">
+  <div class="g-page-head">
     <h2 class="h3">알림 운영</h2>
-    <p class="helper mb-0">초안 생성, 대상 미리보기, 발행(Publish)까지 한 화면에서 처리합니다.</p>
+    <p class="helper mb-0">초안 생성, 대상 미리보기, 발행(Publish)까지 한 화면에서 처리합니다. <span class="text-muted-g">권한: <?= h($currentUserRole) ?></span></p>
+  </div>
+  <div class="d-flex gap-2 mb-3">
+    <a class="btn btn-outline-secondary btn-sm" href="<?= h($base) ?>/alert_event_audit.php">알림 감사</a>
   </div>
   <details class="kbd-help mb-3">
     <summary>단축키 안내</summary>
@@ -355,34 +353,37 @@ function h(string $s): string {
   <!-- 필터. v1.7-02: draft_only, published_only -->
   <div class="card g-card mb-3">
   <div class="card-body py-3">
-  <p class="text-muted-g small mb-0">
-    <a href="<?= h($base) ?>/alert_ops.php">전체</a>
-    <a href="<?= h($base) ?>/alert_ops.php?draft_only=1">초안만</a>
-    <a href="<?= h($base) ?>/alert_ops.php?published_only=1">발행만</a>
-    <a href="<?= h($base) ?>/alert_ops.php?event_type=strike">strike</a>
-    <a href="<?= h($base) ?>/alert_ops.php?event_type=event">event</a>
-    <a href="<?= h($base) ?>/alert_ops.php?event_type=update">update</a>
-    <span class="mx-2">|</span> route_label:
-    <form method="get" action="<?= h($base) ?>/alert_ops.php" class="d-inline">
-      <input type="hidden" name="event_type" value="<?= h($filterType ?? '') ?>" />
-      <input type="hidden" name="draft_only" value="<?= $filterDraftOnly ? '1' : '' ?>" />
-      <input type="hidden" name="published_only" value="<?= $filterPublishedOnly ? '1' : '' ?>" />
-      <input class="form-control form-control-sm d-inline-block w-auto" type="text" name="route_label" value="<?= h($filterRoute ?? '') ?>" placeholder="R1" size="6" />
-      <input class="form-control form-control-sm d-inline-block w-auto" type="text" name="published_from" value="<?= h($filterFrom ?? '') ?>" placeholder="from" size="12" />
-      <input class="form-control form-control-sm d-inline-block w-auto" type="text" name="published_to" value="<?= h($filterTo ?? '') ?>" placeholder="to" size="12" />
-      <button class="btn btn-outline-secondary btn-sm" type="submit">필터 적용</button>
-    </form>
-  </p>
+  <div class="g-search-tab mb-2">
+    <?php $noFilter = !$filterDraftOnly && !$filterPublishedOnly && ($filterType ?? '') === '' && $filterRoute === null && $filterFrom === null && $filterTo === null; ?>
+    <a href="<?= h($base) ?>/alert_ops.php" class="btn btn-sm <?= $noFilter ? 'btn-gilaime-primary' : 'btn-outline-secondary' ?>">전체</a>
+    <a href="<?= h($base) ?>/alert_ops.php?draft_only=1" class="btn btn-sm <?= $filterDraftOnly ? 'btn-gilaime-primary' : 'btn-outline-secondary' ?>">초안만</a>
+    <a href="<?= h($base) ?>/alert_ops.php?published_only=1" class="btn btn-sm <?= $filterPublishedOnly ? 'btn-gilaime-primary' : 'btn-outline-secondary' ?>">발행만</a>
+    <a href="<?= h($base) ?>/alert_ops.php?event_type=strike<?= $filterDraftOnly ? '&draft_only=1' : '' ?><?= $filterPublishedOnly ? '&published_only=1' : '' ?>" class="btn btn-sm <?= ($filterType ?? '') === 'strike' ? 'btn-gilaime-primary' : 'btn-outline-secondary' ?>">strike</a>
+    <a href="<?= h($base) ?>/alert_ops.php?event_type=event<?= $filterDraftOnly ? '&draft_only=1' : '' ?><?= $filterPublishedOnly ? '&published_only=1' : '' ?>" class="btn btn-sm <?= ($filterType ?? '') === 'event' ? 'btn-gilaime-primary' : 'btn-outline-secondary' ?>">event</a>
+    <a href="<?= h($base) ?>/alert_ops.php?event_type=update<?= $filterDraftOnly ? '&draft_only=1' : '' ?><?= $filterPublishedOnly ? '&published_only=1' : '' ?>" class="btn btn-sm <?= ($filterType ?? '') === 'update' ? 'btn-gilaime-primary' : 'btn-outline-secondary' ?>">update</a>
+  </div>
+  <form method="get" action="<?= h($base) ?>/alert_ops.php" class="g-form-inline">
+    <input type="hidden" name="event_type" value="<?= h($filterType ?? '') ?>" />
+    <input type="hidden" name="draft_only" value="<?= $filterDraftOnly ? '1' : '' ?>" />
+    <input type="hidden" name="published_only" value="<?= $filterPublishedOnly ? '1' : '' ?>" />
+    <label class="small text-muted-g">route_label</label>
+    <input class="form-control form-control-sm w-auto" type="text" name="route_label" value="<?= h($filterRoute ?? '') ?>" placeholder="R1" size="6" />
+    <label class="small text-muted-g">from</label>
+    <input class="form-control form-control-sm w-auto" type="text" name="published_from" value="<?= h($filterFrom ?? '') ?>" placeholder="YYYY-MM-DD" size="12" />
+    <label class="small text-muted-g">to</label>
+    <input class="form-control form-control-sm w-auto" type="text" name="published_to" value="<?= h($filterTo ?? '') ?>" placeholder="YYYY-MM-DD" size="12" />
+    <button class="btn btn-outline-secondary btn-sm" type="submit">필터 적용</button>
+  </form>
   </div>
   </div>
 
   <div class="card g-card">
   <div class="card-body">
   <div class="table-responsive">
-  <table class="table table-hover align-middle g-table mb-0">
+  <table class="table table-hover align-middle g-table g-table-dense mb-0">
     <thead>
       <tr>
-        <th class="mono">id</th><th>event_type</th><th>title</th><th>ref_type</th><th class="mono">ref_id</th><th>route_label</th><th>published_at</th><th>상태</th><th>created_at</th><th>액션</th><th>링크</th>
+        <th class="mono g-nowrap">id</th><th class="g-nowrap">event_type</th><th>title</th><th class="g-nowrap">ref_type</th><th class="mono g-nowrap">ref_id</th><th class="g-nowrap">route_label</th><th class="g-nowrap">published_at</th><th class="g-nowrap">상태</th><th class="g-nowrap">created_at</th><th class="g-nowrap">액션</th><th class="g-nowrap">링크</th>
       </tr>
     </thead>
     <tbody>
@@ -397,15 +398,15 @@ function h(string $s): string {
         $highlight = ($focusEventId !== null && $focusEventId === $eid);
       ?>
         <tr<?= $highlight ? ' id="event-' . $eid . '" class="highlight"' : '' ?>>
-          <td><?= (int)$e['id'] ?></td>
-          <td><?= h($e['event_type'] ?? '') ?></td>
+          <td class="g-nowrap"><?= (int)$e['id'] ?></td>
+          <td class="g-nowrap"><?= h($e['event_type'] ?? '') ?></td>
           <td><?= h($e['title'] ?? '') ?></td>
           <td><?= h($e['ref_type'] ?? '') ?></td>
-          <td><?= $refId ?></td>
-          <td><?= h($rl) ?></td>
-          <td><?= h($publishedAt ?? '') ?></td>
+          <td class="g-nowrap"><?= $refId ?></td>
+          <td class="g-nowrap"><?= h($rl) ?></td>
+          <td class="g-nowrap"><?= h($publishedAt ?? '') ?></td>
           <td><span class="badge badge-<?= $isDraft ? 'draft' : 'published' ?>"><?= $isDraft ? '초안' : '발행' ?></span></td>
-          <td><?= h($e['created_at'] ?? '') ?></td>
+          <td class="g-nowrap"><?= h($e['created_at'] ?? '') ?></td>
           <td>
             <?php if ($isDraft): ?>
             <form method="post" action="<?= h($base) ?>/alert_ops.php" class="d-inline">
@@ -414,7 +415,7 @@ function h(string $s): string {
             </form>
             <?php else: ?>—<?php endif; ?>
           </td>
-          <td>
+          <td class="g-nowrap">
             <?php if ($userAlertsUrl !== ''): ?><a href="<?= h($userAlertsUrl) ?>" target="_blank" rel="noopener">사용자 알림</a><?php endif; ?>
             <?php if ($reviewUrl !== ''): ?> <a href="<?= h($reviewUrl) ?>">관리자 검수</a><?php endif; ?>
           </td>

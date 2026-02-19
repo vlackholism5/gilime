@@ -1,6 +1,6 @@
 # Docs Index
 
-실무형 정리 1단계(비파괴): 기존 flat 문서는 유지하고, 신규 문서부터 `docs/releases/` 구조를 사용.
+실무형 정리 2단계 완료: 루트 플랫 문서를 `docs/releases/<ver>/`, `docs/references/`, `docs/archive/`로 이전함. 루트에는 `INDEX.md`, `STATUS_FOR_GPT.md` 등 핵심만 유지.
 
 ## 핵심 문서
 
@@ -11,6 +11,8 @@
 
 - 디버그/관측: `docs/operations/DEBUG_OBSERVABILITY.md`
 - 검증 자동화: `docs/operations/VERIFY_RUNNER.md`
+- MVP 기준선: `docs/operations/MVP_GOAL_2026_02_20.md`
+- PM 동기화 템플릿: `docs/operations/PM_SYNC_TEMPLATE.md`
 
 ## 참조 문서 (SoT)
 
@@ -48,11 +50,17 @@
 - v1.7-15 (Legacy error normalize): `docs/releases/v1.7/specs/spec_15_legacy_error_normalize.md`
 - v1.7-16 (parse_status policy): `docs/releases/v1.7/specs/spec_16_parse_status_policy.md`
 - v1.7-17 (ingest one pdf): `docs/releases/v1.7/specs/spec_17_ingest_one_pdf.md`
+- v1.7 라이프사이클: `docs/references/ALERT_LIFECYCLE_v1_7.md`
+- v1.7 재시도 정책: `docs/references/RETRY_POLICY_v1_7.md`
+- v1.7 릴리즈 게이트: `docs/releases/v1.7/RELEASE_GATE.md`
+- v1.7 E2E: `docs/releases/v1.7/v1.7_E2E.md`
+- CRUD 레퍼런스: `docs/references/CRUD_REFERENCE_app_tables.md`
+- UML 레퍼런스: `docs/references/UML_v1_7_MVP.md`
 
 ## 마이그레이션 정책
 
 - 1단계(완료): 구조/목차 추가, v1.7 전체 이동, 참조/운영 문서 정리
-- 2단계(보류): v0.6, v1.1~v1.6 구버전 정리
-  - 핵심 참조만 references, 나머지 archive
-  - 또는 v1.7처럼 전체 구조화(releases/<버전>/)
-  - 필요 시 `docs/INDEX.md` 이 메모 참고해서 재개
+- 2단계(완료): 루트 플랫 문서 → releases/v1.4, v1.6, v1.7 및 references, archive/v0.6
+  - v1.7: RELEASE_GATE.md, v1.7_E2E.md, gate/*, smoke/* → `docs/releases/v1.7/`
+  - v1.4 smoke → `docs/releases/v1.4/smoke/`, v1.6 gate → `docs/releases/v1.6/gate/`
+  - 참조 문서 → `docs/references/`, v0.6 → `docs/archive/v0.6/`

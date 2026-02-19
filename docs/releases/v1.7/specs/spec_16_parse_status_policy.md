@@ -14,7 +14,7 @@
 - `source_doc_id` 지정 시 상태와 무관하게 override 선별한다.
 
 ## 구현 내용
-- 파일: `scripts/run_parse_match_batch.php`
+- 파일: `scripts/php/run_parse_match_batch.php`
   - 선별 규칙을 정책대로 재구성
   - 출력 필드 추가:
     - `selection_policy`

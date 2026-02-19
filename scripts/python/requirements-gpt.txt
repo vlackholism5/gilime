@@ -1,0 +1,6 @@
+# gilime v1.7-20: GPT 검수 파이프라인 (gpt_review_pipeline.py)
+# openai — OpenAI API 및 호환 API
+# python-dotenv — .env 파일 로드 (선택)
+
+openai>=1.0.0
+python-dotenv>=1.0.0

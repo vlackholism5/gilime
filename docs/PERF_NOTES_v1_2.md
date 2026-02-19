@@ -157,7 +157,7 @@ LIMIT 100;
 - **review_queue:** `shuttle_stop_candidate`(c)가 ALL → **ref** (key: idx_cand_doc_job_status). rows·join buffer 감소 기대.
 - **ops_dashboard:** DEPENDENT SUBQUERY의 **c 테이블**이 ALL → **ref**로 바뀌는 것이 목표. idx_cand_doc_job_status 또는 idx_cand_doc_job_status_method 사용 시 doc/job당 풀스캔 제거.
 - **alias_audit:** 기존 ix_shuttle_stop_alias_active 사용 시 ref 유지. idx_alias_active_updated 추가로 **ORDER BY updated_at** 시 Using filesort 제거 가능(covering 여부는 데이터에 따라 다름).
-- 검증: sql/v1.3-01_validation.sql 에서 SHOW INDEX + EXPLAIN 3개 실행 후 결과로 확인.
+- 검증: sql/releases/v1.3/validation/v1.3-01_validation.sql 에서 SHOW INDEX + EXPLAIN 3개 실행 후 결과로 확인.
 - 실패 시 롤백 DDL은 v1.3-01_indexes.sql 하단 주석 참고.
 
 ---
@@ -166,7 +166,7 @@ LIMIT 100;
 
 - **DEPENDENT SUBQUERY 제거:** scalar subquery 2개 → candidate 집계 derived table 1개 + LEFT JOIN. doc당 반복 실행 제거.
 - **temp/filesort 감소 목표:** derived table 1회 스캔·집계 후 join으로 정렬 부담 완화. EXPLAIN에서 Using temporary; Using filesort 유무 확인.
-- 검증: sql/v1.3-02_explain.sql 실행 후 결과 공유.
+- 검증: sql/releases/v1.3/validation/v1.3-02_explain.sql 실행 후 결과 공유.
 
 ---
 
@@ -174,7 +174,7 @@ LIMIT 100;
 
 - **목표:** candidate 집계 derived(agg)가 idx_cand_doc_job_status 또는 idx_cand_doc_job_status_method 를 사용하도록 FORCE INDEX 적용. GROUP BY (source_doc_id, created_job_id) + WHERE status='pending' 이 인덱스 선두와 일치.
 - **검증 포인트:** EXPLAIN에서 derived3(shuttle_stop_candidate)의 **key**가 기존 idx_cand_status → **idx_cand_doc_job_status** 또는 **idx_cand_doc_job_status_method** 로 바뀌는지 확인.
-- 검증: sql/v1.3-03_explain.sql 실행 후 결과 공유.
+- 검증: sql/releases/v1.3/validation/v1.3-03_explain.sql 실행 후 결과 공유.
 
 ---
 
@@ -182,7 +182,7 @@ LIMIT 100;
 
 - **목표:** latest job per doc을 derived table(t) 대신 NOT EXISTS로만 필터. derived2 제거로 해당 단계의 Using temporary; Using filesort 제거 또는 감소.
 - **검증 포인트:** EXPLAIN에서 derived2 Extra에 **Using temporary / Using filesort** 가 줄었는지 확인. 쿼리 결과 동일성(컬럼·정렬: pending_risky_total DESC, pending_total DESC) 유지.
-- 검증: sql/v1.3-04_explain.sql 실행 후 결과 공유.
+- 검증: sql/releases/v1.3/validation/v1.3-04_explain.sql 실행 후 결과 공유.
 
 ---
 
@@ -190,7 +190,7 @@ LIMIT 100;
 
 - **목적:** NOT EXISTS 내부(j2) 비용 감소. shuttle_doc_job_log에 (source_doc_id, job_type, job_status, id) 인덱스 추가 → j2가 source_doc_id·job_type·job_status 기준으로 id > j.id 범위만 스캔하도록 유도.
 - **검증 포인트:** EXPLAIN에서 **j2**의 key가 **idx_joblog_doc_type_status_id** 로 잡히는지, rows 감소 여부 확인.
-- 롤백: sql/v1.3-05_joblog_index.sql 하단 DROP INDEX 주석 참고. 검증: sql/v1.3-05_validation.sql (SHOW INDEX + EXPLAIN).
+- 롤백: sql/releases/v1.3/schema/v1.3-05_joblog_index.sql 하단 DROP INDEX 주석 참고. 검증: sql/releases/v1.3/validation/v1.3-05_validation.sql (SHOW INDEX + EXPLAIN).
 
 **Workbench SHOW INDEX (shuttle_doc_job_log, Key_name = idx_joblog_doc_type_status_id):**
 
@@ -216,7 +216,7 @@ LIMIT 100;
 
 ## J. v1.3-06 검증 통합팩
 
-- **원칙:** 운영 3페이지(review_queue, alias_audit, ops_dashboard) 성능 검증은 **sql/v1.3-06_validation_pack.sql 1개**로 통합. SHOW INDEX 4건 + EXPLAIN 3건 실행 후 각 "(여기 채움)" 블록에 결과 붙여넣기.
+- **원칙:** 운영 3페이지(review_queue, alias_audit, ops_dashboard) 성능 검증은 **sql/releases/v1.3/validation/v1.3-06_validation_pack.sql 1개**로 통합. SHOW INDEX 4건 + EXPLAIN 3건 실행 후 각 "(여기 채움)" 블록에 결과 붙여넣기.
 - j2가 idx_joblog_doc_type_status_id를 쓰지 않고 ix_job_doc_type_status를 쓰는 현상은 **확인 필요/가설**로 분리. 옵티마이저 선택 차이 또는 통계에 따른 것으로 두고, 다음 버전(v1.3-07)에서 **힌트 실험(STRAIGHT_JOIN/USE INDEX)** 계획만 명시.
 
 ---
@@ -225,14 +225,14 @@ LIMIT 100;
 
 - **목적:** 정렬 기본값을 **j.updated_at DESC**(최신 문서 우선)로 변경하여, derived agg 기준 정렬(pending_risky_total DESC)에 따른 **filesort 비용을 기본 경로에서 회피**.
 - **동작:** 기본은 "정렬: 최신". GET sort=risky 일 때만 "정렬: 위험도"(pending_risky_total DESC, pending_total DESC) 적용. UI는 표 제목 오른쪽 링크 2개만(정렬: 최신 / 정렬: 위험도).
-- 검증: sql/v1.3-07_explain.sql (sort=updated vs sort=risky EXPLAIN 각 1건).
+- 검증: sql/releases/v1.3/validation/v1.3-07_explain.sql (sort=updated vs sort=risky EXPLAIN 각 1건).
 
 ---
 
 ## L. v1.3-08 NOT EXISTS j2 USE INDEX 실험
 
 - **목표:** j2에서 key가 ix_job_doc_type_status로 잡히는 것을 idx_joblog_doc_type_status_id로 **강제 시도**. NOT EXISTS 내부만 `FROM shuttle_doc_job_log j2 USE INDEX (idx_joblog_doc_type_status_id)` 적용.
-- **검증:** sql/v1.3-08_explain.sql 실행 후 j2 행의 key 확인. **결과: j2 key가 idx_joblog_doc_type_status_id 로 변경됨** (USE INDEX 적용 효과 있음).
+- **검증:** sql/releases/v1.3/validation/v1.3-08_explain.sql 실행 후 j2 행의 key 확인. **결과: j2 key가 idx_joblog_doc_type_status_id 로 변경됨** (USE INDEX 적용 효과 있음).
 
 ---
 
@@ -240,7 +240,7 @@ LIMIT 100;
 
 - **목적:** Top Candidates 정렬을 기본(복합: match_method NULL, like_prefix, score, id) 유지하되, **GET sort=simple** 일 때 **ORDER BY c.id ASC** 로 단순화하여 **가벼운 경로** 제공. 운영 시 급한 상황에서 성능 우회 가능.
 - **동작:** UI는 "정렬: 기본" / "정렬: 단순" 링크 2개만. only_risky=1 기본 유지(SoT 영향 없음).
-- 검증: sql/v1.3-09_explain.sql (sort=default vs sort=simple EXPLAIN 각 1건).
+- 검증: sql/releases/v1.3/validation/v1.3-09_explain.sql (sort=default vs sort=simple EXPLAIN 각 1건).
 
 ---
 

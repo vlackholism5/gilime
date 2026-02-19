@@ -1,0 +1,316 @@
+﻿osm_type,osm_id,osm_full_id,station_name,name_ko,name_en,lat,lon,railway,public_transport,station,subway,operator
+node,287600947,node/287600947,한성대입구,한성대입구,Hansung University,37.5885141,127.0059624,station,station,subway,yes,서울교통공사
+node,355172758,node/355172758,제기동,제기동,Jegi-dong,37.5783784,127.0344672,station,station,subway,yes,서울교통공사
+node,355173082,node/355173082,과천,과천,Gwacheon,37.4330744,126.9969576,station,station,subway,yes,한국철도공사
+node,355173088,node/355173088,경마공원,경마공원,Seoul Racecourse Park,37.4437648,127.0078955,station,station,subway,yes,한국철도공사
+node,355173092,node/355173092,일원,일원,Ilwon,37.4836919,127.0843766,station,station,subway,yes,서울교통공사
+node,1849176201,node/1849176201,국회의사당,국회의사당,National Assembly,37.5280157,126.9179639,station,station,subway,yes,서울시메트로9호선
+node,1994702339,node/1994702339,노들,노들,Nodeul,37.5129744,126.9535497,station,station,subway,yes,서울교통공사
+node,2028051082,node/2028051082,신설동,신설동,Sinseol-dong,37.5760544,127.0246657,station,station,subway,yes,서울교통공사
+node,2246104056,node/2246104056,용답,용답,Yongdap,37.56209,127.0508609,station,station,subway,yes,서울교통공사
+node,2346858840,node/2346858840,수서,수서,Suseo,37.4874159,127.1018399,station,station,subway,yes,서울교통공사
+node,3278844468,node/3278844468,충정로,충정로,Chungjeongno,37.5593715,126.9629108,station,station,subway,yes,서울교통공사
+node,3426724598,node/3426724598,종로5가,종로5가,Jongno 5(o)-ga,37.5709867,127.0020222,station,station,subway,yes,서울교통공사
+node,3431313912,node/3431313912,고속터미널,고속터미널,Express Bus Terminal,37.5050827,127.0049777,station,station,subway,yes,서울교통공사
+node,3824606373,node/3824606373,봉은사,봉은사,Bongeunsa,37.5141869,127.0602411,station,station,subway,yes,서울교통공사
+node,3824606376,node/3824606376,언주,언주,Eonju,37.507321,127.0338746,station,station,subway,yes,서울교통공사
+node,3824606382,node/3824606382,삼성중앙,삼성중앙,Samseong Jungang,37.5130955,127.0534747,station,station,subway,yes,서울시메트로9호선
+node,3824606384,node/3824606384,사평,사평,Sapyeong,37.5042952,127.0151398,station,station,subway,yes,서울시메트로9호선
+node,3824606387,node/3824606387,선정릉,선정릉,Seonjeongneung,37.510253,127.0438586,station,station,subway,yes,서울교통공사
+node,3824606390,node/3824606390,신논현,신논현,Sinnonhyeon,37.5043224,127.0245306,station,station,subway,yes,서울교통공사;네오트랜스주식회사
+node,3834732261,node/3834732261,구반포,구반포,Gubanpo,37.5012899,126.9867849,station,station,subway,yes,서울교통공사
+node,3834732263,node/3834732263,흑석,흑석,Heukseok,37.5083823,126.9639489,station,station,subway,yes,서울시메트로9호선
+node,3834732267,node/3834732267,신반포,신반포,Sinbanpo,37.5036014,126.996418,station,station,subway,yes,서울교통공사
+node,5208486247,node/5208486247,온수,온수,Onsu,37.4922986,126.823534,station,station,subway,yes,한국철도공사;서울교통공사
+node,5351229954,node/5351229954,양재,양재,Yangjae,37.4844005,127.0341455,station,station,subway,yes,서울교통공사
+node,5408273777,node/5408273777,복정,복정,Bokjeong,37.4705773,127.1267127,station,station,subway,yes,서울교통공사
+node,5444369664,node/5444369664,독산,독산,Doksan,37.4660736,126.8894844,station,station,subway,yes,한국철도공사
+node,5448524543,node/5448524543,금천구청,금천구청,Geumcheon-gu Office,37.4558132,126.8939002,station,station,subway,yes,한국철도공사
+node,5451488269,node/5451488269,암사역사공원,암사역사공원,Amsa History Park,37.5570469,127.1374318,station,station,subway,yes,서울교통공사
+node,5747397250,node/5747397250,보문,보문,Bomun,37.5852743,127.0193736,station,station,subway,yes,서울교통공사
+node,5770979639,node/5770979639,동작,동작,Dongjak,37.5029705,126.978203,station,station,subway,yes,서울교통공사
+node,5772493739,node/5772493739,도곡,도곡,Dogok,37.4909056,127.0554679,station,station,subway,yes,서울교통공사
+node,5772497241,node/5772497241,김포공항,김포공항,Gimpo Int'l Airport,37.5619247,126.8013934,station,station,subway,yes,서울교통공사
+node,5772552255,node/5772552255,동대문역사문화공원,동대문역사문화공원,Dongdaemun History & Culture Park Station (DDP),37.5652615,127.0081233,station,station,subway,yes,서울교통공사
+node,5774282517,node/5774282517,구로,구로,Guro,37.5034468,126.8825086,station,station,subway,yes,한국철도공사
+node,5782503942,node/5782503942,안국,안국,Anguk,37.5768279,126.9861709,station,station,subway,yes,서울교통공사
+node,5799979340,node/5799979340,강일,강일,Gangil,37.5574822,127.1757633,station,station,subway,yes,서울교통공사
+node,5801572034,node/5801572034,천호,,Cheonho,37.5385225,127.1234021,station,station,subway,yes,서울교통공사
+node,5812233465,node/5812233465,동대문,동대문,Dongdaemun,37.5718616,127.0114887,station,station,subway,yes,서울교통공사
+node,5812740055,node/5812740055,삼각지,삼각지,Samgakji,37.535478,126.9738885,station,station,subway,yes,서울교통공사
+node,5814312742,node/5814312742,도봉산,도봉산,Dobongsan,37.6898359,127.0460783,station,station,subway,yes,한국철도공사
+node,5814312743,node/5814312743,도봉산,도봉산,Dobongsan,37.6891881,127.0465716,station,station,subway,yes,서울교통공사
+node,5863335699,node/5863335699,종각,종각,Jonggak,37.5701745,126.9831831,station,station,subway,yes,서울교통공사
+node,5863378580,node/5863378580,건대입구,건대입구,Konkuk Univ.,37.5404436,127.0708644,station,station,subway,yes,서울교통공사
+node,5916874387,node/5916874387,응암,응암,Eungam,37.5984296,126.9155283,station,station,subway,yes,서울교통공사
+node,5916874391,node/5916874391,합정,합정,Hapjeong,37.5493558,126.9136561,station,station,subway,yes,서울교통공사
+node,5916874394,node/5916874394,동묘앞,동묘앞,Dongmyo,37.5735084,127.0174344,station,station,subway,yes,서울교통공사
+node,5916874395,node/5916874395,고려대,고려대,Korea Univ.,37.5903784,127.0360133,station,station,subway,yes,서울교통공사
+node,5919544685,node/5919544685,홍대입구,홍대입구,Hongik Univ.,37.5582622,126.9256952,station,station,subway,yes,서울교통공사;한국철도공사;공항철도주식회사
+node,5924268024,node/5924268024,선릉,선릉,Seolleung,37.5044746,127.0489508,station,station,subway,yes,서울교통공사
+node,5925861751,node/5925861751,강남구청,강남구청,Gangnam-gu Office,37.5171756,127.0412865,station,station,subway,yes,서울교통공사
+node,5927397045,node/5927397045,모란,모란,Moran,37.4337388,127.1291547,station,station,subway,yes,서울교통공사
+node,5927529147,node/5927529147,강남,강남,Gangnam,37.4979497,127.0275574,station,station,subway,yes,서울교통공사
+node,5930287081,node/5930287081,가락시장,가락시장,Garak Market,37.4925324,127.1186382,station,station,subway,yes,서울교통공사
+node,5930698985,node/5930698985,을지로3가,을지로3가,Euljiro 3(sam)-ga,37.5663363,126.9925305,station,station,subway,yes,서울교통공사
+node,5930698996,node/5930698996,불광,불광,Bulgwang,37.6108807,126.9296307,station,station,subway,yes,서울교통공사
+node,5933687039,node/5933687039,구의,구의,Guui,37.5371676,127.0862214,station,station,subway,yes,서울교통공사
+node,5933687056,node/5933687056,강변,강변,Gangbyeon,37.5351109,127.0947415,station,station,subway,yes,서울교통공사
+node,5933687057,node/5933687057,잠실나루,잠실나루,Jamsillaru,37.520691,127.1038301,station,station,subway,yes,서울교통공사
+node,5933896995,node/5933896995,충무로,충무로,Chungmuro,37.5612019,126.9941091,station,station,subway,yes,서울교통공사
+node,5933896998,node/5933896998,약수,약수,Yaksu,37.5549186,127.0103868,station,station,subway,yes,서울교통공사
+node,5933947006,node/5933947006,교대,교대,Seoul Nat'l Univ. of Education,37.4936592,127.0137025,station,station,subway,yes,서울교통공사
+node,5934012013,node/5934012013,오금,오금,Ogeum,37.5019815,127.1281525,station,station,subway,yes,서울교통공사
+node,5935554444,node/5935554444,한양대,한양대,Hanyang Univ.,37.5557271,127.0436642,station,station,subway,yes,서울교통공사
+node,5935554450,node/5935554450,성수,성수,Seongsu,37.5445688,127.0561016,station,station,subway,yes,서울교통공사
+node,5935738063,node/5935738063,시청,시청,City Hall,37.5654798,126.977114,station,station,subway,yes,서울교통공사
+node,5935738064,node/5935738064,을지로입구,을지로입구,Euljiro 1(il)-ga,37.5659494,126.9826171,station,station,subway,yes,서울교통공사
+node,5935738067,node/5935738067,을지로4가,을지로4가,Euljiro 4(sa)-ga,37.5666425,126.9981685,station,station,subway,yes,서울교통공사
+node,5935738288,node/5935738288,신당,신당,Sindang,37.5653839,127.016252,station,station,subway,yes,서울교통공사
+node,5935738290,node/5935738290,상왕십리,상왕십리,Sangwangsimni,37.564391,127.0292513,station,station,subway,yes,서울교통공사
+node,5937884691,node/5937884691,신촌,신촌,Sinchon,37.5551517,126.9369084,station,station,subway,yes,서울교통공사
+node,5937884696,node/5937884696,이대,이대,Ewha Womans Univ.,37.5567733,126.9458346,station,station,subway,yes,서울교통공사
+node,5937884698,node/5937884698,아현,아현,Ahyeon,37.5574309,126.9561209,station,station,subway,yes,서울교통공사
+node,5937907109,node/5937907109,지축,지축,Jichuk,37.6481183,126.9139297,station,station,subway,yes,한국철도공사;서울교통공사
+node,5937907114,node/5937907114,원흥,원흥,Wonheung,37.6505121,126.8736684,station,station,subway,yes,한국철도공사
+node,5937907115,node/5937907115,원당,원당,Wondang,37.6530498,126.8428981,station,station,subway,yes,한국철도공사
+node,5937907124,node/5937907124,화정,화정,Hwajeong,37.6346457,126.832577,station,station,subway,,한국철도공사
+node,5937907125,node/5937907125,대곡,대곡,Daegok,37.6317813,126.8102838,station,station,subway,,한국철도공사
+node,5937907134,node/5937907134,마두,마두,Madu,37.6520039,126.7777596,station,station,subway,,한국철도공사
+node,5937907135,node/5937907135,정발산,정발산,Jeongbalsan,37.659711,126.7732651,station,station,subway,,한국철도공사
+node,5941651083,node/5941651083,삼송,삼송,Samsong,37.6531194,126.8954796,station,station,subway,yes,한국철도공사
+node,5968926272,node/5968926272,마곡나루,마곡나루,Magongnaru,37.5662179,126.827917,station,station,subway,yes,서울시메트로9호선
+node,6033312683,node/6033312683,당산,당산,Dangsan,37.5345964,126.902478,station,station,subway,yes,서울교통공사
+node,6033314412,node/6033314412,문래,문래,Mullae,37.5183839,126.8948726,station,station,subway,yes,서울교통공사
+node,6033314425,node/6033314425,신도림,신도림,Sindorim,37.5089397,126.8912262,station,station,subway,yes,서울교통공사
+node,6033314429,node/6033314429,구로디지털단지,구로디지털단지,Guro Digital Complex,37.4852761,126.9015916,station,station,subway,yes,서울교통공사
+node,6033314471,node/6033314471,신대방,신대방,Sindaebang,37.4875949,126.9133919,station,station,subway,yes,서울교통공사
+node,6033314481,node/6033314481,신림,신림,Sillim,37.4842316,126.9296803,station,station,subway,yes,서울교통공사
+node,6033314701,node/6033314701,봉천,봉천,Bongcheon,37.4823889,126.9419387,station,station,subway,yes,서울교통공사
+node,6033314711,node/6033314711,서울대입구,서울대입구,Seoul Nat'l Univ.,37.481223,126.9527151,station,station,subway,yes,서울교통공사
+node,6033314724,node/6033314724,낙성대,낙성대,Nakseongdae,37.4770623,126.9634876,station,station,subway,yes,서울교통공사
+node,6033314782,node/6033314782,방배,방배,Bangbae,37.4814662,126.9977072,station,station,subway,yes,서울교통공사
+node,6033314993,node/6033314993,서초,서초,Seocho,37.4917747,127.007681,station,station,subway,yes,서울교통공사
+node,6033314995,node/6033314995,역삼,역삼,Yeoksam,37.5008221,127.03696,station,station,subway,yes,서울교통공사
+node,6033315003,node/6033315003,삼성,삼성,Samseong,37.5088402,127.063143,station,station,subway,yes,서울교통공사
+node,6033315007,node/6033315007,종합운동장,종합운동장,Sports Complex,37.5110581,127.0737204,station,station,subway,yes,서울교통공사
+node,6033315010,node/6033315010,잠실새내,잠실새내,Jamsilsaenae,37.5115881,127.085571,station,station,subway,yes,서울교통공사
+node,6033315017,node/6033315017,잠실,잠실,Jamsil,37.5132169,127.1001365,station,station,subway,yes,서울교통공사
+node,6033364440,node/6033364440,양천구청,양천구청,Yangcheon-gu Office,37.512295,126.865945,station,station,subway,yes,서울교통공사
+node,6033364448,node/6033364448,신정네거리,신정네거리,Sinjeongnegeori,37.5199831,126.8530463,station,station,subway,yes,서울교통공사
+node,6033364545,node/6033364545,도림천,도림천,Dorimcheon,37.5144539,126.882684,station,station,subway,yes,서울교통공사
+node,6033544227,node/6033544227,경찰병원,경찰병원,National Police Hospital,37.495401,127.1239038,station,station,subway,yes,서울교통공사
+node,6033544263,node/6033544263,대청,,Daecheong,37.4936283,127.0795515,station,station,subway,yes,서울교통공사
+node,6033544264,node/6033544264,학여울,학여울,Hangnyeoul,37.4964975,127.0698841,station,station,subway,yes,서울교통공사
+node,6033544266,node/6033544266,대치,대치,Daechi,37.4944743,127.0631933,station,station,subway,yes,서울교통공사
+node,6033544267,node/6033544267,매봉,,Maebong,37.4870692,127.046978,station,station,subway,yes,서울교통공사
+node,6033544275,node/6033544275,남부터미널,남부터미널,Nambu Bus Terminal,37.484943,127.0163445,station,station,subway,yes,서울교통공사
+node,6033544391,node/6033544391,잠원,잠원,Jamwon,37.5127513,127.0111504,station,station,subway,yes,서울교통공사
+node,6033544395,node/6033544395,신사,신사,Sinsa,37.5161089,127.0195159,station,station,subway,yes,서울교통공사;네오트랜스주식회사
+node,6033544405,node/6033544405,압구정,압구정,Apgujeong,37.5261847,127.0284989,station,station,subway,yes,서울교통공사
+node,6033544412,node/6033544412,금호,금호,Geumho,37.5479735,127.0159247,station,station,subway,yes,서울교통공사
+node,6033544419,node/6033544419,동대입구,동대입구,Dongguk Univ.,37.5590607,127.005727,station,station,subway,yes,서울교통공사
+node,6033544429,node/6033544429,경복궁,,Gyeongbokgung,37.5757924,126.973629,station,station,subway,yes,서울교통공사
+node,6033544434,node/6033544434,독립문,독립문,Dongnimmun,37.5745584,126.9578361,station,station,subway,yes,서울교통공사
+node,6033544440,node/6033544440,무악재,무악재,Muakjae,37.5823172,126.9503501,station,station,subway,yes,서울교통공사
+node,6033544444,node/6033544444,홍제,홍제,Hongje,37.5886894,126.9442528,station,station,subway,yes,서울교통공사
+node,6033544459,node/6033544459,녹번,녹번,Nokbeon,37.6009733,126.9357307,station,station,subway,yes,서울교통공사
+node,6033544501,node/6033544501,구파발,구파발,Gupabal,37.6368919,126.9188046,station,station,subway,yes,서울교통공사
+node,6035746711,node/6035746711,대공원,대공원,Seoul Grand Park,37.4358034,127.0066085,station,station,subway,yes,한국철도공사
+node,6035746718,node/6035746718,선바위,선바위,Seonbawi,37.4518055,127.0021114,station,station,subway,yes,한국철도공사
+node,6036154649,node/6036154649,불암산,불암산,Buramsan,37.670098,127.0789245,station,station,subway,yes,서울교통공사
+node,6036160301,node/6036160301,쌍문,쌍문,Ssangmun,37.6484028,127.0345788,station,station,subway,yes,서울교통공사
+node,6036160306,node/6036160306,수유,수유,Suyu,37.6379932,127.0257229,station,station,subway,yes,서울교통공사
+node,6036160315,node/6036160315,미아,미아,Mia,37.6264941,127.0261091,station,station,subway,yes,서울교통공사
+node,6036160316,node/6036160316,미아사거리,,Miasageori,37.613185,127.0300915,station,station,subway,yes,서울교통공사
+node,6036160319,node/6036160319,길음,,Gireum,37.6031599,127.0248525,station,station,subway,yes,서울교통공사
+node,6036160325,node/6036160325,혜화,혜화,Hyehwa,37.5821381,127.0019525,station,station,subway,yes,서울교통공사
+node,6036160341,node/6036160341,명동,명동,Myeongdong,37.5608977,126.9863762,station,station,subway,yes,서울교통공사
+node,6036160342,node/6036160342,회현,회현,Hoehyeon,37.5586981,126.9784167,station,station,subway,yes,서울교통공사
+node,6036160343,node/6036160343,서울역,서울역,Seoul Station,37.5528527,126.9725721,station,station,subway,yes,서울교통공사
+node,6036160346,node/6036160346,숙대입구,숙대입구,Sookmyung Women's Univ.,37.5451337,126.9719573,station,station,subway,yes,서울교통공사
+node,6036160347,node/6036160347,신용산,신용산,Sinyongsan,37.5291744,126.9678569,station,station,subway,yes,서울교통공사
+node,6036160367,node/6036160367,사당,사당,Sadang,37.4765828,126.9816682,station,station,subway,yes,서울교통공사
+node,6036160370,node/6036160370,남태령,남태령,Namtaeryeong,37.4646556,126.9886975,station,station,subway,yes,서울교통공사
+node,6039313042,node/6039313042,마천,마천,Macheon,37.4949531,127.1527241,station,station,subway,yes,서울교통공사
+node,6039313045,node/6039313045,거여,거여,Geoyeo,37.4933453,127.1437709,station,station,subway,yes,서울교통공사
+node,6039313048,node/6039313048,개롱,개롱,Gaerong,37.4980749,127.1348432,station,station,subway,yes,서울교통공사
+node,6039313052,node/6039313052,방이,방이,Bangi,37.5086429,127.1260388,station,station,subway,yes,서울교통공사
+node,6039313054,node/6039313054,올림픽공원,올림픽공원,Olympic Park,37.5161479,127.1309298,station,station,subway,yes,서울교통공사
+node,6039313056,node/6039313056,둔촌동,둔촌동,Dunchon-dong,37.5278024,127.1362433,station,station,subway,yes,서울교통공사
+node,6039313589,node/6039313589,상일동,상일동,Sangil-dong,37.5567762,127.1667789,station,station,subway,yes,서울교통공사
+node,6039313593,node/6039313593,고덕,고덕,Godeok,37.5549771,127.1537755,station,station,subway,yes,서울교통공사
+node,6039313596,node/6039313596,명일,,Myeongil,37.5519533,127.1440847,station,station,subway,yes,서울교통공사
+node,6039313600,node/6039313600,굽은다리,굽은다리,Gubeundari,37.5456375,127.1429622,station,station,subway,yes,서울교통공사
+node,6039313602,node/6039313602,길동,길동,Gil-dong,37.5383683,127.1402049,station,station,subway,yes,서울교통공사
+node,6039313604,node/6039313604,강동,강동,Gangdong,37.5357969,127.1325955,station,station,subway,yes,서울교통공사
+node,6039313609,node/6039313609,광나루,광나루,Gwangnaru,37.5453014,127.103527,station,station,subway,yes,서울교통공사
+node,6039313612,node/6039313612,아차산,아차산,Achasan,37.5516981,127.0897955,station,station,subway,yes,서울교통공사
+node,6039313616,node/6039313616,장한평,장한평,Janghanpyeong,37.5614909,127.0645666,station,station,subway,yes,서울교통공사
+node,6039313619,node/6039313619,답십리,답십리,Dapsipri,37.5668136,127.0526992,station,station,subway,yes,서울교통공사
+node,6039313633,node/6039313633,마장,마장,Majang,37.5660982,127.042881,station,station,subway,yes,서울교통공사
+node,6039313637,node/6039313637,행당,행당,Haengdang,37.5576063,127.0299929,station,station,subway,yes,서울교통공사
+node,6039313638,node/6039313638,신금호,신금호,Singeumho,37.554429,127.0202485,station,station,subway,yes,서울교통공사
+node,6039313647,node/6039313647,광화문,광화문,Gwanghwamun,37.5716162,126.9769026,station,station,subway,yes,서울교통공사
+node,6039313652,node/6039313652,서대문,서대문,Seodaemun,37.5657953,126.9666351,station,station,subway,yes,서울교통공사
+node,6039313658,node/6039313658,애오개,애오개,Aeogae,37.553428,126.9566976,station,station,subway,yes,서울교통공사
+node,6039313661,node/6039313661,공덕,공덕,Gongdeok,37.5436538,126.9508061,station,station,subway,yes,서울교통공사;한국철도공사;공항철도주식회사
+node,6039313662,node/6039313662,마포,마포,Mapo,37.5396369,126.9459929,station,station,subway,yes,서울교통공사
+node,6039313663,node/6039313663,여의나루,여의나루,Yeouinaru,37.5268526,126.9325288,station,station,subway,yes,서울교통공사
+node,6039313670,node/6039313670,여의도,여의도,Yeouido,37.5216685,126.9243018,station,station,subway,yes,서울교통공사;서울시메트로9호선
+node,6039313679,node/6039313679,영등포시장,영등포시장,Yeongdeungpo Market,37.5226934,126.9051415,station,station,subway,yes,서울교통공사
+node,6039313682,node/6039313682,영등포구청,영등포구청,Yeongdeungpo-gu Office,37.5240181,126.8963369,station,station,subway,yes,서울교통공사
+node,6039313683,node/6039313683,양평,양평,Yangpyeong,37.5256329,126.8861176,station,station,subway,yes,서울교통공사
+node,6039313988,node/6039313988,오목교,오목교,Omokgyo,37.5245648,126.8751222,station,station,subway,yes,서울교통공사
+node,6039313992,node/6039313992,목동,목동,Mok-dong,37.5261241,126.8645174,station,station,subway,yes,서울교통공사
+node,6039313994,node/6039313994,신정,신정,Sinjeong,37.5250413,126.8559699,station,station,subway,yes,서울교통공사
+node,6039313997,node/6039313997,까치산,까치산,Kkachisan,37.5321119,126.8465265,station,station,subway,yes,서울교통공사
+node,6039314002,node/6039314002,화곡,화곡,Hwagok,37.5416728,126.840397,station,station,subway,yes,서울교통공사
+node,6039314018,node/6039314018,우장산,우장산,Ujangsan,37.5488943,126.8363227,station,station,subway,yes,서울교통공사
+node,6039314025,node/6039314025,발산,발산,Balsan,37.5584951,126.8374653,station,station,subway,yes,서울교통공사
+node,6039314027,node/6039314027,마곡,마곡,Magok,37.5602492,126.8247463,station,station,subway,yes,서울교통공사
+node,6039314028,node/6039314028,송정,송정,Songjeong,37.5612772,126.8119428,station,station,subway,yes,서울교통공사
+node,6039314030,node/6039314030,개화산,개화산,Gaehwasan,37.5728758,126.8082601,station,station,subway,yes,서울교통공사
+node,6039314033,node/6039314033,방화,방화,Banghwa,37.5774043,126.812732,station,station,subway,yes,서울교통공사
+node,6041673022,node/6041673022,봉화산,봉화산,Bonghwasan,37.6174165,127.0910968,station,station,subway,yes,서울교통공사
+node,6041673023,node/6041673023,화랑대,화랑대,Hwarangdae,37.6197841,127.0837122,station,station,subway,yes,서울교통공사
+node,6041673026,node/6041673026,석계,석계,Seokgye,37.6148083,127.0658393,station,station,subway,yes,한국철도공사
+node,6041673029,node/6041673029,돌곶이,돌곶이,Dolgoji,37.6105663,127.0564932,station,station,subway,yes,서울교통공사
+node,6041673030,node/6041673030,상월곡,상월곡,Sangwolgok,37.6062379,127.0482722,station,station,subway,yes,서울교통공사
+node,6041673033,node/6041673033,월곡,월곡,Wolgok,37.60192,127.0414554,station,station,subway,yes,서울교통공사
+node,6041673044,node/6041673044,안암,안암,Anam,37.5862688,127.0292777,station,station,subway,yes,서울교통공사
+node,6041673049,node/6041673049,창신,창신,Changsin,37.5798042,127.0152468,station,station,subway,yes,서울교통공사
+node,6041673050,node/6041673050,청구,청구,Cheonggu,37.5602311,127.0137776,station,station,subway,yes,서울교통공사
+node,6041673060,node/6041673060,버티고개,버티고개,Beotigogae,37.5482323,127.0065879,station,station,subway,yes,서울교통공사
+node,6041673074,node/6041673074,한강진,한강진,Hangangjin,37.5397964,127.0017506,station,station,subway,yes,서울교통공사
+node,6041673081,node/6041673081,이태원,이태원,Itaewon,37.5345026,126.9943705,station,station,subway,yes,서울교통공사
+node,6041673082,node/6041673082,녹사평,녹사평,Noksapyeong,37.53492,126.9865773,station,station,subway,yes,서울교통공사
+node,6041674894,node/6041674894,효창공원앞,효창공원앞,Hyochang Park,37.5393413,126.9613324,station,station,subway,yes,서울교통공사;한국철도공사
+node,6041674899,node/6041674899,대흥,대흥,Daeheung,37.5476992,126.9423451,station,station,subway,yes,서울교통공사
+node,6041674901,node/6041674901,광흥창,광흥창,Gwangheungchang,37.5474717,126.9319609,station,station,subway,yes,서울교통공사
+node,6041674902,node/6041674902,상수,상수,Sangsu,37.5477577,126.9228923,station,station,subway,yes,서울교통공사
+node,6041674907,node/6041674907,망원,망원,Mangwon,37.5560254,126.9101277,station,station,subway,yes,서울교통공사
+node,6041674909,node/6041674909,마포구청,마포구청,Mapo-gu Office,37.5635586,126.9033645,station,station,subway,yes,서울교통공사
+node,6041674912,node/6041674912,월드컵경기장,월드컵경기장,World Cup Stadium,37.5701918,126.8993179,station,station,subway,yes,서울교통공사
+node,6041674915,node/6041674915,증산,증산,Jeungsan,37.5841441,126.9099118,station,station,subway,yes,서울교통공사
+node,6041674916,node/6041674916,새절,새절,Saejeol,37.5916491,126.9137922,station,station,subway,yes,서울교통공사
+node,6041674917,node/6041674917,구산,구산,Gusan,37.6112496,126.9172191,station,station,subway,yes,서울교통공사
+node,6041674920,node/6041674920,연신내,연신내,Yeonsinnae,37.6189247,126.9211838,station,station,subway,yes,서울교통공사
+node,6041674927,node/6041674927,독바위,독바위,Dokbawi,37.6183371,126.9330214,station,station,subway,yes,서울교통공사
+node,6041674939,node/6041674939,역촌,역촌,Yeokchon,37.6060733,126.9227556,station,station,subway,yes,서울교통공사
+node,6046633858,node/6046633858,어린이대공원,어린이대공원,Children's Grand Park,37.5475998,127.0743915,station,station,subway,yes,서울교통공사
+node,6046633861,node/6046633861,군자,군자,Gunja,37.5572448,127.0795575,station,station,subway,yes,서울교통공사
+node,6046633862,node/6046633862,중곡,중곡,Junggok,37.5663055,127.0845155,station,station,subway,yes,서울교통공사
+node,6046633863,node/6046633863,용마산,용마산,Yongmasan,37.573993,127.0865798,station,station,subway,yes,서울교통공사
+node,6046633864,node/6046633864,사가정,사가정,Sagajeong,37.5806971,127.0884106,station,station,subway,yes,서울교통공사
+node,6046633865,node/6046633865,면목,면목,Myeonmok,37.5884004,127.0876041,station,station,subway,yes,서울교통공사
+node,6046633868,node/6046633868,상봉,상봉,Sangbong,37.5960832,127.0855918,station,station,subway,yes,서울교통공사
+node,6046633869,node/6046633869,중화,중화,Junghwa,37.6016267,127.0795172,station,station,subway,yes,서울교통공사
+node,6046633870,node/6046633870,먹골,먹골,Meokgol,37.6114417,127.0776518,station,station,subway,yes,서울교통공사
+node,6046633871,node/6046633871,태릉입구,태릉입구,Taereung,37.6176924,127.0756723,station,station,subway,yes,서울교통공사
+node,6046633874,node/6046633874,공릉,공릉,Gongneung,37.6256358,127.0730437,station,station,subway,yes,서울교통공사
+node,6046633875,node/6046633875,하계,하계,Hagye,37.6360179,127.068252,station,station,subway,yes,서울교통공사
+node,6046633876,node/6046633876,중계,중계,Junggye,37.6455373,127.0638733,station,station,subway,yes,서울교통공사
+node,6046633877,node/6046633877,노원,노원,Nowon,37.6545911,127.0604932,station,station,subway,yes,서울교통공사
+node,6046633880,node/6046633880,마들,마들,Madeul,37.665038,127.0577205,station,station,subway,yes,서울교통공사
+node,6046633881,node/6046633881,수락산,수락산,Suraksan,37.6778035,127.0553431,station,station,subway,yes,서울교통공사
+node,6048953566,node/6048953566,광명사거리,광명사거리,Gwangmyeongsageori,37.4794207,126.8544598,station,station,subway,yes,서울교통공사
+node,6048953567,node/6048953567,철산,철산,Cheolsan,37.4760012,126.8675973,station,station,subway,yes,서울교통공사
+node,6048953568,node/6048953568,가산디지털단지,가산디지털단지,Gasan Digital Complex,37.4815947,126.8826166,station,station,subway,yes,한국철도공사
+node,6048953569,node/6048953569,남구로,남구로,Namguro,37.4853612,126.8866651,station,station,subway,yes,서울교통공사
+node,6048953572,node/6048953572,대림,대림,Daerim,37.4934375,126.8949325,station,station,subway,yes,서울교통공사
+node,6048953575,node/6048953575,신풍,신풍,Sinpung,37.5001667,126.9088751,station,station,subway,yes,서울교통공사
+node,6048953576,node/6048953576,보라매,보라매,Boramae,37.4999284,126.9203764,station,station,subway,yes,서울교통공사
+node,6048953577,node/6048953577,신대방삼거리,신대방삼거리,Sindaebangsamgeori,37.499706,126.9282246,station,station,subway,yes,서울교통공사
+node,6048953578,node/6048953578,장승배기,장승배기,Jangseungbaegi,37.5050172,126.9392793,station,station,subway,yes,서울교통공사
+node,6048953579,node/6048953579,상도,상도,Sangdo,37.503216,126.9476726,station,station,subway,yes,서울교통공사
+node,6048953580,node/6048953580,숭실대입구,숭실대입구,Soongsil Univ.,37.4956862,126.9541334,station,station,subway,yes,서울교통공사
+node,6048953581,node/6048953581,남성,남성,Namseong,37.4843545,126.9718936,station,station,subway,yes,서울교통공사
+node,6048953582,node/6048953582,이수,이수,Isu,37.4854491,126.9821095,station,station,subway,yes,서울교통공사
+node,6048953583,node/6048953583,내방,내방,Naebang,37.4876455,126.9935544,station,station,subway,yes,서울교통공사
+node,6048953584,node/6048953584,반포,반포,Banpo,37.5081748,127.0116346,station,station,subway,yes,서울교통공사
+node,6048954785,node/6048954785,논현,논현,Nonhyeon,37.5109791,127.0213641,station,station,subway,yes,서울교통공사;네오트랜스주식회사
+node,6048954786,node/6048954786,학동,학동,Hak-dong,37.5139566,127.03075,station,station,subway,yes,서울교통공사
+node,6048954787,node/6048954787,청담,청담,Cheongdam,37.5190912,127.0516784,station,station,subway,yes,서울교통공사
+node,6048955198,node/6048955198,자양,자양,Jayang,37.5315323,127.0667418,station,station,subway,yes,서울교통공사
+node,6049150842,node/6049150842,용두,용두,Yongdu,37.5740737,127.0380657,station,station,subway,yes,서울교통공사
+node,6049150843,node/6049150843,신답,신답,Sindap,37.5697194,127.0471268,station,station,subway,yes,서울교통공사
+node,6050654949,node/6050654949,신중동,신중동,Sinjung-dong,37.5030388,126.7762325,station,station,subway,yes,인천교통공사
+node,6050654950,node/6050654950,춘의,춘의,Chunui,37.5037314,126.7872014,station,station,subway,yes,인천교통공사
+node,6050654951,node/6050654951,부천종합운동장,부천종합운동장,Bucheon Stadium,37.5054566,126.7972885,station,station,subway,yes,인천교통공사
+node,6050654952,node/6050654952,까치울,까치울,Kkachiul,37.5062407,126.8113842,station,station,subway,yes,인천교통공사
+node,6050654953,node/6050654953,천왕,천왕,Cheonwang,37.4863668,126.8389218,station,station,subway,yes,서울교통공사
+node,6094326921,node/6094326921,수진,수진,Sujin,37.4374429,127.1406857,station,station,subway,yes,
+node,6094326922,node/6094326922,신흥,신흥,Sinheung,37.4410027,127.1476641,station,station,,yes,
+node,6094326923,node/6094326923,단대오거리,단대오거리,Dandaeogeori,37.4450845,127.1567783,station,station,subway,yes,
+node,6094326924,node/6094326924,남한산성입구,남한산성입구,Namhansanseong,37.4515531,127.1598132,station,station,subway,yes,
+node,6094326925,node/6094326925,산성,산성,Sanseong,37.4568677,127.1499333,station,station,subway,yes,
+node,6094326926,node/6094326926,남위례,남위례,Namwirye,37.4627715,127.1392162,station,station,subway,yes,서울교통공사
+node,6094326927,node/6094326927,장지,장지,Jangji,37.4788881,127.126067,station,station,subway,yes,서울교통공사
+node,6094326930,node/6094326930,문정,문정,Munjeong,37.4858358,127.1225184,station,station,subway,yes,서울교통공사
+node,6094326939,node/6094326939,송파,송파,Songpa,37.4997247,127.1121822,station,station,subway,yes,서울교통공사
+node,6094326940,node/6094326940,석촌,석촌,Seokchon,37.5052954,127.1071105,station,station,subway,yes,서울교통공사
+node,6094326941,node/6094326941,몽촌토성,몽촌토성,Mongchontoseong,37.5175329,127.11267,station,station,subway,yes,서울교통공사
+node,6094326942,node/6094326942,강동구청,강동구청,Gangdong-gu Office,37.5306942,127.1206234,station,station,subway,yes,서울교통공사
+node,6094326943,node/6094326943,암사,암사,Amsa,37.5501059,127.1275385,station,station,subway,yes,서울교통공사
+node,6102706368,node/6102706368,중앙보훈병원,중앙보훈병원,VHS Medical Center,37.5282799,127.1482582,station,station,subway,yes,서울교통공사
+node,6102706373,node/6102706373,둔촌오륜,둔촌오륜,Dunchon Oryun,37.5198411,127.1384179,station,station,subway,yes,서울교통공사
+node,6102706380,node/6102706380,한성백제,한성백제,Hanseong Baekje,37.5166702,127.1162125,station,station,subway,yes,서울교통공사
+node,6102706785,node/6102706785,송파나루,송파나루,Songpanaru,37.511245,127.1127954,station,station,subway,yes,서울교통공사
+node,6102706795,node/6102706795,석촌고분,석촌고분,Seokchon Gobun,37.5024441,127.0966143,station,station,subway,yes,서울교통공사
+node,6102706802,node/6102706802,삼전,삼전,Samjeon,37.5045347,127.0872078,station,station,subway,yes,서울교통공사
+node,6125828716,node/6125828716,백석,백석,Baekseok,37.6430359,126.7880378,station,station,subway,,한국철도공사
+node,6734894972,node/6734894972,성신여대입구,성신여대입구,Sungshin Women's University,37.5926755,127.0164764,station,station,subway,yes,서울교통공사
+node,7176735174,node/7176735174,청량리,청량리,Cheongnyangni,37.5799754,127.0446284,station,station,subway,yes,서울교통공사
+node,7186344001,node/7186344001,신내,신내,Sinnae,37.6125508,127.1040904,station,station,subway,yes,서울교통공사
+node,7207442616,node/7207442616,종로3가,종로3가,Jongno 3(sam)-ga,37.5704405,126.9923242,station,station,subway,yes,서울교통공사
+node,7238508817,node/7238508817,이촌,이촌,Ichon,37.5227123,126.9733678,station,station,subway,yes,서울교통공사
+node,7368810705,node/7368810705,서울역,서울역,Seoul Station,37.5534363,126.9697994,station,station,subway,yes,공항철도주식회사
+node,7856245647,node/7856245647,건대입구,건대입구,Konkuk Univ.,37.5403626,127.069384,station,station,subway,yes,서울교통공사
+node,7916699664,node/7916699664,왕십리,왕십리,Wangsimni,37.5612078,127.0371526,station,station,subway,yes,서울교통공사
+node,7916699665,node/7916699665,왕십리,왕십리,Wangsimni,37.5609924,127.0357093,station,station,subway,yes,서울교통공사
+node,8043801405,node/8043801405,신설동,신설동,Sinseol-dong,37.5745192,127.0254473,station,station,subway,yes,서울교통공사
+node,8111056262,node/8111056262,창동,창동,Chang-Dong,37.6531817,127.0476987,station,station,subway,yes,서울교통공사
+node,8145379643,node/8145379643,동작,동작,Dongjak,37.5031081,126.9803481,station,station,subway,yes,서울교통공사
+node,8232932947,node/8232932947,개화,개화,Gaehwa,37.5785381,126.7976654,station,station,subway,yes,서울시메트로9호선
+node,8401534578,node/8401534578,샛강,샛강,Saetgang,37.517362,126.928282,station,station,subway,yes,서울시메트로9호선
+node,8724752444,node/8724752444,디지털미디어시티,디지털미디어시티,Digital Media City,37.5773957,126.8980769,station,station,subway,yes,공항철도주식회사
+node,8724752445,node/8724752445,디지털미디어시티,디지털미디어시티,Digital Media City,37.5761895,126.9014558,station,station,subway,yes,서울교통공사
+node,8778625274,node/8778625274,노원,노원,Nowon,37.6563651,127.0634799,station,station,subway,yes,서울교통공사
+node,8822741689,node/8822741689,당산,당산,Dangsan,37.533531,126.9026845,station,station,subway,yes,서울시메트로9호선
+node,8829280690,node/8829280690,서울역,서울역,Seoul (Station),37.5560719,126.9723599,station,station,subway,yes,서울교통공사
+node,8829295765,node/8829295765,신길,신길,Singil,37.5175077,126.9163515,station,station,subway,yes,서울교통공사
+node,8829295766,node/8829295766,가산디지털단지,가산디지털단지,Gasan Digital Complex,37.4804538,126.8828796,station,station,subway,yes,서울교통공사
+node,9165988119,node/9165988119,상계,상계,Sanggye,37.6607649,127.073439,station,station,subway,yes,서울교통공사
+node,9181579788,node/9181579788,선유도,선유도,Seonyudo,37.5378593,126.8939823,station,station,subway,yes,서울시메트로9호선
+node,9181579789,node/9181579789,신목동,신목동,Sinmokdong,37.544211,126.8831758,station,station,subway,yes,서울시메트로9호선
+node,9181579790,node/9181579790,염창,염창,Yeomchang,37.5470335,126.8753972,station,station,subway,yes,서울시메트로9호선
+node,9181579791,node/9181579791,등촌,등촌,Deungchon,37.5511518,126.864574,station,station,subway,yes,서울시메트로9호선
+node,9181579792,node/9181579792,증미,증미,Jeungmi,37.5575102,126.8618185,station,station,subway,yes,서울시메트로9호선
+node,9181579793,node/9181579793,가양,가양,Gayang,37.5611423,126.8550997,station,station,subway,yes,서울시메트로9호선
+node,9181579794,node/9181579794,양천향교,양천향교,Yangcheon Hyanggyo,37.5684524,126.8412958,station,station,subway,yes,서울시메트로9호선
+node,9181579795,node/9181579795,신방화,신방화,Sinbanghwa,37.5674973,126.8165921,station,station,subway,yes,서울시메트로9호선
+node,9181579796,node/9181579796,공항시장,공항시장,Airport Market,37.5636577,126.8106016,station,station,subway,yes,서울시메트로9호선
+node,9417728884,node/9417728884,부천종합운동장,부천종합운동장,Bucheon Stadium,37.5058364,126.7974606,station,station,subway,yes,한국철도공사
+node,9417728897,node/9417728897,원종,원종,Wonjong,37.5238457,126.8048614,station,station,subway,yes,한국철도공사
+node,9420130583,node/9420130583,총신대입구(이수),총신대입구(이수),Chongshin Univ. (Isu),37.48678,126.9822371,station,station,subway,yes,서울교통공사
+node,9454775466,node/9454775466,동묘앞,동묘앞,Dongmyo,37.5723419,127.015659,station,station,subway,yes,서울교통공사
+node,9454775467,node/9454775467,동대문,동대문,Dongdaemun,37.5704964,127.0095288,station,station,subway,yes,서울교통공사
+node,9454775468,node/9454775468,종로3가,종로3가,Jongno 3(sam)-ga,37.5725401,126.9902702,station,station,subway,yes,서울교통공사
+node,9454775469,node/9454775469,종로3가,종로3가,Jongno 3(sam)-ga,37.5714989,126.9919062,station,station,subway,yes,서울교통공사
+node,9467463479,node/9467463479,시청,시청,City Hall,37.5633295,126.9747869,station,station,subway,yes,서울교통공사
+node,9485597747,node/9485597747,노량진,노량진,Noryangjin,37.5136137,126.9415727,station,station,subway,yes,서울시메트로9호선
+node,10814394661,node/10814394661,김포공항,김포공항,Gimpo Int'l Airport,37.5619877,126.8015843,station,station,subway,yes,서울시메트로9호선
+node,10814394662,node/10814394662,김포공항,김포공항,Gimpo Int'l Airport,37.561745,126.8015857,station,station,subway,yes,공항철도주식회사
+node,11164853360,node/11164853360,옥수,옥수,Oksu,37.5413731,127.0175496,station,station,subway,yes,서울교통공사
+node,11237829305,node/11237829305,신도림,신도림,Sindorim,37.5091331,126.8916649,station,station,subway,yes,한국철도공사
+node,11942201168,node/11942201168,장자호수공원,장자호수공원,Jangja Lake Park,37.587406,127.1379117,station,station,subway,yes,구리도시공사
+node,11942201669,node/11942201669,구리,구리,Guri,37.6022712,127.1408384,station,station,subway,yes,구리도시공사
+node,11942201670,node/11942201670,동구릉,동구릉,Donggureung,37.6105143,127.1381088,station,station,subway,yes,구리도시공사
+node,11942201671,node/11942201671,다산,다산,Dasan,37.6243286,127.1497626,station,station,subway,yes,남양주도시공사
+node,11942201672,node/11942201672,별내,별내,Byeollae,37.6420348,127.1278172,station,station,subway,yes,남양주도시공사
+node,12969391184,node/12969391184,뚝섬,뚝섬,Ttukseom,37.5472351,127.04741,station,station,subway,yes,서울교통공사
+node,13045404511,node/13045404511,동대문역사문화공원,동대문역사문화공원,Dongdaemun History & Culture Park Station (DDP),37.5642774,127.0071354,station,station,subway,yes,서울교통공사
+node,13045404512,node/13045404512,동대문역사문화공원,동대문역사문화공원,Dongdaemun History & Culture Park Station (DDP),37.5658762,127.0081569,station,station,subway,yes,서울교통공사
+node,13051385207,node/13051385207,종합운동장,종합운동장,Sports Complex,37.511406,127.0762089,station,station,subway,yes,서울교통공사
+node,13055976391,node/13055976391,홍대입구,홍대입구,Hongik Univ.,37.5566261,126.9234474,station,station,subway,yes,서울교통공사

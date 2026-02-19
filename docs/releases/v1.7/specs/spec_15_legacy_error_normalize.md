@@ -4,7 +4,7 @@
 - `doc.php`의 Failure TopN 집계에서 레거시 실패 메시지를 표준 error_code로 정규화해 `UNKNOWN` 비중을 낮춘다.
 
 ## 변경 내용
-- 신규 파일: `app/inc/error_normalize.php`
+- 신규 파일: `app/inc/lib/error_normalize.php`
   - `normalize_error_code($rawMessageOrNote): string`
   - 우선순위:
     1) `error_code=...` 토큰이 있으면 그대로 채택

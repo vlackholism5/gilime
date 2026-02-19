@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
-require_once __DIR__ . '/../../app/inc/config.php';
-require_once __DIR__ . '/../../app/inc/user_session.php';
+require_once __DIR__ . '/../../app/inc/config/config.php';
+require_once __DIR__ . '/../../app/inc/auth/user_session.php';
 
 $pdo = pdo();
 $userId = user_session_user_id();
@@ -49,7 +49,7 @@ $base = APP_BASE . '/user';
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
-  <title>GILIME - 노선</title>
+  <title>GILIME - 노선 구독/해제</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link rel="stylesheet" href="<?= APP_BASE ?>/public/assets/css/gilaime_ui.css" />
 </head>
@@ -57,12 +57,14 @@ $base = APP_BASE . '/user';
   <main class="container-fluid py-4">
   <nav class="nav g-topnav mb-3">
     <a class="nav-link" href="<?= $base ?>/home.php">홈</a>
-    <a class="nav-link" href="<?= $base ?>/routes.php">노선</a>
-    <a class="nav-link" href="<?= $base ?>/alerts.php">알림</a>
+    <a class="nav-link" href="<?= $base ?>/issues.php">이슈</a>
+    <a class="nav-link" href="<?= $base ?>/route_finder.php">길찾기</a>
+    <a class="nav-link active" href="<?= $base ?>/my_routes.php">마이노선</a>
   </nav>
   <div class="g-page-head mb-3">
-    <h1>노선 구독</h1>
-    <p class="helper mb-0">알림을 받을 노선을 구독/해제할 수 있습니다.</p>
+    <h1>노선 구독/해제</h1>
+    <p class="helper mb-0">알림을 받을 노선을 구독·해제할 수 있습니다.</p>
+    <a href="<?= $base ?>/my_routes.php" class="btn btn-outline-secondary btn-sm mt-1">마이노선으로</a>
   </div>
   <details class="kbd-help mb-3">
     <summary>단축키 안내</summary>
@@ -74,7 +76,7 @@ $base = APP_BASE . '/user';
       <p class="text-muted-g small mb-0">노선이 없습니다.</p>
     <?php else: ?>
       <div class="table-responsive">
-      <table class="table table-hover align-middle g-table mb-0">
+      <table class="table table-hover align-middle g-table g-table-dense mb-0">
         <thead><tr><th class="mono">문서 ID</th><th>노선</th><th>구독</th></tr></thead>
         <tbody>
           <?php foreach ($routes as $r):
@@ -103,7 +105,7 @@ $base = APP_BASE . '/user';
   <script src="<?= APP_BASE ?>/admin/trace-helper.js"></script>
   <script src="<?= APP_BASE ?>/public/assets/js/gilaime_ui.js"></script>
   <script>
-    <?php require_once __DIR__ . '/../../app/inc/observability.php'; ?>
+    <?php require_once __DIR__ . '/../../app/inc/lib/observability.php'; ?>
     window.__GILIME_DEBUG__ = <?= is_debug_enabled() ? 'true' : 'false' ?>;
 
     (function () {
@@ -127,11 +129,11 @@ $base = APP_BASE . '/user';
             if (data.ok) {
               window.location.reload();
             } else {
-              alert('Error: ' + (data.error || 'unknown'));
+              alert('오류: ' + (data.error || '알 수 없음'));
               btn.disabled = false;
             }
           }).catch(function (err) {
-            alert('Request failed');
+            alert('요청에 실패했습니다');
             btn.disabled = false;
           });
         });

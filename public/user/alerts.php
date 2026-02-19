@@ -1,8 +1,8 @@
 <?php
 declare(strict_types=1);
-require_once __DIR__ . '/../../app/inc/config.php';
-require_once __DIR__ . '/../../app/inc/user_session.php';
-require_once __DIR__ . '/../../app/inc/alert_delivery.php';
+require_once __DIR__ . '/../../app/inc/config/config.php';
+require_once __DIR__ . '/../../app/inc/auth/user_session.php';
+require_once __DIR__ . '/../../app/inc/alert/alert_delivery.php';
 
 $pdo = pdo();
 $userId = user_session_user_id();
@@ -91,7 +91,7 @@ $qNext = array_merge($q, ['page' => (string)($page + 1)]);
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
-  <title>GILIME - 알림</title>
+  <title>GILIME - 구독 노선 알림</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link rel="stylesheet" href="<?= APP_BASE ?>/public/assets/css/gilaime_ui.css" />
 </head>
@@ -99,13 +99,15 @@ $qNext = array_merge($q, ['page' => (string)($page + 1)]);
   <main class="container-fluid py-4">
   <nav class="nav g-topnav mb-3">
     <a class="nav-link" href="<?= $base ?>/home.php">홈</a>
-    <a class="nav-link" href="<?= $base ?>/routes.php">노선</a>
-    <a class="nav-link" href="<?= $base ?>/alerts.php">알림</a>
+    <a class="nav-link" href="<?= $base ?>/issues.php">이슈</a>
+    <a class="nav-link" href="<?= $base ?>/route_finder.php">길찾기</a>
+    <a class="nav-link active" href="<?= $base ?>/my_routes.php">마이노선</a>
   </nav>
 
   <div class="g-page-head mb-3">
-    <h1>알림</h1>
-    <p class="helper mb-0">필터를 사용해 필요한 알림만 빠르게 확인할 수 있습니다.</p>
+    <h1>구독 노선 알림</h1>
+    <p class="helper mb-0">구독한 노선의 변경·업데이트 알림을 확인합니다.</p>
+    <a href="<?= $base ?>/my_routes.php" class="btn btn-outline-secondary btn-sm mt-1">마이노선으로</a>
   </div>
   <details class="kbd-help mb-3">
     <summary>단축키 안내</summary>
@@ -113,17 +115,21 @@ $qNext = array_merge($q, ['page' => (string)($page + 1)]);
   </details>
   <div class="card g-card mb-3">
     <div class="card-body py-3">
-    <span>유형:</span>
-    <a href="<?= $base ?>/alerts.php?<?= http_build_query(array_filter(['route_label' => $routeFilter, 'subscribed' => $subscribedOnly ? '1' : null])) ?>">전체</a>
-    <a href="<?= $base ?>/alerts.php?<?= http_build_query(array_merge($q, ['type' => 'strike'])) ?>">strike</a>
-    <a href="<?= $base ?>/alerts.php?<?= http_build_query(array_merge($q, ['type' => 'event'])) ?>">event</a>
-    <a href="<?= $base ?>/alerts.php?<?= http_build_query(array_merge($q, ['type' => 'update'])) ?>">update</a>
-    <span class="ms-3">구독 노선만:</span>
-    <?php if ($subscribedOnly): ?>
-      <a href="<?= $base ?>/alerts.php?<?= http_build_query(array_filter(['type' => $typeFilter, 'route_label' => $routeFilter])) ?>">해제</a>
-    <?php else: ?>
-      <a href="<?= $base ?>/alerts.php?<?= http_build_query(array_merge($q, ['subscribed' => '1'])) ?>">켜기</a>
-    <?php endif; ?>
+      <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+        <span class="small text-muted">유형:</span>
+        <a href="<?= $base ?>/alerts.php?<?= http_build_query(array_filter(['route_label' => $routeFilter, 'subscribed' => $subscribedOnly ? '1' : null])) ?>" class="btn btn-sm <?= $typeFilter === null ? 'btn-gilaime-primary' : 'btn-outline-secondary' ?>">전체</a>
+        <a href="<?= $base ?>/alerts.php?<?= http_build_query(array_merge($q, ['type' => 'strike'])) ?>" class="btn btn-sm <?= $typeFilter === 'strike' ? 'btn-gilaime-primary' : 'btn-outline-secondary' ?>">파업</a>
+        <a href="<?= $base ?>/alerts.php?<?= http_build_query(array_merge($q, ['type' => 'event'])) ?>" class="btn btn-sm <?= $typeFilter === 'event' ? 'btn-gilaime-primary' : 'btn-outline-secondary' ?>">이벤트</a>
+        <a href="<?= $base ?>/alerts.php?<?= http_build_query(array_merge($q, ['type' => 'update'])) ?>" class="btn btn-sm <?= $typeFilter === 'update' ? 'btn-gilaime-primary' : 'btn-outline-secondary' ?>">업데이트</a>
+      </div>
+      <div class="d-flex flex-wrap gap-2 align-items-center">
+        <span class="small text-muted">구독 노선만:</span>
+        <?php if ($subscribedOnly): ?>
+          <a href="<?= $base ?>/alerts.php?<?= http_build_query(array_filter(['type' => $typeFilter, 'route_label' => $routeFilter])) ?>" class="btn btn-sm btn-gilaime-primary">해제</a>
+        <?php else: ?>
+          <a href="<?= $base ?>/alerts.php?<?= http_build_query(array_merge($q, ['subscribed' => '1'])) ?>" class="btn btn-sm btn-outline-secondary">켜기</a>
+        <?php endif; ?>
+      </div>
     </div>
   </div>
 
@@ -133,8 +139,8 @@ $qNext = array_merge($q, ['page' => (string)($page + 1)]);
       <p class="text-muted-g small mb-0">알림이 없습니다.</p>
     <?php else: ?>
       <div class="table-responsive">
-      <table class="table table-hover align-middle g-table mb-0">
-        <thead><tr><th>유형</th><th>제목</th><th>본문</th><th>발행일</th><th>검수 링크</th></tr></thead>
+      <table class="table table-hover align-middle g-table g-table-dense mb-0">
+        <thead><tr><th class="g-nowrap">유형</th><th>제목</th><th>본문</th><th class="g-nowrap">발행일</th><th class="g-nowrap">검수 링크</th></tr></thead>
         <tbody>
           <?php foreach ($events as $e):
             $docId = isset($e['ref_id']) ? (int)$e['ref_id'] : 0;
@@ -144,11 +150,11 @@ $qNext = array_merge($q, ['page' => (string)($page + 1)]);
               : ($docId > 0 ? $adminBase . '/doc.php?id=' . $docId : '');
           ?>
             <tr>
-              <td><?= h($e['event_type'] ?? '') ?></td>
+              <td class="g-nowrap"><?= h($e['event_type'] ?? '') ?></td>
               <td><?= h($e['title'] ?? '') ?></td>
               <td><?= h(mb_substr((string)($e['body'] ?? ''), 0, 80)) ?><?= mb_strlen((string)($e['body'] ?? '')) > 80 ? '…' : '' ?></td>
-              <td><?= h($e['published_at'] ?? '') ?></td>
-              <td><?= $reviewUrl !== '' ? '<a class="btn" href="' . h($reviewUrl) . '" target="_blank" rel="noopener">검수 보기</a>' : '—' ?></td>
+              <td class="g-nowrap"><?= h($e['published_at'] ?? '') ?></td>
+              <td class="g-nowrap"><?= $reviewUrl !== '' ? '<a class="btn btn-outline-secondary btn-sm" href="' . h($reviewUrl) . '" target="_blank" rel="noopener">검수 보기</a>' : '—' ?></td>
             </tr>
           <?php endforeach; ?>
         </tbody>

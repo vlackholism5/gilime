@@ -1,0 +1,23 @@
+<?php
+declare(strict_types=1);
+
+/**
+ * 로컬/환경 전용 DB 설정 예시.
+ * 사용법: 이 파일을 config.local.php 로 복사한 뒤, config.local.php 에서
+ * DB_HOST / DB_USER / DB_PASS 등을 실제 값으로 수정하세요.
+ * config.local.php 는 .gitignore 대상이므로 커밋되지 않습니다.
+ */
+
+define('DB_HOST', 'localhost');        // 예: mysql-xxxx.aivencloud.com
+define('DB_PORT', '3306');             // 예: 28220
+define('DB_NAME', 'gilaime');
+define('DB_USER', 'root');             // 예: avnadmin
+define('DB_PASS', '');                 // XAMPP 로컬은 보통 빈 문자열. Aiven 등은 실제 비밀번호.
+
+// v1.7-20: Python OCR (텍스트 없는 PDF 처리)
+// define('OCR_PYTHON_CMD', 'python');  // 또는 'py', 'c:\...\python.exe'
+// define('OCR_TESSERACT_CMD', 'C:\Program Files\Tesseract-OCR\tesseract.exe');
+
+// v1.7-20: GPT 검수 파이프라인 (route_review → run_gpt_review.php)
+// define('GPT_PYTHON_CMD', 'python');  // 또는 'py', 'c:\...\python.exe'
+// define('GPT_OPENAPI_API_KEY', 'sk-your-api-key-here');  // OpenAI/OpenAPI 호환 API 키

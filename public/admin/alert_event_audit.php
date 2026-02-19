@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
-require_once __DIR__ . '/../../app/inc/auth.php';
+require_once __DIR__ . '/../../app/inc/auth/auth.php';
+require_once __DIR__ . '/../../app/inc/admin/admin_header.php';
 require_admin();
 
 $pdo = pdo();
@@ -66,55 +67,63 @@ function h(string $s): string {
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
-  <title>Admin - Alert Event Audit</title>
-  <style>
-    body{font-family:system-ui,-apple-system,sans-serif;padding:24px;background:#f9fafb;}
-    a{color:#0b57d0;text-decoration:none;}
-    a:hover{text-decoration:underline;}
-    .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
-    .muted{color:#666;font-size:12px;}
-    table{border-collapse:collapse;width:100%;background:#fff;}
-    th,td{border-bottom:1px solid #eee;padding:10px;text-align:left;font-size:13px;}
-    th{background:#f7f8fa;}
-  </style>
+  <title>관리자 - 알림 이벤트 감사</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="<?= APP_BASE ?>/public/assets/css/gilaime_ui.css" />
 </head>
-<body>
-  <div class="top">
-    <div>
-      <a href="<?= h($base) ?>/index.php">Docs</a>
-      <span class="muted"> / Alert Audit</span>
-    </div>
-    <a href="<?= h($base) ?>/alert_ops.php">Alert Ops</a>
-    <a href="<?= h($base) ?>/logout.php">Logout</a>
-  </div>
+<body class="gilaime-app">
+  <main class="container-fluid py-4">
+  <?php render_admin_nav(); ?>
+  <?php render_admin_header([
+    ['label' => '문서 허브', 'url' => 'index.php'],
+    ['label' => '알림 감사', 'url' => null],
+  ], false); ?>
 
-  <h2>Alert Event Audit (deliveries)</h2>
-  <p class="muted">read-only. 최근 200건.</p>
+  <div class="g-page-head">
+    <h2 class="h3">알림 이벤트 감사 (전달 이력)</h2>
+    <p class="helper mb-0">읽기 전용. 최근 200건.</p>
+  </div>
+  <div class="d-flex gap-2 mb-3">
+    <a class="btn btn-outline-secondary btn-sm" href="<?= h($base) ?>/alert_ops.php">알림 운영</a>
+  </div>
   <?php
   $cnt = (int)($summary['delivery_cnt'] ?? 0);
   $minC = $summary['min_created'] ?? null;
   $maxC = $summary['max_created'] ?? null;
   ?>
-  <p class="muted">요약: delivery_cnt=<strong><?= $cnt ?></strong><?= $minC !== null && $minC !== '' ? ', min_created=' . h($minC) : '' ?><?= $maxC !== null && $maxC !== '' ? ', max_created=' . h($maxC) : '' ?>.</p>
+  <p class="text-muted-g small mb-3">요약: 전달 건수=<strong><?= $cnt ?></strong><?= $minC !== null && $minC !== '' ? ', 최초 생성=' . h($minC) : '' ?><?= $maxC !== null && $maxC !== '' ? ', 최신 생성=' . h($maxC) : '' ?>.</p>
 
-  <form method="get" action="<?= h($base) ?>/alert_event_audit.php" style="margin-bottom:12px;">
-    <label>event_id</label>
-    <input type="number" name="event_id" value="<?= $filterEventId !== null ? (int)$filterEventId : '' ?>" min="1" placeholder="alert_event_id" />
-    <label>user_id</label>
-    <input type="number" name="user_id" value="<?= $filterUserId !== null ? (int)$filterUserId : '' ?>" min="1" />
-    <label>channel</label>
-    <input type="text" name="channel" value="<?= h($filterChannel ?? '') ?>" size="8" placeholder="web" />
-    <label>status</label>
-    <input type="text" name="status" value="<?= h($filterStatus ?? '') ?>" size="8" placeholder="shown" />
-    <label>since (created_at &gt;=)</label>
-    <input type="datetime-local" name="since" value="<?= h($filterSince ?? '') ?>" />
-    <button type="submit">Filter</button>
-  </form>
+  <div class="card g-card mb-3">
+    <div class="card-body">
+      <form method="get" action="<?= h($base) ?>/alert_event_audit.php" class="g-form-inline">
+        <label class="small text-muted-g">이벤트 ID</label>
+        <input class="form-control form-control-sm w-auto" type="number" name="event_id" value="<?= $filterEventId !== null ? (int)$filterEventId : '' ?>" min="1" placeholder="알림 이벤트 ID" />
+        <label class="small text-muted-g">사용자 ID</label>
+        <input class="form-control form-control-sm w-auto" type="number" name="user_id" value="<?= $filterUserId !== null ? (int)$filterUserId : '' ?>" min="1" />
+        <label class="small text-muted-g">채널</label>
+        <input class="form-control form-control-sm w-auto" type="text" name="channel" value="<?= h($filterChannel ?? '') ?>" size="8" placeholder="웹(web)" />
+        <label class="small text-muted-g">상태</label>
+        <input class="form-control form-control-sm w-auto" type="text" name="status" value="<?= h($filterStatus ?? '') ?>" size="8" placeholder="표시됨(shown)" />
+        <label class="small text-muted-g">조회 시작 시각(created_at 이상)</label>
+        <input class="form-control form-control-sm w-auto" type="datetime-local" name="since" value="<?= h($filterSince ?? '') ?>" />
+        <button class="btn btn-gilaime-primary btn-sm" type="submit">필터 적용</button>
+      </form>
+    </div>
+  </div>
 
-  <table>
+  <div class="card g-card">
+    <div class="card-body">
+    <div class="table-responsive">
+  <table class="table table-hover align-middle g-table g-table-dense mb-0">
     <thead>
       <tr>
-        <th>id</th><th>alert_event_id</th><th>user_id</th><th>channel</th><th>status</th><th>sent_at</th><th>created_at</th>
+        <th class="g-nowrap">ID</th>
+        <th class="g-nowrap">이벤트 ID</th>
+        <th class="g-nowrap">사용자 ID</th>
+        <th class="g-nowrap">채널</th>
+        <th class="g-nowrap">상태</th>
+        <th class="g-nowrap">전달 시각</th>
+        <th class="g-nowrap">생성 시각</th>
       </tr>
     </thead>
     <tbody>
@@ -131,5 +140,9 @@ function h(string $s): string {
       <?php endforeach; ?>
     </tbody>
   </table>
+    </div>
+    </div>
+  </div>
+  </main>
 </body>
 </html>

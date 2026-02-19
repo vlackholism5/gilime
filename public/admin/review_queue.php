@@ -1,7 +1,8 @@
 <?php
 declare(strict_types=1);
 
-require_once __DIR__ . '/../../app/inc/auth.php';
+require_once __DIR__ . '/../../app/inc/auth/auth.php';
+require_once __DIR__ . '/../../app/inc/admin/admin_header.php';
 require_admin();
 
 $pdo = pdo();
@@ -117,7 +118,7 @@ if ($latestByDoc === []) {
 
 function matchConfidenceLabel(?string $matchMethod): string {
   if ($matchMethod === null || $matchMethod === '') return 'NONE';
-  if (in_array($matchMethod, ['exact', 'alias_live_rematch', 'alias_exact'], true)) return 'HIGH';
+  if (in_array($matchMethod, ['exact', 'alias_live_rematch', 'alias_exact', 'route_stop_master'], true)) return 'HIGH';
   if (in_array($matchMethod, ['normalized', 'alias_normalized'], true)) return 'MED';
   if ($matchMethod === 'like_prefix') return 'LOW';
   return 'NONE';
@@ -145,60 +146,57 @@ $uniqueDocIds = array_values(array_unique(array_map(function ($r) { return (int)
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
-  <title>Admin - Review Queue</title>
-  <style>
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:24px;background:#f9fafb;}
-    a{color:#0b57d0;text-decoration:none;}
-    a:hover{text-decoration:underline;}
-    table{border-collapse:collapse;width:100%;margin-top:10px;background:#fff;}
-    th,td{border-bottom:1px solid #eee;padding:10px;text-align:left;font-size:13px;}
-    th{background:#f7f8fa;font-weight:600;}
-    .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
-    .muted{color:#666;font-size:12px;}
-    .card{margin-bottom:20px;}
-  </style>
+  <title>관리자 - 검수 대기열</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="<?= APP_BASE ?>/public/assets/css/gilaime_ui.css" />
 </head>
-<body>
-  <div class="top">
-    <div>
-      <a href="<?= APP_BASE ?>/admin/index.php">Docs</a>
-      <span class="muted"> / Review Queue</span>
-    </div>
-    <a href="<?= APP_BASE ?>/admin/logout.php">Logout</a>
+<body class="gilaime-app">
+  <main class="container-fluid py-4">
+  <?php render_admin_nav(); ?>
+  <?php render_admin_header([
+    ['label' => '문서 허브', 'url' => 'index.php'],
+    ['label' => '검수 대기열', 'url' => null],
+  ], false); ?>
+
+  <div class="g-page-head">
+    <h2 class="h3">검수 대기열</h2>
+    <p class="helper mb-0">리스크 우선으로 후보 검수 대기열을 확인합니다.</p>
   </div>
 
-  <h2>Review Queue</h2>
-  <p class="muted" style="margin:0 0 12px;">
+  <p class="text-muted-g small mb-2">
     <?php if ($onlyRisky): ?>
-    <a href="<?= h($urlOnlyRiskyOff) ?>">전체 pending 보기</a>
+    <a href="<?= h($urlOnlyRiskyOff) ?>">전체 대기 보기</a>
     <?php else: ?>
     <a href="<?= h($urlOnlyRiskyOn) ?>">리스크(LOW/NONE)만 보기</a>
     <?php endif; ?>
-    | limit=<?= (int)$limitParam ?> (10~200)
+    | 표시 수=<?= (int)$limitParam ?> (10~200)
   </p>
 
-  <p class="muted" style="margin:0 0 8px;">
+  <p class="text-muted-g small mb-2">
     <a href="<?= h($urlAllDocs) ?>">전체 문서</a>
     <?php foreach ($uniqueDocIds as $did): ?>
-    | <a href="<?= h($urlBase . '?' . http_build_query(array_merge($q, ['doc_id' => $did]))) ?>">doc <?= (int)$did ?>만</a>
+    | <a href="<?= h($urlBase . '?' . http_build_query(array_merge($q, ['doc_id' => $did]))) ?>">문서 <?= (int)$did ?>만</a>
     <?php endforeach; ?>
     <?php if ($filterDocId !== null): ?>
     <?php foreach ($queueSummary as $sr): ?>
-    | <a href="<?= h($urlBase . '?' . http_build_query(array_merge($q, ['doc_id' => $filterDocId, 'route_label' => $sr['route_label']]))) ?>">route <?= h((string)$sr['route_label']) ?>만</a>
+    | <a href="<?= h($urlBase . '?' . http_build_query(array_merge($q, ['doc_id' => $filterDocId, 'route_label' => $sr['route_label']]))) ?>">노선 <?= h((string)$sr['route_label']) ?>만</a>
     <?php endforeach; ?>
     <?php endif; ?>
   </p>
-  <h3 class="card">Queue Summary (risky first)</h3>
-  <table>
+  <h3 class="h5 mb-2">대기열 요약 (리스크 우선)</h3>
+  <div class="card g-card mb-3">
+  <div class="card-body">
+  <div class="table-responsive">
+  <table class="table table-hover align-middle g-table g-table-dense mb-0">
     <thead>
       <tr>
-        <th>doc_id</th>
-        <th>route_label</th>
-        <th>pending_total</th>
-        <th>pending_low</th>
-        <th>pending_none</th>
-        <th>pending_risky</th>
-        <th>last_review_at</th>
+        <th>문서 ID</th>
+        <th>노선 라벨</th>
+        <th>전체 대기</th>
+        <th>LOW 대기</th>
+        <th>NONE 대기</th>
+        <th>리스크 대기</th>
+        <th>최근 검수 시각</th>
       </tr>
     </thead>
     <tbody>
@@ -215,23 +213,29 @@ $uniqueDocIds = array_values(array_unique(array_map(function ($r) { return (int)
         </tr>
         <?php endforeach; ?>
       <?php else: ?>
-        <tr><td colspan="7" class="muted">no pending (Run Parse/Match 후 확인)</td></tr>
+        <tr><td colspan="7" class="text-muted-g small">대기 후보가 없습니다 (파싱/매칭 실행 후 확인)</td></tr>
       <?php endif; ?>
     </tbody>
   </table>
+  </div>
+  </div>
+  </div>
 
-  <h3 class="card">Top <?= (int)$limitParam ?> Candidates (LOW/NONE first) <span class="muted">| <a href="<?= h($urlBase . '?' . http_build_query(array_merge($q, ['sort' => 'default']))) ?>">정렬: 기본</a> <a href="<?= h($urlBase . '?' . http_build_query(array_merge($q, ['sort' => 'simple']))) ?>">정렬: 단순</a></span></h3>
-  <table>
+  <h3 class="h5 mb-2">상위 <?= (int)$limitParam ?>개 후보 (LOW/NONE 우선) <span class="text-muted-g small">| <a href="<?= h($urlBase . '?' . http_build_query(array_merge($q, ['sort' => 'default']))) ?>">정렬: 기본</a> <a href="<?= h($urlBase . '?' . http_build_query(array_merge($q, ['sort' => 'simple']))) ?>">정렬: 단순</a></span></h3>
+  <div class="card g-card">
+  <div class="card-body">
+  <div class="table-responsive">
+  <table class="table table-hover align-middle g-table g-table-dense mb-0">
     <thead>
       <tr>
-        <th>cand_id</th>
-        <th>created_job_id</th>
-        <th>doc_id</th>
-        <th>route_label</th>
+        <th>후보 ID</th>
+        <th>생성 Job ID</th>
+        <th>문서 ID</th>
+        <th>노선 라벨</th>
         <th>원문</th>
         <th>정규화</th>
-        <th>match_method</th>
-        <th>score</th>
+        <th>매칭 방식</th>
+        <th>점수</th>
         <th>신뢰도</th>
         <th>링크</th>
       </tr>
@@ -255,9 +259,13 @@ $uniqueDocIds = array_values(array_unique(array_map(function ($r) { return (int)
         </tr>
         <?php endforeach; ?>
       <?php else: ?>
-        <tr><td colspan="10" class="muted">no candidates</td></tr>
+        <tr><td colspan="10" class="text-muted-g small">후보가 없습니다</td></tr>
       <?php endif; ?>
     </tbody>
   </table>
+  </div>
+  </div>
+  </div>
+  </main>
 </body>
 </html>

@@ -1,7 +1,8 @@
 <?php
 declare(strict_types=1);
 
-require_once __DIR__ . '/../../app/inc/auth.php';
+require_once __DIR__ . '/../../app/inc/auth/auth.php';
+require_once __DIR__ . '/../../app/inc/admin/admin_header.php';
 require_admin();
 
 $pdo = pdo();
@@ -89,40 +90,35 @@ function h(string $s): string {
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
-  <title>Admin - Ops Dashboard</title>
-  <style>
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:24px;background:#f9fafb;}
-    a{color:#0b57d0;text-decoration:none;}
-    a:hover{text-decoration:underline;}
-    table{border-collapse:collapse;width:100%;margin-top:10px;background:#fff;}
-    th,td{border-bottom:1px solid #eee;padding:10px;text-align:left;font-size:13px;}
-    th{background:#f7f8fa;font-weight:600;}
-    .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
-    .muted{color:#666;font-size:12px;}
-    .card{margin-bottom:20px;}
-  </style>
+  <title>관리자 - 운영 대시보드</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="<?= APP_BASE ?>/public/assets/css/gilaime_ui.css" />
 </head>
-<body>
-  <div class="top">
-    <div>
-      <a href="<?= APP_BASE ?>/admin/index.php">Docs</a>
-      <span class="muted"> / Ops Dashboard</span>
-    </div>
-    <a href="<?= APP_BASE ?>/admin/logout.php">Logout</a>
+<body class="gilaime-app">
+  <main class="container-fluid py-4">
+  <?php render_admin_nav(); ?>
+  <?php render_admin_header([
+    ['label' => '문서 허브', 'url' => 'index.php'],
+    ['label' => '운영 대시보드', 'url' => null],
+  ], false); ?>
+
+  <div class="g-page-head">
+    <h2 class="h3">운영 대시보드</h2>
+    <p class="helper mb-0">오늘 우선순위 점검용 페이지입니다. 실제 승격은 노선 검수 화면에서만 수행합니다.</p>
   </div>
 
-  <h2>Ops Dashboard</h2>
-  <p class="muted" style="margin:0 0 12px;">오늘 뭐부터 볼지 1페이지. 실제 promote는 route_review에서만.</p>
-
-  <h3 class="card">Docs needing review <span class="muted">| <a href="<?= APP_BASE ?>/admin/ops_dashboard.php?sort=updated">정렬: 최신</a> <a href="<?= APP_BASE ?>/admin/ops_dashboard.php?sort=risky">정렬: 위험도</a></span></h3>
-  <table>
+  <h3 class="h5 mb-2">검수가 필요한 문서 <span class="text-muted-g small">| <a href="<?= APP_BASE ?>/admin/ops_dashboard.php?sort=updated">정렬: 최신</a> <a href="<?= APP_BASE ?>/admin/ops_dashboard.php?sort=risky">정렬: 위험도</a></span></h3>
+  <div class="card g-card mb-3">
+  <div class="card-body">
+  <div class="table-responsive">
+  <table class="table table-hover align-middle g-table g-table-dense mb-0">
     <thead>
       <tr>
-        <th>source_doc_id</th>
-        <th>latest_parse_job_id</th>
-        <th>pending_total</th>
-        <th>pending_risky_total</th>
-        <th>updated_at</th>
+        <th>문서 ID</th>
+        <th>최신 파싱 Job ID</th>
+        <th>대기 건수</th>
+        <th>리스크 대기 건수</th>
+        <th>수정 시각</th>
         <th>링크</th>
       </tr>
     </thead>
@@ -135,25 +131,32 @@ function h(string $s): string {
           <td><?= (int)$r['pending_total'] ?></td>
           <td><?= (int)$r['pending_risky_total'] ?></td>
           <td><?= !empty($r['updated_at']) ? h((string)$r['updated_at']) : '—' ?></td>
-          <td><a href="<?= APP_BASE ?>/admin/doc.php?id=<?= (int)$r['source_doc_id'] ?>">Doc</a> <a href="<?= APP_BASE ?>/admin/review_queue.php?only_risky=1&doc_id=<?= (int)$r['source_doc_id'] ?>">Queue</a></td>
+          <td><a href="<?= APP_BASE ?>/admin/doc.php?id=<?= (int)$r['source_doc_id'] ?>">문서</a> <a href="<?= APP_BASE ?>/admin/review_queue.php?only_risky=1&doc_id=<?= (int)$r['source_doc_id'] ?>">대기열</a></td>
         </tr>
         <?php endforeach; ?>
       <?php else: ?>
-        <tr><td colspan="6" class="muted">no data</td></tr>
+        <tr><td colspan="6" class="text-muted-g small">데이터가 없습니다</td></tr>
       <?php endif; ?>
     </tbody>
   </table>
+  </div>
+  </div>
+  </div>
 
-  <h3 class="card">Recent PARSE_MATCH jobs</h3>
-  <table>
+  <h3 class="h5 mb-2">최근 PARSE_MATCH 작업</h3>
+  <div class="card g-card mb-3">
+  <div class="card-body">
+  <div class="table-responsive">
+  <table class="table table-hover align-middle g-table g-table-dense mb-0">
     <thead>
       <tr>
-        <th>parse_job_id</th>
-        <th>source_doc_id</th>
-        <th>job_type</th>
-        <th>job_status</th>
-        <th>created_at</th>
-        <th>updated_at</th>
+        <th>파싱 Job ID</th>
+        <th>문서 ID</th>
+        <th>작업 유형</th>
+        <th>작업 상태</th>
+        <th>생성 시각</th>
+        <th>수정 시각</th>
+        <th>링크</th>
       </tr>
     </thead>
     <tbody>
@@ -166,22 +169,29 @@ function h(string $s): string {
           <td><?= h((string)$r['job_status']) ?></td>
           <td><?= h((string)($r['created_at'] ?? '')) ?></td>
           <td><?= h((string)($r['updated_at'] ?? '')) ?></td>
+          <td><a href="<?= APP_BASE ?>/admin/doc.php?id=<?= (int)$r['source_doc_id'] ?>">문서</a> <a href="<?= APP_BASE ?>/admin/review_queue.php?only_risky=1&doc_id=<?= (int)$r['source_doc_id'] ?>">대기열</a></td>
         </tr>
         <?php endforeach; ?>
       <?php else: ?>
-        <tr><td colspan="6" class="muted">no data</td></tr>
+        <tr><td colspan="7" class="text-muted-g small">데이터가 없습니다</td></tr>
       <?php endif; ?>
     </tbody>
   </table>
+  </div>
+  </div>
+  </div>
 
-  <h3 class="card">Promote candidates</h3>
-  <p class="muted" style="margin:0 0 8px;">pending=0인 route (표시 전용). 실제 Promote는 route_review에서만.</p>
-  <table>
+  <h3 class="h5 mb-2">승격 가능 후보</h3>
+  <p class="text-muted-g small mb-2">pending=0인 노선(표시 전용)입니다. 실제 승격은 노선 검수 화면에서만 수행합니다.</p>
+  <div class="card g-card">
+  <div class="card-body">
+  <div class="table-responsive">
+  <table class="table table-hover align-middle g-table g-table-dense mb-0">
     <thead>
       <tr>
-        <th>source_doc_id</th>
-        <th>route_label</th>
-        <th>created_job_id</th>
+        <th>문서 ID</th>
+        <th>노선 라벨</th>
+        <th>생성 Job ID</th>
         <th>링크</th>
       </tr>
     </thead>
@@ -192,13 +202,17 @@ function h(string $s): string {
           <td><a href="<?= APP_BASE ?>/admin/doc.php?id=<?= (int)$r['source_doc_id'] ?>"><?= (int)$r['source_doc_id'] ?></a></td>
           <td><?= h((string)$r['route_label']) ?></td>
           <td><?= (int)$r['created_job_id'] ?></td>
-          <td><a href="<?= APP_BASE ?>/admin/route_review.php?source_doc_id=<?= (int)$r['source_doc_id'] ?>&route_label=<?= urlencode((string)$r['route_label']) ?>&quick_mode=1&show_advanced=0">route_review</a></td>
+          <td><a href="<?= APP_BASE ?>/admin/route_review.php?source_doc_id=<?= (int)$r['source_doc_id'] ?>&route_label=<?= urlencode((string)$r['route_label']) ?>&quick_mode=1&show_advanced=0">노선 검수</a></td>
         </tr>
         <?php endforeach; ?>
       <?php else: ?>
-        <tr><td colspan="4" class="muted">no candidates</td></tr>
+        <tr><td colspan="4" class="text-muted-g small">후보가 없습니다</td></tr>
       <?php endif; ?>
     </tbody>
   </table>
+  </div>
+  </div>
+  </div>
+  </main>
 </body>
 </html>

@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
-require_once __DIR__ . '/../../app/inc/auth.php';
+require_once __DIR__ . '/../../app/inc/auth/auth.php';
+require_once __DIR__ . '/../../app/inc/admin/admin_header.php';
 require_admin();
 
 $pdo = pdo();
@@ -41,10 +42,15 @@ function h(string $s): string {
 </head>
 <body class="gilaime-app">
   <main class="container-fluid py-4">
-  <div class="g-top">
+  <?php render_admin_nav(); ?>
+  <?php render_admin_header([
+    ['label' => '문서 허브', 'url' => 'index.php'],
+    ['label' => '운영 제어', 'url' => null],
+  ], false); ?>
+  <div class="g-page-header-row">
     <div class="g-page-head">
       <h2 class="h3">운영 제어</h2>
-      <p class="helper mb-0">재시도/백오프, 실데이터 ingest, 운영 링크를 한 번에 제어합니다.</p>
+      <p class="helper mb-0">재시도/백오프, 실데이터 수집(ingest), 운영 링크를 한 번에 제어합니다.</p>
     </div>
     <div class="d-flex gap-2">
       <a class="btn btn-outline-secondary btn-sm" href="<?= $base ?>/alert_ops.php">알림 운영</a>
@@ -56,22 +62,22 @@ function h(string $s): string {
 
   <section class="card g-card mb-4">
     <div class="card-body">
-    <h3 class="h5">A. Deliveries retry/backoff 현황</h3>
+    <h3 class="h5">A. 전달(Deliveries) 재시도/백오프 현황</h3>
     <p><strong>상태별:</strong>
       <?php
         $parts = [];
         foreach ($statusCounts as $row) {
           $parts[] = $row['status'] . '=' . (int)$row['cnt'];
         }
-        echo $parts ? implode(', ', $parts) : '(none)';
+        echo $parts ? implode(', ', $parts) : '(없음)';
       ?>
     </p>
-    <p><strong>Failed Top 20</strong></p>
+    <p><strong>실패 상위 20건</strong></p>
     <div class="table-responsive">
-    <table class="table table-hover align-middle g-table mb-0">
+    <table class="table table-hover align-middle g-table g-table-dense mb-0">
       <thead>
         <tr>
-          <th>id</th><th>user_id</th><th>event_id</th><th>channel</th><th>retry_count</th><th>last_error</th><th>created</th>
+          <th>ID</th><th>사용자 ID</th><th>이벤트 ID</th><th>채널</th><th>재시도 횟수</th><th>최근 오류</th><th>생성 시각</th>
         </tr>
       </thead>
       <tbody>
@@ -87,24 +93,24 @@ function h(string $s): string {
           </tr>
         <?php endforeach; ?>
         <?php if (!$failedTop20): ?>
-          <tr><td colspan="7" class="text-muted-g small">(none)</td></tr>
+          <tr><td colspan="7" class="text-muted-g small">데이터가 없습니다</td></tr>
         <?php endif; ?>
       </tbody>
     </table>
     </div>
-    <p class="text-muted-g small mt-2 mb-0">Run outbound stub (CLI): <code>php scripts/run_delivery_outbound_stub.php --limit=200</code></p>
+    <p class="text-muted-g small mt-2 mb-0">아웃바운드 스텁 실행(CLI): <code class="g-nowrap">php scripts/php/run_delivery_outbound_stub.php --limit=200</code></p>
     </div>
   </section>
 
   <section class="card g-card mb-4">
     <div class="card-body">
-    <h3 class="h5">B. 실데이터 ingest 실행 안내 + 최근 metrics 이벤트 10</h3>
-    <p class="text-muted-g small">Run metrics ingest (CLI): <code>php scripts/run_alert_ingest_real_metrics.php --since_minutes=1440 --limit=200</code></p>
+    <h3 class="h5">B. 실데이터 수집(ingest) 실행 안내 + 최근 지표 이벤트 10건</h3>
+    <p class="text-muted-g small">지표 수집 실행(CLI): <code class="g-nowrap">php scripts/php/run_alert_ingest_real_metrics.php --since_minutes=1440 --limit=200</code></p>
     <div class="table-responsive">
-    <table class="table table-hover align-middle g-table mb-0">
+    <table class="table table-hover align-middle g-table g-table-dense mb-0">
       <thead>
         <tr>
-          <th>id</th><th>event_type</th><th>title</th><th>ref_id</th><th>route</th><th>published</th><th>created</th>
+          <th>ID</th><th>이벤트 유형</th><th>제목</th><th>참조 ID</th><th>노선</th><th>발행 시각</th><th>생성 시각</th>
         </tr>
       </thead>
       <tbody>
@@ -120,7 +126,7 @@ function h(string $s): string {
           </tr>
         <?php endforeach; ?>
         <?php if (!$recentMetricsEvents): ?>
-          <tr><td colspan="7" class="text-muted-g small">(none)</td></tr>
+          <tr><td colspan="7" class="text-muted-g small">데이터가 없습니다</td></tr>
         <?php endif; ?>
       </tbody>
     </table>

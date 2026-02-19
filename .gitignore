@@ -7,3 +7,13 @@ data/inbound/
 app/inc/config.local.php
 app/inc/config.safe.php
 *.log
+# Aiven verify runner output (로컬 실행 결과)
+logs/verify_latest.md
+
+# Composer dependencies
+vendor/
+composer.lock
+
+# Uploaded files (PDF, etc.)
+public/uploads/*.pdf
+public/uploads/*.tmp

@@ -1,0 +1,10 @@
+# gilime v1.7-20: PDF OCR (Tesseract kor+eng)
+# Python 3.10~3.12 권장 (3.14에서 Pillow wheel 미지원 시 소스빌드 필요)
+# wheel 사용으로 소스빌드 회피
+
+numpy>=2.2,<2.5
+opencv-python>=4.10,<5
+Pillow>=11.1,<12
+pypdf>=4.3
+pypdfium2>=4.30
+pytesseract>=0.3.13

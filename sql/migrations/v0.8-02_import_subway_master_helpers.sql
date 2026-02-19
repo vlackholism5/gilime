@@ -1,0 +1,97 @@
+-- v0.8-02: Import helpers for subway_stations_master (from match_v1 CSV) and subway_edges_g1
+-- Do not execute inside Cursor. Run locally (Workbench/CLI). SoT: docs/OPS/OPS_STATION_NAME_NORMALIZE.md, STEP 4.
+
+-- -----------------------------------------------------------------------------
+-- 1) LOAD DATA LOCAL INFILE example: subway_stations_master (from subway_station_match_v1.csv)
+-- -----------------------------------------------------------------------------
+-- Prerequisite: v0.8-01 graph schema applied. CSV columns:
+--   osm_name, osm_lat, osm_lon, osm_full_id, station_cd, station_name, line_code, fr_code, match_level, confidence, reason
+-- Target: subway_stations_master (station_cd, station_name, line_code, fr_code, lat, lon, osm_full_id, match_confidence, meta_json)
+-- Use "best" rows only (e.g. one per station_cd or per station_cd+line_code). Dedupe by (station_cd) if unique.
+
+-- Example (Windows path; replace with your absolute path and escape backslashes or use forward slashes):
+-- LOAD DATA LOCAL INFILE 'C:/xampp/htdocs/gilime_mvp_01/data/derived/seoul/subway/subway_station_match_v1.csv'
+-- INTO TABLE subway_stations_master
+-- FIELDS TERMINATED BY ',' ENCLOSED BY '"' LINES TERMINATED BY '\n'
+-- IGNORE 1 LINES
+-- (station_cd, station_name, line_code, fr_code, lat, lon, osm_full_id, match_confidence, meta_json)
+-- SET
+--   lat = NULLIF(@lat, ''),
+--   lon = NULLIF(@lon, ''),
+--   osm_full_id = NULLIF(@osm_full_id, ''),
+--   match_confidence = NULLIF(@confidence, ''),
+--   meta_json = JSON_OBJECT('match_level', @match_level, 'reason', @reason, 'osm_name', @osm_name);
+-- (Note: CSV column order must map to @variables; adjust column list to match your CSV. Prefer staging table + INSERT SELECT for complex mapping.)
+
+-- Simpler: staging table then INSERT SELECT (recommended)
+-- CREATE TABLE IF NOT EXISTS _staging_subway_match_v1 (
+--   osm_name VARCHAR(255),
+--   osm_lat VARCHAR(20),
+--   osm_lon VARCHAR(20),
+--   osm_full_id VARCHAR(32),
+--   station_cd VARCHAR(32),
+--   station_name VARCHAR(120),
+--   line_code VARCHAR(16),
+--   fr_code VARCHAR(16),
+--   match_level VARCHAR(16),
+--   confidence VARCHAR(10),
+--   reason VARCHAR(64)
+-- );
+-- LOAD DATA LOCAL INFILE '.../subway_station_match_v1.csv' INTO TABLE _staging_subway_match_v1
+-- FIELDS TERMINATED BY ',' ENCLOSED BY '"' LINES TERMINATED BY '\n' IGNORE 1 LINES;
+-- INSERT INTO subway_stations_master (station_cd, station_name, line_code, fr_code, lat, lon, osm_full_id, match_confidence, meta_json)
+-- SELECT station_cd, station_name, line_code, fr_code,
+--   NULLIF(TRIM(osm_lat), '') + 0.0, NULLIF(TRIM(osm_lon), '') + 0.0,
+--   NULLIF(TRIM(osm_full_id), ''),
+--   NULLIF(TRIM(confidence), '') + 0.0,
+--   JSON_OBJECT('match_level', match_level, 'reason', reason, 'osm_name', osm_name)
+-- FROM _staging_subway_match_v1
+-- ON DUPLICATE KEY UPDATE station_name=VALUES(station_name), line_code=VALUES(line_code), fr_code=VALUES(fr_code),
+--   lat=VALUES(lat), lon=VALUES(lon), osm_full_id=VALUES(osm_full_id), match_confidence=VALUES(match_confidence), meta_json=VALUES(meta_json), updated_at=NOW();
+
+-- -----------------------------------------------------------------------------
+-- 2) Validation queries: subway_stations_master (after import)
+-- -----------------------------------------------------------------------------
+-- Total rows
+-- SELECT COUNT(*) AS total_rows FROM subway_stations_master;
+
+-- Match rate (if meta_json contains match_level)
+-- SELECT JSON_UNQUOTE(JSON_EXTRACT(meta_json, '$.match_level')) AS match_level, COUNT(*) AS cnt
+-- FROM subway_stations_master WHERE meta_json IS NOT NULL GROUP BY JSON_EXTRACT(meta_json, '$.match_level');
+
+-- Count by confidence band (e.g. 0.9+, 0.8-0.9, 0.6-0.8, <0.6)
+-- SELECT CASE
+--   WHEN match_confidence >= 0.9 THEN '0.9+'
+--   WHEN match_confidence >= 0.8 THEN '0.8-0.9'
+--   WHEN match_confidence >= 0.6 THEN '0.6-0.8'
+--   ELSE '<0.6'
+-- END AS band, COUNT(*) AS cnt FROM subway_stations_master GROUP BY band;
+
+-- List unmatched / top ambiguous (sample; adjust if you have an unmatched table)
+-- SELECT station_cd, station_name, line_code, match_confidence, meta_json FROM subway_stations_master WHERE match_confidence IS NULL OR match_confidence < 0.6 ORDER BY match_confidence ASC LIMIT 30;
+
+-- -----------------------------------------------------------------------------
+-- 3) LOAD DATA LOCAL INFILE example: subway_edges_g1 (from subway_edges_g1_v1.csv)
+-- -----------------------------------------------------------------------------
+-- CSV columns: line_code, from_station_cd, to_station_cd, distance_m, time_sec, meta_json(optional)
+-- Staging example:
+-- CREATE TABLE IF NOT EXISTS _staging_subway_edges_g1 (
+--   line_code VARCHAR(16),
+--   from_station_cd VARCHAR(32),
+--   to_station_cd VARCHAR(32),
+--   distance_m VARCHAR(20),
+--   time_sec VARCHAR(20),
+--   meta_json TEXT
+-- );
+-- LOAD DATA LOCAL INFILE '.../data/derived/seoul/subway/subway_edges_g1_v1.csv'
+-- INTO TABLE _staging_subway_edges_g1 FIELDS TERMINATED BY ',' ENCLOSED BY '"' LINES TERMINATED BY '\n' IGNORE 1 LINES;
+-- INSERT INTO subway_edges_g1 (line_code, from_station_cd, to_station_cd, distance_m, time_sec, meta_json)
+-- SELECT line_code, from_station_cd, to_station_cd, NULLIF(TRIM(distance_m), '')+0.0, NULLIF(TRIM(time_sec), '')+0, NULLIF(TRIM(meta_json), '') FROM _staging_subway_edges_g1
+-- ON DUPLICATE KEY UPDATE distance_m=VALUES(distance_m), time_sec=VALUES(time_sec), meta_json=VALUES(meta_json);
+-- (Note: subway_edges_g1 has no UNIQUE on (line_code, from_station_cd, to_station_cd); add one if you need upsert. Otherwise use INSERT IGNORE or plain INSERT.)
+
+-- -----------------------------------------------------------------------------
+-- 4) Validation: duplicates check (subway_edges_g1)
+-- -----------------------------------------------------------------------------
+-- SELECT line_code, from_station_cd, to_station_cd, COUNT(*) AS dup_cnt
+-- FROM subway_edges_g1 GROUP BY line_code, from_station_cd, to_station_cd HAVING COUNT(*) > 1;

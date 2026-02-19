@@ -17,3 +17,9 @@ RewriteRule ^admin$ public/admin/index.php [L]
 # 4) /user/* -> /public/user/* (v1.4 MVP2)
 RewriteRule ^user/(.*)$ public/user/$1 [L]
 RewriteRule ^user$ public/user/home.php [L]
+
+# 5) /api/* -> public/api/index.php (trace + debug, GILIME_DEBUG=1 when needed)
+# 5a) /api/route/suggest_stops -> 전용 엔드포인트
+RewriteRule ^api/route/suggest_stops$ public/api/route/suggest_stops.php [L,QSA]
+RewriteRule ^api/(.*)$ public/api/index.php?path=$1 [L,QSA]
+RewriteRule ^api$ public/api/index.php?path= [L,QSA]

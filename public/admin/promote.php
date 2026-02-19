@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-require_once __DIR__ . '/../../app/inc/auth.php';
+require_once __DIR__ . '/../../app/inc/auth/auth.php';
 require_admin();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
