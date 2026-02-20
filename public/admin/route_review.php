@@ -1418,5 +1418,6 @@ if ($showReco && $onlyUnmatched) {
   })();
   </script>
   </main>
+  <?php render_admin_tutorial_modal(); ?>
 </body>
 </html>

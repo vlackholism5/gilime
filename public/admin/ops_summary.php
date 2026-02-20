@@ -185,7 +185,7 @@ if ($routeStopCount !== null && $routeStopCount > 0) {
         foreach ($statusCounts as $row) {
           $parts[] = $row['status'] . '=' . (int)$row['cnt'];
         }
-        echo $parts ? implode(', ', $parts) : '(none)';
+        echo $parts ? implode(', ', $parts) : '데이터가 없습니다';
       ?>
     </p>
     <div class="table-responsive">
@@ -284,5 +284,6 @@ if ($routeStopCount !== null && $routeStopCount > 0) {
     </div>
   </section>
   </main>
+  <?php render_admin_tutorial_modal(); ?>
 </body>
 </html>

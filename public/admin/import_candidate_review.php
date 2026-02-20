@@ -133,6 +133,18 @@ foreach ($rows as $idx => $r) {
     continue;
   }
 
+  // v1.7-21: action 없을 때 추론 — matched_stop_id 있으면 approve, status=rejected/reject이면 reject (export CSV 편집·GPT 결과 호환)
+  if ($action === '') {
+    if ($matchedStopId !== '') {
+      $action = 'approve';
+    } else {
+      $status = strtolower(trim((string)($r['status'] ?? '')));
+      if ($status === 'rejected' || $status === 'reject') {
+        $action = 'reject';
+      }
+    }
+  }
+
   if ($action === 'approve') {
     if ($matchedStopId === '') {
       $errors[] = "행 " . ($idx + 1) . ": approve 시 matched_stop_id 필수";

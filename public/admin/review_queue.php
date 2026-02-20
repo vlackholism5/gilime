@@ -161,6 +161,7 @@ $uniqueDocIds = array_values(array_unique(array_map(function ($r) { return (int)
   <div class="g-page-head">
     <h2 class="h3">검수 대기열</h2>
     <p class="helper mb-0">리스크 우선으로 후보 검수 대기열을 확인합니다.</p>
+    <p class="helper text-muted-g small mt-1 mb-0" title="집계·필터 의도">LOW: like_prefix 매칭만 된 후보. NONE: match_method 없음(미매칭). <strong>리스크 대기</strong> = LOW + NONE 합계이며, 검수 시 우선 확인할 항목입니다.</p>
   </div>
 
   <p class="text-muted-g small mb-2">
@@ -267,5 +268,6 @@ $uniqueDocIds = array_values(array_unique(array_map(function ($r) { return (int)
   </div>
   </div>
   </main>
+  <?php render_admin_tutorial_modal(); ?>
 </body>
 </html>

@@ -144,5 +144,6 @@ function h(string $s): string {
     </div>
   </div>
   </main>
+  <?php render_admin_tutorial_modal(); ?>
 </body>
 </html>

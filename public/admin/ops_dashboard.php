@@ -108,6 +108,7 @@ function h(string $s): string {
   </div>
 
   <h3 class="h5 mb-2">검수가 필요한 문서 <span class="text-muted-g small">| <a href="<?= APP_BASE ?>/admin/ops_dashboard.php?sort=updated">정렬: 최신</a> <a href="<?= APP_BASE ?>/admin/ops_dashboard.php?sort=risky">정렬: 위험도</a></span></h3>
+  <p class="text-muted-g small mb-2">리스크 대기 = pending 후보 중 match_method가 like_prefix 또는 NULL인 건수.</p>
   <div class="card g-card mb-3">
   <div class="card-body">
   <div class="table-responsive">
@@ -214,5 +215,6 @@ function h(string $s): string {
   </div>
   </div>
   </main>
+  <?php render_admin_tutorial_modal(); ?>
 </body>
 </html>

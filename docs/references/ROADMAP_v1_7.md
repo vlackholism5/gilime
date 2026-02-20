@@ -296,4 +296,10 @@ WHERE TABLE_SCHEMA = DATABASE()
 
 ---
 
+## Phase-2 (로드맵): 지도 기반 UI 및 길찾기 엔진
+
+지도 기반 UI, 경로 폴리라인, 길찾기 엔진은 Phase-2(로드맵) 범주이다. 상세: docs/operations/PLAN_UX_OPERATIONS_ROUTE_FINDER_v1_7.md Part 3, docs/ux/NAVER_MAP_UI_ADOPTION_v1_8.md.
+
+---
+
 *문서 버전: v1.6-10 Gate PASS 이후 확정. v1.7 착수 시 이 로드맵을 기준으로 실행.*

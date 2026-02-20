@@ -339,6 +339,781 @@ textarea:focus-visible {
   border-bottom: 1px solid var(--gilaime-border);
 }
 .g-route-card:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+
+/* 지도 기반 길찾기 (UX_ROUTE_FINDER_MAP_BASED_v1) */
+.g-route-map-wrap {
+  position: relative;
+  border-radius: var(--g-space-2);
+  overflow: hidden;
+  border: 1px solid var(--gilaime-border);
+  background: var(--gilaime-bg);
+}
+.g-route-map {
+  width: 100%;
+  height: 320px;
+  min-height: 240px;
+}
+.g-route-map-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.85);
+  font-size: var(--g-fs-hint);
+  color: var(--gilaime-muted);
+}
+
+/* 네이버 지도 길찾기 레퍼런스 기반 모바일 레이아웃 */
+.g-routefinder-page {
+  max-width: 620px;
+  margin: 0 auto;
+}
+.g-routefinder-page .g-page-head h1 {
+  font-size: clamp(1.7rem, 1.3rem + 1.1vw, 2.1rem);
+}
+.g-routefinder-page .g-route-form {
+  border-radius: 18px;
+}
+.g-routefinder-page .g-route-form .form-control {
+  border-radius: 12px;
+  min-height: 44px;
+}
+.g-route-map {
+  height: 380px;
+}
+.g-route-transport-mode {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+}
+.g-mode-btn {
+  border: 1px solid var(--gilaime-border);
+  background: #fff;
+  color: #334155;
+  border-radius: 999px;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+.g-mode-btn.active {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+  color: #fff;
+  font-weight: 700;
+}
+.g-route-result-sheet {
+  border-radius: 20px;
+}
+.g-route-od-summary {
+  font-weight: 700;
+  color: #0f172a;
+  font-size: 0.95rem;
+}
+.g-route-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.88rem;
+  color: #334155;
+}
+.g-search-tab-mobile {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+}
+.g-route-filter-link {
+  display: inline-flex;
+  align-items: center;
+  border-bottom: 2px solid transparent;
+  color: #64748b;
+  font-weight: 600;
+  text-decoration: none;
+  padding: 0.35rem 0.2rem;
+  white-space: nowrap;
+}
+.g-route-filter-link.active {
+  color: #0f172a;
+  border-bottom-color: #0f172a;
+}
+.g-route-card-mobile {
+  border: 1px solid var(--gilaime-border);
+  border-radius: 14px;
+  padding: 0.85rem;
+  margin-bottom: 0.75rem;
+  background: #fff;
+}
+.g-route-card-mobile:last-child {
+  margin-bottom: 0;
+}
+.g-route-time {
+  font-size: 2rem;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+.g-route-card-mobile .g-route-timeline {
+  margin: 0.45rem 0 0.6rem;
+}
+.g-route-card-actions .btn {
+  min-width: 88px;
+}
+.g-route-card-mobile.active {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
+}
+.g-sheet-handle {
+  width: 52px;
+  height: 6px;
+  border: 0;
+  border-radius: 999px;
+  background: #cbd5e1;
+  display: block;
+  margin: 0 auto 0.6rem;
+}
+.g-sort-open-btn {
+  border: 0;
+  background: transparent;
+  color: #334155;
+  font-size: 0.88rem;
+  font-weight: 600;
+  padding: 0;
+}
+.g-sort-open-btn:hover { text-decoration: underline; }
+
+/* 정렬 모달 */
+.g-sort-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 1100;
+}
+.g-sort-modal {
+  width: min(620px, 100%);
+  background: #fff;
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -8px 26px rgba(15, 23, 42, 0.25);
+  max-height: 80vh;
+  overflow: auto;
+}
+.g-sort-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1rem 0.7rem;
+  border-bottom: 1px solid var(--gilaime-border);
+}
+.g-sort-modal-head h3 {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 800;
+}
+.g-sort-close-btn {
+  border: 0;
+  background: transparent;
+  font-size: 1.8rem;
+  line-height: 1;
+  color: #64748b;
+}
+.g-sort-modal-body {
+  padding: 0.5rem 0;
+}
+.g-sort-option {
+  width: 100%;
+  text-align: left;
+  border: 0;
+  border-bottom: 1px solid #eef2f7;
+  background: #fff;
+  padding: 1rem;
+  font-size: 1.45rem;
+  color: #0f172a;
+}
+.g-sort-option.active {
+  color: #1d4ed8;
+  font-weight: 800;
+}
+.g-sort-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  font-size: 1.1rem;
+  color: #334155;
+}
+.g-sort-modal-foot {
+  padding: 0.8rem 1rem 1.1rem;
+  border-top: 1px solid var(--gilaime-border);
+}
+
+.g-route-result-sheet.is-collapsed .card-body > :not(.g-sheet-handle):not(h2):not(.g-route-od-summary):not(.g-route-meta-row) {
+  display: none;
+}
+.g-route-result-sheet.is-collapsed .card-body {
+  padding-bottom: 0.8rem;
+}
+
+/* 공통 지도 셸(홈/길찾기 공용 확장) */
+.g-map-shell {
+  position: relative;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid var(--gilaime-border);
+  background: #fff;
+}
+.g-map-canvas {
+  width: 100%;
+  min-height: 280px;
+}
+
+/* 홈 지도형 레이아웃 */
+.g-home-map-page {
+  max-width: 620px;
+  margin: 0 auto;
+  padding: 0.5rem;
+}
+.g-home-map-shell {
+  position: relative;
+  height: calc(100vh - 1rem);
+  border-radius: 22px;
+  overflow: hidden;
+  border: 1px solid var(--gilaime-border);
+  background: #fff;
+}
+.g-home-map-canvas {
+  position: absolute;
+  inset: 0;
+}
+.g-home-map-top {
+  position: absolute;
+  inset: 0.75rem 0.75rem auto 0.75rem;
+  z-index: 500;
+}
+.g-home-searchbar-wrap {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+.g-home-filter-chips {
+  margin-top: 0.45rem;
+  display: flex;
+  gap: 0.35rem;
+  overflow-x: auto;
+  padding-bottom: 0.05rem;
+}
+.g-home-filter-chips button {
+  border: 1px solid #dbe2ea;
+  background: rgba(255, 255, 255, 0.95);
+  color: #64748b;
+  border-radius: 999px;
+  min-height: 28px;
+  padding: 0 0.72rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.g-home-filter-chips button.active {
+  border-color: #9ae6b4;
+  background: #e8f9ef;
+  color: #03c75a;
+}
+.g-home-filter-chips button:disabled {
+  opacity: 0.5;
+}
+.g-home-searchbar {
+  flex: 1;
+  min-width: 0;
+  background: #fff;
+  border-radius: 999px;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  padding: 0 1rem;
+  color: #334155;
+  text-decoration: none;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
+}
+.g-home-route-cta {
+  background: #2f80ff;
+  color: #fff;
+  text-decoration: none;
+  border-radius: 12px;
+  min-height: 48px;
+  width: 48px;
+  min-width: 48px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  font-weight: 700;
+  box-shadow: 0 8px 18px rgba(47, 128, 255, 0.28);
+}
+.g-home-track-cta {
+  flex: 0 0 48px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  border-radius: 12px;
+  min-height: 48px;
+  width: 48px;
+  min-width: 48px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+}
+.g-home-cta-icon {
+  width: 22px;
+  height: 22px;
+  display: block;
+  margin: auto;
+}
+.g-icon-svg {
+  fill: none;
+  stroke: currentColor;
+  overflow: visible;
+}
+.g-home-track-cta.is-live {
+  background: #03c75a;
+  border-color: #02a84c;
+  color: #ffffff;
+  box-shadow: 0 8px 18px rgba(3, 199, 90, 0.28);
+}
+.g-home-track-cta.is-unsupported {
+  background: #f1f5f9;
+  color: #94a3b8;
+  border-color: #cbd5e1;
+  box-shadow: none;
+}
+.g-home-issue-strip {
+  margin-top: 0.55rem;
+  display: block;
+}
+.g-home-issue-banner {
+  width: 100%;
+  min-height: 32px;
+  border-radius: 999px;
+  padding: 0 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  border: 1px solid rgba(255,255,255,0.95);
+  background: rgba(255,255,255,0.92);
+  color: #334155;
+  text-decoration: none;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+.g-home-issue-banner strong {
+  color: #0f172a;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+.g-home-issue-banner span {
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-weight: 700;
+}
+.g-home-issue-banner.muted span,
+.g-home-issue-banner.muted strong {
+  color: #64748b;
+}
+.g-home-bottom-sheet {
+  position: absolute;
+  left: 0.35rem;
+  right: 0.35rem;
+  bottom: 3.2rem;
+  z-index: 520;
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(3px);
+  border-radius: 20px 20px 0 0;
+  border: 1px solid #e2e8f0;
+  border-bottom: 0;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.16);
+  padding: 0.85rem;
+  transition: transform 0.22s ease, max-height 0.22s ease;
+  max-height: 56vh;
+  overflow: auto;
+}
+.g-home-bottom-sheet.is-half {
+  transform: translateY(18%);
+}
+.g-home-bottom-sheet.is-full {
+  transform: translateY(-22%);
+  max-height: 78vh;
+}
+.g-home-bottom-sheet.is-collapsed {
+  transform: translateY(calc(100% - 3.1rem));
+  max-height: 64px;
+  overflow: hidden;
+}
+.g-home-sheet-handle {
+  width: 56px;
+  height: 6px;
+  border: 0;
+  border-radius: 999px;
+  background: #cbd5e1;
+  display: block;
+  margin: 0 auto 0.7rem;
+  touch-action: none;
+  cursor: grab;
+}
+.g-home-bottom-sheet.is-dragging {
+  transition: none;
+}
+.g-home-bottom-sheet.is-dragging .g-home-sheet-handle {
+  cursor: grabbing;
+}
+.g-home-main-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
+  margin-bottom: 0.7rem;
+}
+.g-home-main-tabs button {
+  border: 1px solid #dbe2ea;
+  background: #f1f5f9;
+  color: #64748b;
+  border-radius: 12px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.42rem;
+  font-weight: 700;
+  font-size: 0.92rem;
+  line-height: 1;
+}
+.g-home-tab-icon {
+  width: 16px;
+  height: 16px;
+  display: block;
+  flex: 0 0 auto;
+}
+.g-home-main-tabs button.active {
+  background: #fff;
+  color: #03c75a;
+  border-color: #9ae6b4;
+}
+.g-home-panel { display: none; }
+.g-home-panel.active { display: block; }
+.g-home-issue-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+.g-home-issue-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0.45rem;
+  background: #fff;
+  text-decoration: none;
+  color: #0f172a;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.38rem;
+}
+.g-home-issue-card .thumb {
+  min-height: 112px;
+  border-radius: 10px;
+  background: linear-gradient(165deg, #334155 8%, #1f2937 68%, #0f172a 100%);
+  border: 1px solid #e2e8f0;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto 1fr auto;
+  align-items: start;
+  padding: 0.35rem;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+}
+.g-home-issue-card .rank {
+  width: 19px;
+  height: 19px;
+  border-radius: 999px;
+  background: #2f80ff;
+  color: #fff;
+  font-size: 0.66rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.g-home-issue-card .tag {
+  grid-column: 2;
+  grid-row: 1;
+  font-size: 0.64rem;
+  color: #0f766e;
+  font-weight: 700;
+  background: rgba(255,255,255,0.88);
+  border-radius: 999px;
+  padding: 0.05rem 0.38rem;
+}
+.g-home-issue-card .thumb-caption {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  align-self: end;
+  font-size: 1.05rem;
+  font-weight: 800;
+  line-height: 1.1;
+  text-shadow: 0 2px 8px rgba(15, 23, 42, 0.6);
+  letter-spacing: -0.02em;
+}
+.g-home-issue-card .content {
+  display: grid;
+  gap: 0.15rem;
+}
+.g-home-issue-card strong {
+  font-size: 0.78rem;
+  line-height: 1.2;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.g-home-issue-card small {
+  color: #64748b;
+  font-size: 0.68rem;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.g-home-issue-card.is-featured {
+  grid-column: 1 / -1;
+  grid-template-columns: 148px 1fr;
+  align-items: stretch;
+  padding: 0.48rem;
+}
+.g-home-issue-card.is-featured .thumb {
+  min-height: 164px;
+}
+.g-home-issue-card.is-featured .content {
+  align-content: start;
+  padding: 0.05rem 0.2rem 0 0.08rem;
+}
+.g-home-issue-card.is-featured strong {
+  font-size: 0.86rem;
+  -webkit-line-clamp: 2;
+}
+.g-home-issue-card.is-featured small {
+  font-size: 0.72rem;
+  -webkit-line-clamp: 3;
+}
+.g-home-issue-card.type-strike .thumb {
+  background: linear-gradient(165deg, #1f2937 8%, #7f1d1d 68%, #450a0a 100%);
+}
+.g-home-issue-card.type-event .thumb {
+  background: linear-gradient(165deg, #1f2937 8%, #14532d 68%, #064e3b 100%);
+}
+.g-home-issue-card.type-update .thumb {
+  background: linear-gradient(165deg, #1e3a8a 8%, #0f766e 68%, #164e63 100%);
+}
+.g-home-full-more {
+  display: none;
+  margin-top: 0.55rem;
+}
+.g-home-bottom-sheet.is-full .g-home-full-more {
+  display: block;
+}
+.g-home-location-tabs {
+  display: flex;
+  gap: 0.45rem;
+  margin-bottom: 0.6rem;
+}
+.g-home-location-tabs button {
+  border: 0;
+  flex: 1;
+  text-align: center;
+  border-radius: 12px;
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #eef2f7;
+  font-size: 0.82rem;
+  color: #334155;
+}
+.g-home-location-tabs button.active {
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-weight: 700;
+}
+.g-home-bottom-sheet h2 {
+  margin: 0 0 0.55rem;
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+.g-home-issue-empty {
+  color: #64748b;
+  font-size: 0.9rem;
+  margin-bottom: 0.6rem;
+}
+.g-home-place-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem;
+  margin-bottom: 0.5rem;
+}
+.g-home-place-card {
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  border-radius: 12px;
+  text-align: left;
+  padding: 0.6rem 0.65rem;
+}
+.g-home-place-card .rank {
+  display: inline-flex;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: #1d4ed8;
+  color: #fff;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  margin-bottom: 0.35rem;
+}
+.g-home-place-card strong {
+  display: block;
+  color: #0f172a;
+  font-size: 0.9rem;
+  line-height: 1.3;
+}
+.g-home-place-card small {
+  color: #64748b;
+  font-size: 0.74rem;
+}
+.g-home-route-list {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+}
+.g-home-route-item {
+  border: 1px solid #dbe2ea;
+  border-radius: 12px;
+  background: #fff;
+  text-align: left;
+  padding: 0.6rem 0.7rem;
+}
+.g-home-route-item strong {
+  display: block;
+  color: #0f172a;
+  font-size: 0.92rem;
+}
+.g-home-route-item span {
+  color: #64748b;
+  font-size: 0.8rem;
+}
+.g-home-sub-title {
+  margin: 0.4rem 0 0.35rem;
+  font-size: 0.95rem;
+  color: #334155;
+  font-weight: 800;
+}
+.g-home-saved-route-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+.g-home-saved-route-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0.45rem 0.6rem;
+  background: #fff;
+}
+.g-home-saved-route-list a {
+  color: #0f172a;
+  text-decoration: none;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+.g-home-saved-route-list span {
+  color: #64748b;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+.g-home-bottom-sheet.is-collapsed .g-home-panel,
+.g-home-bottom-sheet.is-collapsed .g-home-main-tabs {
+  display: none;
+}
+.g-home-bottom-sheet.is-collapsed {
+  padding-bottom: 0.4rem;
+}
+/* 공통 하단 내비게이션 컴포넌트 */
+.g-bottom-nav {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 530;
+  background: #fff;
+  border-top: 1px solid var(--gilaime-border);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+}
+.g-bottom-nav a {
+  min-height: 54px;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  color: #7b8794;
+  font-size: 0.8rem;
+  font-weight: 600;
+  gap: 0.2rem;
+  line-height: 1;
+}
+.g-nav-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: #f4f7fb;
+  color: #7b8794;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+}
+.g-nav-icon-svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+  margin: auto;
+}
+.g-bottom-nav a.active .g-nav-icon-svg {
+  width: 19px;
+  height: 19px;
+}
+.g-bottom-nav a.active .g-nav-icon {
+  background: #e8f9ef;
+  color: #03c75a;
+}
+.g-nav-label {
+  line-height: 1.1;
+}
+.g-bottom-nav a.active {
+  color: #1f2937;
+  font-weight: 800;
+}
 .g-home-route .card-body { padding: var(--g-space-3); }
 .g-home-route .mb-3 { margin-bottom: var(--g-space-2) !important; }
 
@@ -348,6 +1123,27 @@ textarea:focus-visible {
   .g-page-head h2 { font-size: 1.5rem; }
   .g-table th,
   .g-table td { font-size: 0.92rem; padding-top: 0.625rem; padding-bottom: 0.625rem; }
+  .g-route-map { height: 320px; }
+  .g-route-map-wrap { margin-bottom: 0.75rem !important; }
+  .g-route-result-sheet {
+    position: fixed;
+    left: 0.5rem;
+    right: 0.5rem;
+    bottom: 0.5rem;
+    z-index: 1000;
+    max-height: 58vh;
+    overflow: auto;
+    border-radius: 18px;
+  }
+  .g-home-map-page {
+    max-width: 100%;
+    padding: 0;
+  }
+  .g-home-map-shell {
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+  }
 }
 
 /* Route review specific layout */

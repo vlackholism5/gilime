@@ -106,18 +106,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
   }
 
-  // POST: 새 알림 생성 (ref_type=route). v1.6-06 + v1.7-02: draft(published_at NULL) or publish
+  // POST: 새 알림 생성 (ref_type=route). v1.6-06 + v1.7-02: draft(published_at NULL) or publish. P0: 입력 길이 제한(XSS/레이아웃).
   $eventType = isset($_POST['event_type']) ? trim((string)$_POST['event_type']) : '';
   $title = isset($_POST['title']) ? trim((string)$_POST['title']) : '';
+  $title = $title !== '' ? mb_substr($title, 0, 255) : '';
   $body = isset($_POST['body']) ? trim((string)$_POST['body']) : '';
+  $body = $body !== '' ? mb_substr($body, 0, 2000) : '';
   $refIdRaw = isset($_POST['ref_id']) ? trim((string)$_POST['ref_id']) : '';
   $refId = $refIdRaw !== '' ? (int)$refIdRaw : 0;
-  $routeLabel = isset($_POST['route_label']) ? trim((string)$_POST['route_label']) : '';
+  $routeLabelRaw = isset($_POST['route_label']) ? trim((string)$_POST['route_label']) : '';
+  $routeLabel = $routeLabelRaw !== '' ? mb_substr(preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $routeLabelRaw), 0, 64) : '';
   $publishedAtRaw = isset($_POST['published_at']) ? trim((string)$_POST['published_at']) : '';
   $publishNow = isset($_POST['publish_now']) && $_POST['publish_now'] === '1';
   $refType = 'route';
 
-  $valid = $eventType !== '' && $title !== '' && $refId > 0 && $routeLabel !== '';
+  $valid = $eventType !== '' && $title !== '' && $refId > 0 && $refId <= 999999999 && $routeLabel !== '';
   $publishedAt = null;
   if ($valid) {
     if ($publishNow) {
@@ -428,5 +431,6 @@ function h(string $s): string {
   </div>
   <p class="text-muted-g small mt-3">최근 200건. Pagination은 v1.6-06(확인 필요).</p>
   </main>
+  <?php render_admin_tutorial_modal(); ?>
 </body>
 </html>

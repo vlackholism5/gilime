@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Define logging keys and minimal trace expectations for the future implementation of E1/E2 (`/api/g1/station-lines/by-name`, `/api/g1/station-lines/by-code`). No runtime code in STEP8; this is the spec.
+E1/E2는 STEP9에서 구현 완료. 본 문서는 해당 API의 로그·트레이스 계약이다.
 
 **SoT:** `docs/SOT/09_API_CONTRACTS_G1.md`.
 

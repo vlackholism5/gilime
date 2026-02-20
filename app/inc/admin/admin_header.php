@@ -24,6 +24,8 @@ function render_admin_nav(): void {
     <a href="<?= htmlspecialchars($adminBase . '/alert_ops.php', ENT_QUOTES, 'UTF-8') ?>">알림</a>
     <span class="text-muted-g">|</span>
     <a href="<?= htmlspecialchars($adminBase . '/alias_audit.php', ENT_QUOTES, 'UTF-8') ?>">감사</a>
+    <span class="text-muted-g">|</span>
+    <a href="<?= htmlspecialchars($adminBase . '/tutorial_test.php', ENT_QUOTES, 'UTF-8') ?>">튜토리얼</a>
     <a class="btn btn-outline-secondary btn-sm ms-auto" href="<?= htmlspecialchars($adminBase . '/logout.php', ENT_QUOTES, 'UTF-8') ?>">로그아웃</a>
   </nav>
   <?php
@@ -58,5 +60,19 @@ function render_admin_header(array $breadcrumbs, bool $showLogout = true): void 
     <a class="btn btn-outline-secondary btn-sm" href="<?= htmlspecialchars($adminBase . '/logout.php', ENT_QUOTES, 'UTF-8') ?>">로그아웃</a>
     <?php endif; ?>
   </div>
+  <?php
+}
+
+/**
+ * 관리자 튜토리얼 모달 + 스크립트 (한글 작업 순서 안내).
+ * 표시 조건·건너뛰기·오늘 다시 보지 않기는 admin_tutorial.js에서 처리.
+ * </main> 다음, </body> 직전에 호출.
+ */
+function render_admin_tutorial_modal(): void {
+  $base = defined('APP_BASE') ? APP_BASE : '';
+  require __DIR__ . '/admin_tutorial.php';
+  ?>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+  <script src="<?= htmlspecialchars($base . '/public/assets/js/admin_tutorial.js', ENT_QUOTES, 'UTF-8') ?>"></script>
   <?php
 }

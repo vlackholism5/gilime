@@ -15,6 +15,8 @@ Define the runtime API contract for station line candidates **before** implement
 | **E1** | GET | `/api/g1/station-lines/by-name?station_name=...` | Lookup by 역명 |
 | **E2** | GET | `/api/g1/station-lines/by-code?station_cd=...` | Lookup by 역코드 |
 
+구현: GET `.../api/index.php?path=g1/station-lines/by-name` 또는 `path=g1/station-lines/by-code`. (단일 진입점)
+
 ---
 
 ## Request

@@ -39,14 +39,33 @@
         var el = document.createElement('button');
         el.type = 'button';
         el.className = 'g-autocomplete-item';
-        el.textContent = item.stop_name || '';
+        var label = item.display_label || (item.stop_name ? item.stop_name + ' · ' + (item.stop_id || '') : '');
+        el.textContent = label || item.stop_name || '';
         el.dataset.stopName = item.stop_name || '';
         el.dataset.stopId = String(item.stop_id || '');
+        el.dataset.displayLabel = label || item.stop_name || '';
+        if (item.lat != null && item.lng != null) {
+          el.dataset.lat = String(item.lat);
+          el.dataset.lng = String(item.lng);
+        }
         el.addEventListener('click', function (e) {
           e.preventDefault();
-          inputEl.value = item.stop_name || '';
+          inputEl.value = el.dataset.displayLabel || item.stop_name || '';
           dropdownEl.innerHTML = '';
           dropdownEl.setAttribute('aria-hidden', 'true');
+          var inputId = inputEl.id || (inputEl.name === 'from' ? 'from' : inputEl.name === 'to' ? 'to' : '');
+          if (inputId && el.dataset.lat && el.dataset.lng) {
+            try {
+              document.dispatchEvent(new CustomEvent('gilaime:route:place-select', {
+                detail: {
+                  inputId: inputId,
+                  lat: parseFloat(el.dataset.lat),
+                  lng: parseFloat(el.dataset.lng),
+                  displayLabel: el.dataset.displayLabel || ''
+                }
+              }));
+            } catch (err) {}
+          }
         });
         dropdownEl.appendChild(el);
       });

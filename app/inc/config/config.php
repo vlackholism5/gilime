@@ -20,3 +20,6 @@ if (!defined('OCR_TESSERACT_CMD')) define('OCR_TESSERACT_CMD', 'C:\\Program File
 // v1.7-20: GPT 검수 파이프라인 (route_review → run_gpt_review.php)
 if (!defined('GPT_PYTHON_CMD')) define('GPT_PYTHON_CMD', 'python');  // 또는 'py', 'c:\...\python.exe'
 if (!defined('GPT_OPENAPI_API_KEY')) define('GPT_OPENAPI_API_KEY', '');  // config.local.php에서 설정 (API 키는 .gitignore 대상)
+
+// v1.7-21: PDF 구조화 파싱 (1회 파싱 → CSV, 정류장명·ID null 허용). 비어 있거나 스크립트 없으면 기존 pdf_parser 사용
+if (!defined('STRUCTURED_PARSE_SCRIPT')) define('STRUCTURED_PARSE_SCRIPT', 'scripts/python/parse_shuttle_pdf_to_structured.py');

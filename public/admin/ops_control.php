@@ -69,7 +69,7 @@ function h(string $s): string {
         foreach ($statusCounts as $row) {
           $parts[] = $row['status'] . '=' . (int)$row['cnt'];
         }
-        echo $parts ? implode(', ', $parts) : '(없음)';
+        echo $parts ? implode(', ', $parts) : '데이터가 없습니다';
       ?>
     </p>
     <p><strong>실패 상위 20건</strong></p>
@@ -93,7 +93,7 @@ function h(string $s): string {
           </tr>
         <?php endforeach; ?>
         <?php if (!$failedTop20): ?>
-          <tr><td colspan="7" class="text-muted-g small">데이터가 없습니다</td></tr>
+          <tr><td colspan="7" class="text-muted-g small">실패한 배달이 없습니다</td></tr>
         <?php endif; ?>
       </tbody>
     </table>
@@ -106,6 +106,7 @@ function h(string $s): string {
     <div class="card-body">
     <h3 class="h5">B. 실데이터 수집(ingest) 실행 안내 + 최근 지표 이벤트 10건</h3>
     <p class="text-muted-g small">지표 수집 실행(CLI): <code class="g-nowrap">php scripts/php/run_alert_ingest_real_metrics.php --since_minutes=1440 --limit=200</code></p>
+    <p class="text-muted-g small mb-2">[Metrics] Review needed 이벤트는 <a href="<?= $base ?>/alert_ops.php">알림 운영(alert_ops)</a>에서 검토하세요. 아래 표의 <strong>ID</strong>를 클릭하면 해당 이벤트 상세로 이동합니다.</p>
     <div class="table-responsive">
     <table class="table table-hover align-middle g-table g-table-dense mb-0">
       <thead>
@@ -145,5 +146,6 @@ function h(string $s): string {
     </div>
   </section>
   </main>
+  <?php render_admin_tutorial_modal(); ?>
 </body>
 </html>

@@ -17,6 +17,55 @@ function route_finder_resolve_stop(PDO $pdo, string $input): ?array
     $raw = trim($input);
     if ($raw === '') return null;
 
+    // "이름 · 123" 또는 "이름 (정류소번호 123)" 또는 "이름 (123)" 형식: 숫자를 stop_id로 조회 (구분자 · 또는 괄호)
+    if (preg_match('/^(.+?)\s*·\s*(\d+)\s*$/u', $raw, $m) || preg_match('/^(.+?)\s*\(정류소번호\s*(\d+)\)\s*$/u', $raw, $m) || preg_match('/^(.+?)\s*\((\d+)\)\s*$/u', $raw, $m)) {
+        $stopId = (int)$m[2];
+        try {
+            $st = $pdo->prepare("SELECT stop_id, stop_name FROM seoul_bus_route_stop_master WHERE stop_id = ? LIMIT 1");
+            $st->execute([$stopId]);
+            $row = $st->fetch(PDO::FETCH_ASSOC);
+            if ($row) {
+                $name = isset($row['stop_name']) && trim((string)$row['stop_name']) !== '' ? trim((string)$row['stop_name']) : trim((string)$m[1]);
+                return ['stop_id' => (int)$row['stop_id'], 'stop_name' => $name];
+            }
+            $st = $pdo->prepare("SELECT stop_id, stop_name FROM seoul_bus_stop_master WHERE stop_id = ? LIMIT 1");
+            $st->execute([$stopId]);
+            $row = $st->fetch(PDO::FETCH_ASSOC);
+            if ($row) {
+                $name = isset($row['stop_name']) && trim((string)$row['stop_name']) !== '' ? trim((string)$row['stop_name']) : trim((string)$m[1]);
+                return ['stop_id' => (int)$row['stop_id'], 'stop_name' => $name];
+            }
+        } catch (Throwable $e) {
+            // fallback to name match below
+        }
+    }
+
+    // 정류장ID:{stop_id} 또는 숫자만 들어온 경우: stop_id 직접 매칭 (route_stop_master 또는 stop_master에 있으면 인정)
+    if (preg_match('/^정류장ID:(\d+)$/u', $raw, $m) || preg_match('/^(\d+)$/u', $raw, $m)) {
+        $stopId = (int)$m[1];
+        $displayName = '정류장ID:' . $stopId;
+        try {
+            // 1) route_stop_master에 있으면 경로 검색 가능 → 인정 (이름 있으면 사용, 없으면 정류장ID:nnn)
+            $st = $pdo->prepare("SELECT stop_id, stop_name FROM seoul_bus_route_stop_master WHERE stop_id = ? LIMIT 1");
+            $st->execute([$stopId]);
+            $row = $st->fetch(PDO::FETCH_ASSOC);
+            if ($row) {
+                $name = isset($row['stop_name']) && trim((string)$row['stop_name']) !== '' ? trim((string)$row['stop_name']) : $displayName;
+                return ['stop_id' => (int)$row['stop_id'], 'stop_name' => $name];
+            }
+            // 2) stop_master에만 있어도 인정 (이름 null이면 정류장ID:nnn)
+            $st = $pdo->prepare("SELECT stop_id, stop_name FROM seoul_bus_stop_master WHERE stop_id = ? LIMIT 1");
+            $st->execute([$stopId]);
+            $row = $st->fetch(PDO::FETCH_ASSOC);
+            if ($row) {
+                $name = isset($row['stop_name']) && trim((string)$row['stop_name']) !== '' ? trim((string)$row['stop_name']) : $displayName;
+                return ['stop_id' => (int)$row['stop_id'], 'stop_name' => $name];
+            }
+        } catch (Throwable $e) {
+            // 테이블 없거나 오류 시 아래 이름 매칭으로 진행
+        }
+    }
+
     $normalized = trim(preg_replace('/\s+/u', ' ', $raw));
 
     try {
@@ -118,20 +167,19 @@ function route_finder_sample_stops(PDO $pdo, int $limit = 25): array
 /**
  * 사용자 입력 → 추천 정류장 목록 (자동완성용)
  * prefix 일치 우선, 포함 일치 후순
- * @return array [['stop_id' => int, 'stop_name' => string], ...]
+ * @return array [['stop_id' => int, 'stop_name' => string, 'display_label' => string], ...]
  */
 function route_finder_suggest_stops(PDO $pdo, string $input, int $limit = 10): array
 {
     $raw = trim($input);
     if ($raw === '' || mb_strlen($raw) < 1) return [];
 
-    $normalized = trim(preg_replace('/\s+/u', ' ', $raw));
     $prefix = $raw;
     $contains = '%' . $raw . '%';
 
     try {
         $sql = "
-            SELECT stop_id, stop_name FROM seoul_bus_stop_master
+            SELECT stop_id, stop_name, lat, lng FROM seoul_bus_stop_master
             WHERE stop_name LIKE :contains
             ORDER BY CASE WHEN stop_name LIKE CONCAT(:prefix, '%') THEN 0 ELSE 1 END, stop_name
             LIMIT :lim
@@ -144,12 +192,39 @@ function route_finder_suggest_stops(PDO $pdo, string $input, int $limit = 10): a
         $rows = $st->fetchAll(PDO::FETCH_ASSOC);
         $out = [];
         foreach ($rows as $r) {
-            $out[] = ['stop_id' => (int)$r['stop_id'], 'stop_name' => (string)$r['stop_name']];
+            $stopId = (int)$r['stop_id'];
+            $stopName = trim((string)($r['stop_name'] ?? ''));
+            $displayLabel = $stopName !== '' ? $stopName . ' · ' . $stopId : '정류장 · ' . $stopId;
+            $item = ['stop_id' => $stopId, 'stop_name' => $stopName !== '' ? $stopName : '정류장', 'display_label' => $displayLabel];
+            if (isset($r['lat']) && isset($r['lng']) && $r['lat'] !== null && $r['lng'] !== null) {
+                $item['lat'] = (float)$r['lat'];
+                $item['lng'] = (float)$r['lng'];
+            }
+            $out[] = $item;
         }
         return $out;
     } catch (Throwable $e) {
         return [];
     }
+}
+
+/**
+ * 정류장 stop_id의 좌표 조회 (지도 마커/폴리라인용)
+ * @return array{lat: float, lng: float}|null
+ */
+function route_finder_stop_coords(PDO $pdo, int $stopId): ?array
+{
+    try {
+        $st = $pdo->prepare("SELECT lat, lng FROM seoul_bus_stop_master WHERE stop_id = ? AND lat IS NOT NULL AND lng IS NOT NULL LIMIT 1");
+        $st->execute([$stopId]);
+        $row = $st->fetch(PDO::FETCH_ASSOC);
+        if ($row) {
+            return ['lat' => (float)$row['lat'], 'lng' => (float)$row['lng']];
+        }
+    } catch (Throwable $e) {
+        return null;
+    }
+    return null;
 }
 
 /**
@@ -242,14 +317,59 @@ function route_finder_search(PDO $pdo, int $fromStopId, int $toStopId, bool $inc
 }
 
 /**
- * 경로별 정류장 요약 (출발·도착 사이 3~7개)
+ * 표시용 정류장 라벨 (정류장ID:nnn 또는 숫자만 있으면 DB에서 이름 조회, 없으면 "정류장 (ID: nnn)" 반환)
+ */
+function route_finder_stop_display_name(PDO $pdo, string $input): string
+{
+    $raw = trim($input);
+    if ($raw === '') return '';
+
+    if (preg_match('/^정류장ID:(\d+)$/u', $raw, $m) || preg_match('/^(\d+)$/u', $raw, $m)) {
+        $stopId = (int)$m[1];
+        try {
+            $st = $pdo->prepare("SELECT stop_name FROM seoul_bus_route_stop_master WHERE stop_id = ? AND stop_name IS NOT NULL AND TRIM(stop_name) != '' LIMIT 1");
+            $st->execute([$stopId]);
+            $row = $st->fetch(PDO::FETCH_ASSOC);
+            if ($row && trim((string)$row['stop_name']) !== '') return trim((string)$row['stop_name']);
+            $st = $pdo->prepare("SELECT stop_name FROM seoul_bus_stop_master WHERE stop_id = ? AND stop_name IS NOT NULL AND TRIM(stop_name) != '' LIMIT 1");
+            $st->execute([$stopId]);
+            $row = $st->fetch(PDO::FETCH_ASSOC);
+            if ($row && trim((string)$row['stop_name']) !== '') return trim((string)$row['stop_name']);
+        } catch (Throwable $e) {
+            // ignore
+        }
+        return '정류장 · ' . $stopId;
+    }
+
+    return $raw;
+}
+
+/**
+ * 표시용 정류장 라벨 — 이름 · 숫자 형식 (경로 결과 등에서 사용)
+ */
+function route_finder_stop_display_label(PDO $pdo, string $input): string
+{
+    $resolved = route_finder_resolve_stop($pdo, $input);
+    if ($resolved !== null) {
+        $name = trim((string)($resolved['stop_name'] ?? ''));
+        $sid = (int)($resolved['stop_id'] ?? 0);
+        if ($sid > 0) {
+            $base = $name !== '' && !preg_match('/^정류장ID:\d+$/u', $name) ? $name : '정류장';
+            return $base . ' · ' . $sid;
+        }
+    }
+    return route_finder_stop_display_name($pdo, $input);
+}
+
+/**
+ * 경로별 정류장 요약 (출발·도착 사이 3~7개). 정류장명이 없으면 "정류장 · nnn" 표시.
  */
 function route_finder_stops_summary(PDO $pdo, string $routeType, $routeId, int $fromSeq, int $toSeq): string
 {
     try {
         if ($routeType === 'bus') {
             $st = $pdo->prepare("
-                SELECT stop_name FROM seoul_bus_route_stop_master
+                SELECT stop_id, stop_name FROM seoul_bus_route_stop_master
                 WHERE route_id = :rid AND seq_in_route BETWEEN :from_seq AND :to_seq
                 ORDER BY seq_in_route ASC
                 LIMIT 7
@@ -257,7 +377,7 @@ function route_finder_stops_summary(PDO $pdo, string $routeType, $routeId, int $
             $st->execute([':rid' => $routeId, ':from_seq' => $fromSeq, ':to_seq' => $toSeq]);
         } else {
             $st = $pdo->prepare("
-                SELECT COALESCE(stop_name, raw_stop_name) AS stop_name
+                SELECT stop_id, COALESCE(stop_name, raw_stop_name) AS stop_name
                 FROM shuttle_temp_route_stop
                 WHERE temp_route_id = :rid AND seq_in_route BETWEEN :from_seq AND :to_seq
                 ORDER BY seq_in_route ASC
@@ -265,8 +385,19 @@ function route_finder_stops_summary(PDO $pdo, string $routeType, $routeId, int $
             ");
             $st->execute([':rid' => $routeId, ':from_seq' => $fromSeq, ':to_seq' => $toSeq]);
         }
-        $names = array_column($st->fetchAll(PDO::FETCH_ASSOC), 'stop_name');
-        return implode(' - ', array_map('trim', $names));
+        $rows = $st->fetchAll(PDO::FETCH_ASSOC);
+        $labels = [];
+        foreach ($rows as $r) {
+            $name = isset($r['stop_name']) ? trim((string)$r['stop_name']) : '';
+            if ($name !== '' && !preg_match('/^정류장ID:\d+$/u', $name)) {
+                $sid = isset($r['stop_id']) ? (int)$r['stop_id'] : 0;
+                $labels[] = $sid > 0 ? $name . ' · ' . $sid : $name;
+            } else {
+                $sid = isset($r['stop_id']) ? (int)$r['stop_id'] : 0;
+                $labels[] = $sid > 0 ? '정류장 · ' . $sid : ($name !== '' ? $name : '정류장');
+            }
+        }
+        return implode(' - ', $labels);
     } catch (Throwable $e) {
         return '';
     }

@@ -6,7 +6,7 @@
 
 | 항목 | 탐색 결과 |
 |------|-----------|
-| **API 라우팅 진입점** | **없음.** 현재 프로젝트에 `/api/*` 라우트는 없음. `index.php`는 `/admin/index.php`로 리다이렉트만 수행. |
+| **API 라우팅 진입점** | 현재: `public/api/index.php`에서 `path=` 로 debug/ping, echo-trace, subscription/toggle, **g1/station-lines/by-name, by-code(E1/E2)** 디스패치. (과거: 진입점 없음 → v1.0에서 신규 추가.) |
 | **라우트 정의** | `.htaccess`로 경로 매핑: `/admin/*` → `public/admin/*`, `/user/*` → `public/user/*`. 별도 `routes.php` 없음. |
 | **핸들러/컨트롤러** | `public/admin/*.php`, `public/user/*.php` 각 파일이 페이지이자 핸들러(풀페이지 렌더 또는 폼 POST 후 리다이렉트). |
 | **DB 연결** | `app/inc/auth/db.php` — `pdo()` 함수. `app/inc/config/config.php`에서 DB_* 상수/환경변수 로드. |

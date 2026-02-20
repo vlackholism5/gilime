@@ -303,7 +303,7 @@ function extract_route_label(string $text): ?string
 
 /**
  * 노선 메타 정보 패턴 (정류장이 아님 — 제외 대상)
- * 예: "3km 5대 40회", "10km", "20대", "30회"
+ * 예: "3km 5대 40회", "10km", "20대", "30회", "임시1번:7대"
  */
 function is_route_metadata(string $s): bool
 {
@@ -314,19 +314,22 @@ function is_route_metadata(string $s): bool
     if (preg_match('/^(\d+\s*(km|대|회)\s*)+$/u', $t)) return true;
     // 숫자만으로 된 짧은 토큰 (정류장명은 보통 2글자 이상)
     if (preg_match('/^\d{1,4}$/', $t)) return true;
+    // v1.7-21: "임시N번" — 노선 번호 메타, 정류장명 아님 (예: 임시1번:7대)
+    if (preg_match('/^임시\s*\d+\s*번/u', $t)) return true;
     return false;
 }
 
 /**
  * v1.7-19: 문자열을 "정류장명 1개" 단위로 분할
  * 예: "성동세무서 (04212)-송정동아이파크 (05235)-..." → ["성동세무서 (04212)", "송정동아이파크 (05235)", ...]
- * 구분자: - , – , — , ・
+ * v1.7-21: 화살표(→↔←⇒⇔)·콜론(:) 추가 — "서울대입구역 →쑥고개→서원역" → 3개. "임시1번:7대"는 is_route_metadata에서 전체 제외
+ * 구분자: - , – , — , ・ , → , ↔ , ← , ⇒ , ⇔ , :
  */
 function split_into_single_stops(string $raw): array
 {
     $raw = trim($raw);
     if ($raw === '') return [];
-    $parts = preg_split('/\s*[-–—・]\s*/u', $raw);
+    $parts = preg_split('/\s*[-–—・→↔←⇒⇔]\s*|\s*:\s*/u', $raw);
     $out = [];
     foreach ($parts as $p) {
         $p = trim($p);
@@ -410,8 +413,8 @@ function extract_stops_from_text(string $text): array
             continue;
         }
 
-        // 패턴 4: v1.7-19 — "-" 구분 연속 정류장 형식 (번호 없이 한 줄)
-        if (preg_match('/[가-힣a-zA-Z0-9\s]+(\([^)]+\))?\s*[-–—]/u', $line) || preg_match('/[-–—]\s*[가-힣a-zA-Z0-9\s]+/u', $line)) {
+        // 패턴 4: v1.7-19 — "-" 또는 화살표(→↔) 구분 연속 정류장 형식 (번호 없이 한 줄)
+        if (preg_match('/[가-힣a-zA-Z0-9\s]+(\([^)]+\))?\s*[-–—→↔]/u', $line) || preg_match('/[-–—→↔]\s*[가-힣a-zA-Z0-9\s]+/u', $line)) {
             $singleStops = split_into_single_stops($line);
             foreach ($singleStops as $stopName) {
                 if (!empty($stopName)) {

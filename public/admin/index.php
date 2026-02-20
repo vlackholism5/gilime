@@ -121,5 +121,6 @@ $routeStmt = pdo()->prepare("
     v0.5-6: route_review.php / promote.php 기반 승인→반영 플로우 확장
   </p>
   </main>
+  <?php render_admin_tutorial_modal(); ?>
 </body>
 </html>

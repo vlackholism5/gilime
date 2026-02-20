@@ -167,6 +167,12 @@ try {
     exit;
   }
 
+  // API v1: /api/index.php?path=v1/...
+  if (strpos($path, 'v1/') === 0) {
+    require_once __DIR__ . '/../../app/inc/api/v1/router.php';
+    exit;
+  }
+
   http_response_code(404);
   echo json_encode(attach_trace_id_to_response(['ok' => false, 'error' => 'not found'], $trace_id), JSON_UNESCAPED_UNICODE);
 } catch (Throwable $e) {

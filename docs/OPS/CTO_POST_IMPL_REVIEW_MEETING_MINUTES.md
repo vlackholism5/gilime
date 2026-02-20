@@ -3,6 +3,8 @@
 **Scope:** Directory Cleanup #1, G1 data pipeline STEP4~STEP8, G1 runtime query/view (v0.8-07~10), SOT/07~09, OPS observability spec, MVP Core closeout + MVP+ / Roadmap readiness.  
 **Rules:** No code; minimal-change only; every suggestion = (Why)(Risk)(Minimal Fix)(Verification); FACT vs ASSUMPTION/확인 필요 구분.
 
+**문서 상태:** 본 회의록은 E1/E2 구현 전 시점 기준이다. 현재 E1/E2는 구현 완료됨(OPS_DB_MIGRATIONS STEP9, public/api/index.php). 아래 본문의 "spec-only" 등 기술은 당시 스냅샷으로 유지하며, 상단 정정으로 정합성만 확보한다.
+
 ---
 
 ## 1) FACTS (confirmed)

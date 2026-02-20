@@ -41,3 +41,17 @@ python gpt_review_pipeline.py --input candidates.json --output review_results.js
 ```
 
 설정: `gpt_review_config.example.env` 참고.
+
+---
+
+## parse_shuttle_pdf_to_structured.py — PDF 1회 구조화 파싱 (v1.7-21)
+
+PDF 텍스트를 1회 파싱해 고정 스키마 CSV로 출력. 정류장명·정류장ID는 이미지/수동 보정용으로 null 허용.
+
+```powershell
+pip install pypdf   # 또는 requirements.txt
+python parse_shuttle_pdf_to_structured.py -i path/to/file.pdf -o parsed.csv
+```
+
+- **연동**: run_job(파싱·매칭 실행) 시 스크립트가 있으면 우선 사용. 실패 시 기존 pdf_parser 폴백.
+- **설계**: docs/operations/PDF_STRUCTURED_PARSE_DESIGN.md

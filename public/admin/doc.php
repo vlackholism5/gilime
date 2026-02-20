@@ -1,6 +1,28 @@
 <?php
 declare(strict_types=1);
 
+error_reporting(E_ALL);
+ini_set('display_errors', '1');
+ini_set('log_errors', '1');
+
+// 진단: doc.php?ping=1 또는 doc_ping.php → require 전 종료 (쿼리 인코딩 이슈 배제)
+$qs = $_SERVER['QUERY_STRING'] ?? '';
+if (isset($_GET['ping']) || strpos($qs, 'ping') !== false) {
+  header('Content-Type: text/plain; charset=UTF-8');
+  echo 'pong';
+  exit;
+}
+
+// 미처리 예외 시 invalid response 방지 (개발 환경 진단용)
+set_exception_handler(function (Throwable $e) {
+  if (!headers_sent()) {
+    header('Content-Type: text/plain; charset=UTF-8');
+    http_response_code(500);
+  }
+  echo 'Uncaught: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine();
+  exit;
+});
+
 require_once __DIR__ . '/../../app/inc/auth/auth.php';
 require_once __DIR__ . '/../../app/inc/lib/error_normalize.php';
 require_once __DIR__ . '/../../app/inc/admin/admin_header.php';
@@ -55,6 +77,25 @@ foreach ($jobs as $j) {
     $lastParseRouteLabel = trim((string)$m[1]);
   }
   break;
+}
+// parse_status=failed인데 위에서 error_code를 못 찾은 경우(최신 job이 success 등): 가장 최근 failed PARSE_MATCH에서 표시용 값 추출
+if (($doc['parse_status'] ?? '') === 'failed' && $lastParseErrorCode === '') {
+  foreach ($jobs as $j) {
+    if ((string)($j['job_type'] ?? '') !== 'PARSE_MATCH') continue;
+    if ((string)($j['job_status'] ?? '') !== 'failed') continue;
+    $note = (string)($j['result_note'] ?? '');
+    $lastParseErrorCode = normalize_error_code($note);
+    if ($lastParseDurationMs === null && preg_match('/duration_ms=(\d+)/', $note, $m)) {
+      $lastParseDurationMs = (int)$m[1];
+    }
+    if ($lastParseRouteLabel === '' && preg_match('/route=([^\s]+)/', $note, $m)) {
+      $lastParseRouteLabel = trim((string)$m[1]);
+    }
+    break;
+  }
+  if ($lastParseErrorCode === '') {
+    $lastParseErrorCode = 'UNKNOWN';
+  }
 }
 
 foreach ($jobs as $j) {
@@ -325,7 +366,7 @@ function normalizeStopNameDisplay(string $s): string {
   <?php if ($lastParseJobStatus === 'failed'): ?>
     <div class="alert alert-warning py-2">
       최근 파싱/매칭이 실패했습니다.
-      오류 코드: <strong><?= h($lastParseErrorCode !== '' ? $lastParseErrorCode : 'UNKNOWN') ?></strong>.
+      오류 코드: <strong><?= h($lastParseErrorCode !== '' ? $lastParseErrorCode : 'UNKNOWN') ?></strong><?= $lastParseDurationMs !== null ? ' · 소요: ' . (int)$lastParseDurationMs . 'ms' : '' ?>.
       파일 경로/PDF 형식/용량을 확인한 뒤 아래 <strong>재실행</strong> 버튼으로 다시 시도하세요.
     </div>
   <?php endif; ?>
@@ -348,8 +389,8 @@ function normalizeStopNameDisplay(string $s): string {
     <div class="g-meta-key">OCR 상태(ocr_status)</div><div><?= h((string)$doc['ocr_status']) ?></div>
     <div class="g-meta-key">파싱 상태(parse_status)</div><div><?= h((string)$doc['parse_status']) ?></div>
     <div class="g-meta-key">최근 파싱 상태(last_parse_status)</div><div><?= h($lastParseJobStatus !== '' ? $lastParseJobStatus : 'n/a') ?></div>
-    <div class="g-meta-key">최근 파싱 오류코드(last_parse_error_code)</div><div><?= h($lastParseErrorCode !== '' ? $lastParseErrorCode : '-') ?></div>
-    <div class="g-meta-key">최근 파싱 소요(ms)</div><div><?= $lastParseDurationMs !== null ? (int)$lastParseDurationMs : '—' ?></div>
+    <div class="g-meta-key">최근 파싱 오류코드(last_parse_error_code)</div><div<?= $lastParseJobStatus === 'failed' ? ' title="실패 시 job_log result_note에서 추출. 파싱 원인 파악용."' : '' ?>><?= h($lastParseErrorCode !== '' ? $lastParseErrorCode : '—') ?></div>
+    <div class="g-meta-key">최근 파싱 소요(ms)(last_parse_time_ms)</div><div<?= $lastParseJobStatus === 'failed' ? ' title="실패 시에도 result_note의 duration_ms 있으면 표시."' : '' ?>><?= $lastParseDurationMs !== null ? (int)$lastParseDurationMs : '—' ?></div>
     <div class="g-meta-key">최근 파싱 노선(last_parse_route_label)</div><div><?= h($lastParseRouteLabel !== '' ? $lastParseRouteLabel : '—') ?></div>
     <div class="g-meta-key">검증 상태(validation_status)</div><div><?= h((string)$doc['validation_status']) ?></div>
     <div class="g-meta-key">최신 파싱 Job ID</div><div><?= (int)$latestParseJobId ?></div>
@@ -498,7 +539,7 @@ function normalizeStopNameDisplay(string $s): string {
   </div>
 
   <!-- v0.6-29: Review Progress (latest job) -->
-  <h3 class="h5 mt-4">검수 진행률 (최신 작업)</h3>
+  <h3 class="h5 mt-4" title="Review Progress: 최신 PARSE_MATCH 작업 기준 route_label별 검수 진행률(대기/승인/거절/완료율). STATUS_FOR_GPT 대비.">검수 진행률 (최신 작업)</h3>
   <p class="text-muted-g small mb-2">pending이 0이 되면 승격(Promote) 가능 여부를 route_review에서 확인하세요.</p>
   <div class="table-responsive">
   <table class="table table-hover align-middle g-table g-table-dense">
@@ -529,14 +570,14 @@ function normalizeStopNameDisplay(string $s): string {
         </tr>
         <?php endforeach; ?>
       <?php else: ?>
-        <tr><td colspan="7" class="text-muted-g small">데이터가 없습니다 (파싱/매칭 먼저 실행)</td></tr>
+        <tr><td colspan="7" class="text-muted-g small" title="Review Progress: 최신 파싱 작업이 없거나 후보가 없으면 표시됩니다.">— 데이터가 없습니다 (파싱/매칭 먼저 실행)</td></tr>
       <?php endif; ?>
     </tbody>
   </table>
   </div>
 
   <!-- v0.6-31: Next Actions (Summary + Top20 + only_risky 토글) -->
-  <h3 class="h5 mt-4">다음 작업</h3>
+  <h3 class="h5 mt-4" title="Next Actions: pending 후보 노선별 요약 및 상위 20건. 리스크(LOW/NONE) 필터·route_review 이동. STATUS_FOR_GPT 대비.">다음 작업</h3>
   <?php
   $nextActionsBase = APP_BASE . '/admin/doc.php?id=' . (int)$id;
   $startRouteLabel = $nextActionsSummary[0]['route_label'] ?? '';
@@ -588,7 +629,7 @@ function normalizeStopNameDisplay(string $s): string {
   </table>
   </div>
   <?php else: ?>
-  <p class="text-muted-g small">대기 후보가 없습니다</p>
+  <p class="text-muted-g small" title="Next Actions Summary: pending 후보가 없으면 표시됩니다.">— 대기 후보가 없습니다</p>
   <?php endif; ?>
 
   <h4 class="h6 mt-3 mb-2">다음 작업 (대기 후보 상위 20개) <?= $onlyRisky ? '(LOW/NONE만)' : '(전체 대기)' ?></h4>
@@ -628,7 +669,7 @@ function normalizeStopNameDisplay(string $s): string {
   </table>
   </div>
   <?php else: ?>
-  <p class="text-muted-g small">대기 후보가 없습니다</p>
+  <p class="text-muted-g small" title="Next Actions Top20: pending 후보가 없거나 필터 결과가 없으면 표시됩니다.">— 대기 후보가 없습니다</p>
   <?php endif; ?>
 
   <!-- v0.6-26: PARSE_MATCH Metrics History (최근 5회) -->
@@ -670,7 +711,7 @@ function normalizeStopNameDisplay(string $s): string {
         </tr>
         <?php endforeach; ?>
       <?php else: ?>
-        <tr><td colspan="11" class="text-muted-g small">이력이 없습니다</td></tr>
+        <tr><td colspan="11" class="text-muted-g small">작업 이력이 없습니다</td></tr>
       <?php endif; ?>
     </tbody>
   </table>
@@ -704,6 +745,7 @@ function normalizeStopNameDisplay(string $s): string {
     파싱·매칭 현황 → 파싱/매칭 실행 → 최신 PARSE_MATCH 스냅샷 기준 노선 탐지 → 노선 검수 화면 진입
   </p>
   </main>
+  <?php render_admin_tutorial_modal(); ?>
 
   <div id="g-loading-overlay" class="g-loading-overlay" hidden aria-live="polite">
     <div class="g-loading-spinner" aria-hidden="true"></div>

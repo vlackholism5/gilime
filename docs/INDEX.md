@@ -16,6 +16,8 @@
 
 ## 참조 문서 (SoT)
 
+- G1 그래프/쿼리/API SoT: `docs/SOT/07_GRAPH_QUERY_RULES_G1.md`, `08_RUNTIME_QUERY_CONTRACTS_G1.md`, `09_API_CONTRACTS_G1.md`
+- G1 운영: `docs/OPS/OPS_DB_MIGRATIONS.md` (STEP4~9), `OPS_G1_RUNBOOK.md`, `OPS_G1_SMOKE_REGression.md`
 - v1.7 로드맵: `docs/references/ROADMAP_v1_7.md`
 - DDL 참조: `docs/references/DDL_REFERENCE_app_tables_v1_4.md`
 - 보안 기준: `docs/references/SECURITY_BASELINE.md`

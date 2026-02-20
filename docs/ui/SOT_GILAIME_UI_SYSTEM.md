@@ -57,6 +57,45 @@
 - Flash:
   - Bootstrap alert(`alert-success|warning|danger|info`) 사용
 
+### 지도형 공통 컴포넌트 (Leaflet 공통)
+- 대상 페이지: `public/user/home.php`, `public/user/route_finder.php`
+- 공통 클래스(재사용):
+  - 지도 셸: `g-map-shell`, `g-map-canvas`
+  - 길찾기 지도: `g-route-map-wrap`, `g-route-map`
+  - 결과 시트: `g-route-result-sheet`, `g-sheet-handle`
+  - 정렬 모달: `g-sort-modal-backdrop`, `g-sort-modal`, `g-sort-option`, `g-sort-toggle`
+- 공통 JS 이벤트:
+  - 자동완성 선택 → `gilaime:route:place-select` (출발/도착 좌표 전달)
+  - 경로 카드 선택 → `gilaime:route:select` (선택 카드 인덱스 전달)
+  - 홈 지도 탭 전환 → 이슈/경로 레이어 분리 렌더링 (`switchMapLayer(issue|route)`)
+- 홈 상단 지도 필터칩:
+  - `이슈`(mode), `임시셔틀`(layer), `통제/공사`(layer), `혼잡`(disabled 가능)
+  - 모드 칩은 단일 선택, 레이어 칩은 복수 선택
+- Leaflet 제약:
+  - Naver/Kakao SDK 키 없이 동작 가능한 범위(지도 베이스 + 마커 + 단순 경로선 + 선택 하이라이트)만 기본 제공
+  - 네이버 고유 라우팅/대중교통 레이어는 API 키 연동 단계에서 확장
+  - Leaflet 기본 이미지 마커(`marker-icon-2x.png`) 사용 금지, 브랜드 색상 circle/div marker 사용
+- 데이터 바인딩 원칙:
+  - 홈/길찾기 카드 텍스트는 하드코딩 샘플 문구를 쓰지 않고 DB/실데이터로 렌더링
+  - 예: `home.php` 주변 장소(`seoul_bus_stop_master`), 저장 경로(`app_subscriptions`), 이슈(`app_alert_events`)
+  - UI 라벨(탭명/버튼명)만 상수 문자열 허용
+  - 위치 탭(`금천구 가산동`, `전국 트렌드`)도 DB/현재 위치 기반 값으로 구성하고 고정 문자열 삽입 금지
+
+### 하단 시트 인터랙션 규격
+- 시트 상태는 3단 스냅을 기본으로 한다: `is-collapsed` / `is-half` / `is-full`
+- 핸들 탭/드래그 제스처로 상태 전환
+- 드래그 중에는 지도 인터랙션(드래그/줌/스크롤)을 잠시 비활성화한다.
+- 포인터 업 시 최근 이동 속도(velocity) 기반 우선 스냅, 저속 드래그는 최근접 상태 스냅 적용.
+- 홈 시트(`g-home-bottom-sheet`)와 길찾기 결과 시트(`g-route-result-sheet`)에 동일 패턴 적용
+
+### 하단 네비 아이콘 시스템
+- 유니코드 이모지 아이콘 사용 금지
+- 공통 SVG 아이콘 세트 사용:
+  - 파일: `public/assets/icons/gilaime_nav.svg`
+  - 사용 방식: `<svg class="g-nav-icon-svg"><use href=\"...#icon-id\"></use></svg>`
+- 색상은 `currentColor` 기반으로 테마/상태 색을 상속받는다.
+- 상단 CTA/탭/하단 네비 아이콘은 동일 시스템을 사용한다. 세부 기준: [SOT_GILAIME_SVG_ICON_SYSTEM.md](./SOT_GILAIME_SVG_ICON_SYSTEM.md)
+
 ## 5) 접근성/상호작용 최소 규격
 - 키보드 포커스: `:focus-visible` 아웃라인 유지 (버튼/링크/입력)
 - 단축키 도움말: 페이지 상단 `details.kbd-help` 고정
@@ -106,6 +145,7 @@
 - `public/admin/*` 전체 (v1.8 admin layout 확장)
 
 ### 참조
+- User 경로 입력·역 조회 시 G1 API: [UX_FLOW_LOCK_G1_v1.md](../UX/UX_FLOW_LOCK_G1_v1.md) 참조
 - [ADMIN_WIREFRAME_v1_8.md](../ux/ADMIN_WIREFRAME_v1_8.md) — 관리자 화면 와이어프레임
 - [ADMIN_QA_CHECKLIST.md](./ADMIN_QA_CHECKLIST.md) — QA 체크리스트 (v1.8)
 
@@ -113,3 +153,17 @@
 - DB 스키마/정책/핵심 로직 변경
 - 페이지 전면 재작성
 - JS 프레임워크 도입
+
+## 9) 사용자 화면 적용 규칙 (v1.8+)
+- 홈(`public/user/home.php`):
+  - 지도 중심 레이아웃 우선
+  - 이슈 정보는 상단 스트립 또는 하단 시트에서만 빠르게 노출
+  - 상단 필터칩은 운영 모드/레이어 전환용으로 사용
+  - 하단 내비게이션 고정(홈/이슈/길찾기/마이노선)
+- 공지/이벤트(`public/user/notices.php`):
+  - 공지사항/이벤트 탭 분리
+  - 기본은 active 노출 규칙(게시 + 기간), 전체보기는 운영 확인용
+- 길찾기(`public/user/route_finder.php`):
+  - 결과는 하단 시트 패턴 사용
+  - 정렬/옵션은 모달에서 변경 후 URL 파라미터(`route_sort`, `stair_avoid`)에 반영
+  - 경로 카드 선택 시 지도 경로선 하이라이트 동기화

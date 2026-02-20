@@ -486,6 +486,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   </div>
   <?php endif; ?>
   </main>
+  <?php render_admin_tutorial_modal(); ?>
 
   <div id="g-loading-overlay" class="g-loading-overlay" hidden aria-live="polite">
     <div class="g-loading-spinner" aria-hidden="true"></div>

@@ -322,8 +322,55 @@ safe_log('parse_job_start', $traceId, [
   'file_path' => $filePath,
 ]);
 
-// 3) PDF 파싱 실행
-$parseResult = parse_shuttle_pdf($absolutePath);
+// 3) PDF 파싱 실행 (v1.7-21: 구조화 스크립트 설정 시 우선 시도 → CSV로 후보 생성, null 허용)
+$parseResult = null;
+$structuredScript = defined('STRUCTURED_PARSE_SCRIPT') ? trim((string)STRUCTURED_PARSE_SCRIPT) : '';
+if ($structuredScript !== '') {
+  $scriptPath = realpath($projectRoot . '/' . $structuredScript);
+  if ($scriptPath && is_file($scriptPath)) {
+    $pythonCmd = defined('OCR_PYTHON_CMD') ? (string)OCR_PYTHON_CMD : 'python';
+    $tmpCsv = sys_get_temp_dir() . '/gilime_parse_' . $sourceDocId . '_' . getmypid() . '.csv';
+    $cmd = escapeshellarg($pythonCmd) . ' ' . escapeshellarg($scriptPath)
+      . ' --input ' . escapeshellarg($absolutePath)
+      . ' --output ' . escapeshellarg($tmpCsv);
+    $out = [];
+    @exec($cmd . ' 2>&1', $out, $code);
+    if ($code === 0 && is_file($tmpCsv)) {
+      $routeLabel = '운행구간';
+      $stops = [];
+      $fh = @fopen($tmpCsv, 'rb');
+      if ($fh !== false) {
+        $header = fgetcsv($fh);
+        if ($header !== false) {
+          while (($cols = fgetcsv($fh)) !== false) {
+            $row = array_combine($header, array_pad($cols, count($header), ''));
+            if ($row === false) continue;
+            $rl = trim((string)($row['route_label'] ?? ''));
+            if ($rl !== '') $routeLabel = $rl;
+            $raw = trim((string)($row['raw_stop_name'] ?? ''));
+            if ($raw === '') continue;
+            $seq = (int)($row['seq_in_route'] ?? count($stops) + 1);
+            $stops[] = ['seq' => $seq, 'raw_stop_name' => $raw];
+          }
+        }
+        fclose($fh);
+      }
+      @unlink($tmpCsv);
+      if ($stops !== []) {
+        $parseResult = [
+          'success' => true,
+          'route_label' => $routeLabel,
+          'stops' => $stops,
+          'parsed_at_ms' => 0,
+          'parser_version' => 'structured_csv',
+        ];
+      }
+    }
+  }
+}
+if ($parseResult === null) {
+  $parseResult = parse_shuttle_pdf($absolutePath);
+}
 safe_log('parse_pdf_done', $traceId, [
   'source_doc_id' => $sourceDocId,
   'success' => $parseResult['success'] ? 1 : 0,

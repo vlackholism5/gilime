@@ -49,6 +49,8 @@
 | GET | /api?path=debug/ping | public/api/index.php | GILIME_DEBUG=1 시. Response: `{ "ok", "ts", "db_ok" }` |
 | GET | /api?path=debug/echo-trace | public/api/index.php | Response: `{ "ok", "trace_id" }` |
 | POST | /api?path=subscription/toggle | public/api/index.php | Body: `{ "action", "doc_id", "route_label" }`. Response: `{ "ok", "action" }` |
+| GET | /api?path=g1/station-lines/by-name&station_name=... | public/api/index.php | 역명 조회. 응답/계약: docs/SOT/09_API_CONTRACTS_G1.md |
+| GET | /api?path=g1/station-lines/by-code&station_cd=... | public/api/index.php | 역코드 조회. 응답/계약: docs/SOT/09_API_CONTRACTS_G1.md |
 
 ---
 

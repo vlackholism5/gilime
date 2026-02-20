@@ -64,6 +64,13 @@ Get-Content sql\migrations\v0.8-01_graph_schema.sql | mysql -u root -p gilime_db
 | v0.8-08 | sql/validate/v0.8-08_validate_station_lines_g1.sql | STEP6: Validate view coverage & actionable lists |
 | v0.8-09 | sql/validate/v0.8-09_station_line_candidates_queries.sql | STEP7: Canonical query patterns (Q1/Q2/Q3) |
 | v0.8-10 | sql/validate/v0.8-10_api_query_bindings_g1.sql | STEP8: API query bindings for E1/E2 |
+| v0.8-03 (admin) | sql/migrations/v0.8-03_gilime_admin_core.sql | Gilime Admin core: issues, issue_lines, issue_modes, shuttle_routes, shuttle_stops (SoT: docs/SOT/Gilime_Admin_ERD_MVP_v1.md) |
+| v0.8-11 | sql/validate/v0.8-11_validate_publish_rules.sql | Publish rules: stop_order consecutive, no duplicate stop_id, active issue/shuttle required fields |
+| v0.8-12 | sql/migrations/v0.8-12_create_notices.sql | Notice/Event 테이블 생성 (유저 공지/이벤트) |
+| v0.8-12 | sql/validate/v0.8-12_validate_notices.sql | notices 카테고리/상태/게시기간 검증 |
+| v0.8-12 | sql/seed/notices_seed.sql | 공지/이벤트 샘플 데이터 시드 |
+| v0.8-13 | sql/migrations/v0.8-13_create_issue_targets.sql | 이슈 기반 라우팅 정책 타겟 테이블 (block/penalty/boost) |
+| v0.8-13 | sql/validate/v0.8-13_validate_issue_targets.sql | issue_targets 정책/참조 무결성 검증 |
 
 ---
 
@@ -176,6 +183,7 @@ curl -s "http://localhost/gilime_mvp_01/api/index.php?path=g1/station-lines/by-c
 - **Expected:** 200 with `ok: true`, `data.station_name`, `data.line_codes` (array), `data.line_codes_source`, `data.meta`; not_found URLs return 404 with `error.code: "not_found"`. Bad request (e.g. missing param or invalid station_cd) returns 400.
 - **정합성 체크 2개:** by-name vs by-code 동일 data, ambiguous 역 line_codes↔meta.line_code_candidates 일치 — [docs/OPS/OPS_G1_SMOKE_REGression.md](OPS_G1_SMOKE_REGression.md) 참조.
 - **운영 롤백/비활성화:** 뷰 롤백 및 G1 API 비활성화(임시) 절차 — [docs/OPS/OPS_G1_RUNBOOK.md](OPS_G1_RUNBOOK.md) 참조.
+- **현행 UX 플로우(듀얼 진입, MVP/MVP+/Roadmap, E1/E2 UI 위치):** [docs/UX/UX_FLOW_LOCK_G1_v1.md](../UX/UX_FLOW_LOCK_G1_v1.md)
 
 ### Expected validation outputs (thresholds)
 
