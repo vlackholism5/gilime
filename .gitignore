@@ -52,3 +52,5 @@ composer.lock
 
 public/uploads/*.pdf
 public/uploads/*.tmp
+
+composer.phar
