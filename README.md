@@ -228,4 +228,5 @@ PARSE_MATCH(job) 실행 시 후보(candidates) 생성하면서 **서울시 정�
   `.htaccess`로 `/admin/*` 요청을 `/public/admin/*`로 rewrite 합니다.
 - 운영 서버에서는 DocumentRoot를 `/public`으로 두는 방식이 더 흔합니다(추후 전환).
 #   t e s t  
+ #   p r o t e c t i o n   t e s t  
  
