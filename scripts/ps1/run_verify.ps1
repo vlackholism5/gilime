@@ -1,124 +1,86 @@
-# Aiven MySQL verification runner (local dev).
-# Runs sql/verify/*.sql in order and writes results to logs/verify_latest.md.
-# Requires: AIVEN_MYSQL_HOST, AIVEN_MYSQL_PORT, AIVEN_MYSQL_DB, AIVEN_MYSQL_USER, AIVEN_MYSQL_PASSWORD
-# Optional: AIVEN_MYSQL_SSL_CA (path to CA cert for --ssl-ca)
+# =========================================================
+# GILIME RUN VERIFY (Operational Mode v3 + Log Save)
+# =========================================================
 
-$ErrorActionPreference = 'Stop'
-$ProjectRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
+$logPath = "logs/verify_latest.md"
 
-# Load .env from project root if present (do not overwrite existing env vars)
-$envPath = Join-Path $ProjectRoot '.env'
-if (Test-Path $envPath) {
-  Get-Content $envPath -Encoding UTF8 | ForEach-Object {
-    $line = $_.Trim()
-    if ($line -and $line -notmatch '^\s*#') {
-      if ($line -match '^\s*([A-Za-z0-9_]+)\s*=\s*(.*)$') {
-        $key = $matches[1].Trim()
-        $val = $matches[2].Trim()
-        if ($val -match '^["''](.*)["'']$') { $val = $matches[1] }
-        if (-not [System.Environment]::GetEnvironmentVariable($key, 'Process')) {
-          [System.Environment]::SetEnvironmentVariable($key, $val, 'Process')
-        }
-      }
-    }
-  }
+# 로그 폴더 없으면 생성
+if (!(Test-Path "logs")) {
+    New-Item -ItemType Directory -Path "logs" | Out-Null
 }
 
-$host_   = $env:AIVEN_MYSQL_HOST
-$port_   = $env:AIVEN_MYSQL_PORT
-$db_     = $env:AIVEN_MYSQL_DB
-$user_   = $env:AIVEN_MYSQL_USER
-$pass_   = $env:AIVEN_MYSQL_PASSWORD
-$sslCa   = $env:AIVEN_MYSQL_SSL_CA
+$timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+$log = @()
+$log += "# GILIME VERIFY LOG"
+$log += ""
+$log += "Timestamp: $timestamp"
+$log += ""
 
-if (-not $host_ -or -not $db_ -or -not $user_) {
-  $msg = "Missing required env (or .env): AIVEN_MYSQL_HOST, AIVEN_MYSQL_DB, AIVEN_MYSQL_USER. Optional: AIVEN_MYSQL_PORT, AIVEN_MYSQL_PASSWORD, AIVEN_MYSQL_SSL_CA"
-  $logDir = Join-Path $ProjectRoot 'logs'
-  if (-not (Test-Path $logDir)) { New-Item -ItemType Directory -Path $logDir -Force | Out-Null }
-  $logFile = Join-Path $logDir 'verify_latest.md'
-  "# Verify failed (config)\n\n$msg\n\nTime: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" | Set-Content -Path $logFile -Encoding UTF8
-  Write-Error $msg
+Write-Host "=== GILIME VERIFY START ==="
+
+$errors = 0
+
+# 1. Secret scan
+Write-Host "`n[1] Checking for suspicious keys..."
+$secretCheck = git grep -n "sk-" -- . 2>$null | Where-Object {
+    $_ -notmatch "\.example" -and
+    $_ -notmatch "\.md" -and
+    $_ -notmatch "run_verify.ps1"
 }
 
-$port_ = if ($port_) { $port_ } else { '3306' }
-
-$sqlDir = Join-Path $ProjectRoot 'sql\verify'
-$logDir = Join-Path $ProjectRoot 'logs'
-$logFile = Join-Path $logDir 'verify_latest.md'
-
-if (-not (Test-Path $logDir)) { New-Item -ItemType Directory -Path $logDir -Force | Out-Null }
-
-$files = @()
-if (Test-Path $sqlDir) {
-  $files = Get-ChildItem -Path $sqlDir -Filter '*.sql' | Sort-Object Name
-}
-
-$sb = New-Object System.Text.StringBuilder
-[void]$sb.AppendLine("# Verify result")
-[void]$sb.AppendLine("")
-[void]$sb.AppendLine("Time: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')")
-[void]$sb.AppendLine("")
-
-$anyFailure = $false
-
-if ($files.Count -eq 0) {
-  [void]$sb.AppendLine("No `sql/verify/*.sql` files found. Add .sql files to run.")
+if ($secretCheck) {
+    Write-Host "❌ Real API key detected!"
+    $log += "❌ Real API key detected"
+    $errors++
 } else {
-  foreach ($f in $files) {
-    $pathForSource = $f.FullName -replace '\\', '/'
-    $mysqlArgs = @(
-      '-h', $host_,
-      '-P', $port_,
-      '-u', $user_,
-      '--default-character-set=utf8mb4',
-      $db_
-    )
-    if ($pass_ -ne $null -and $pass_ -ne '') {
-      $mysqlArgs += @('-p' + $pass_)
-    }
-    if ($sslCa -and (Test-Path $sslCa)) {
-      $mysqlArgs += @('--ssl-mode=VERIFY_CA', "--ssl-ca=$sslCa")
-    }
-    $mysqlArgs += @('-e', "source $pathForSource")
-
-    [void]$sb.AppendLine("## $($f.Name)")
-    [void]$sb.AppendLine("")
-
-    try {
-      $out = & mysql @mysqlArgs 2>&1
-      $code = $LASTEXITCODE
-      if ($code -ne 0) {
-        $anyFailure = $true
-        [void]$sb.AppendLine("**ERROR** (exit $code)")
-        [void]$sb.AppendLine("")
-        [void]$sb.AppendLine("```")
-        [void]$sb.AppendLine(($out | Out-String).Trim())
-        [void]$sb.AppendLine("```")
-      } else {
-        [void]$sb.AppendLine("```")
-        [void]$sb.AppendLine(($out | Out-String).Trim())
-        [void]$sb.AppendLine("```")
-      }
-    } catch {
-      $anyFailure = $true
-      [void]$sb.AppendLine("**ERROR** (exception)")
-      [void]$sb.AppendLine("")
-      [void]$sb.AppendLine("```")
-      [void]$sb.AppendLine($_.Exception.Message)
-      [void]$sb.AppendLine("```")
-    }
-    [void]$sb.AppendLine("")
-  }
+    Write-Host "✔ No real API keys found"
+    $log += "✔ No real API keys found"
 }
 
-$content = $sb.ToString()
-$content | Set-Content -Path $logFile -Encoding UTF8 -NoNewline
-if ($content.Length -gt 0 -and -not $content.EndsWith("`n")) {
-  Add-Content -Path $logFile -Value "" -Encoding UTF8
+# 2. Local config tracking
+Write-Host "`n[2] Checking local config tracking..."
+$configTracked = git ls-files | Where-Object {
+    $_ -match "app/inc/config/config.local.php$"
 }
 
-if ($anyFailure) {
-  Write-Error "One or more sql/verify/*.sql runs failed. See logs/verify_latest.md"
+if ($configTracked) {
+    Write-Host "❌ config.local.php is tracked!"
+    $log += "❌ config.local.php tracked"
+    $errors++
+} else {
+    Write-Host "✔ config.local.php not tracked"
+    $log += "✔ config.local.php not tracked"
 }
 
-Write-Host "Verify output written to logs/verify_latest.md"
+# 3. Upload tracking
+Write-Host "`n[3] Checking upload tracking..."
+$uploadTracked = git ls-files | Where-Object {
+    $_ -match "^public/uploads/"
+}
+
+if ($uploadTracked) {
+    Write-Host "❌ Upload files tracked!"
+    $log += "❌ Upload files tracked"
+    $errors++
+} else {
+    Write-Host "✔ Upload folder safe"
+    $log += "✔ Upload folder safe"
+}
+
+# Final result
+$log += ""
+$log += "## Result"
+
+Write-Host "`n=== VERIFY RESULT ==="
+
+if ($errors -eq 0) {
+    Write-Host "✔ VERIFY PASSED"
+    $log += "✔ VERIFY PASSED"
+    $log | Out-File -Encoding UTF8 $logPath
+    exit 0
+} else {
+    Write-Host "❌ VERIFY FAILED ($errors errors)"
+    $log += "❌ VERIFY FAILED ($errors errors)"
+    $log | Out-File -Encoding UTF8 $logPath
+    exit 1
+}
