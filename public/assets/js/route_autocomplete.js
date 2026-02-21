@@ -102,20 +102,26 @@
     });
   }
 
-  function initAll() {
-    var wraps = document.querySelectorAll('.g-autocomplete-wrap');
+  function initAll(root) {
+    var rootEl = (root && typeof root.querySelectorAll === 'function') ? root : document;
+    var wraps = rootEl.querySelectorAll('.g-autocomplete-wrap');
     wraps.forEach(function (wrap) {
       var input = wrap.querySelector('input');
       var dropdown = wrap.querySelector('.g-autocomplete-dropdown');
-      if (input && dropdown) {
+      // 이미 초기화된 경우 건너뛰기
+      if (input && dropdown && !input.dataset.autocompleteInit) {
         initAutocomplete(input, dropdown);
+        input.dataset.autocompleteInit = 'true';
       }
     });
   }
 
+  // Expose API
+  window.GilimeAutocomplete = { initAll: initAll };
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initAll);
+    document.addEventListener('DOMContentLoaded', function() { initAll(document); });
   } else {
-    initAll();
+    initAll(document);
   }
 })();

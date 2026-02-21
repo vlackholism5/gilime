@@ -1,11 +1,11 @@
 :root {
-  /* 8px rhythm (네이버 지도 참조: NAVER_MAP_GRID_GUIDE_v1_8) */
-  --g-space-0: 0.25rem;  /* 4px nano */
-  --g-space-1: 0.5rem;   /* 8px micro */
-  --g-space-2: 1rem;     /* 16px small */
-  --g-space-3: 1.5rem;   /* 24px medium */
-  --g-space-4: 2rem;     /* 32px large */
-  --g-space-5: 2.5rem;   /* 40px xlarge */
+  /* 8px rhythm (NAVER_MAP_GRID_GUIDE_v1_8) */
+  --g-space-0: 0.25rem;  /* 4px */
+  --g-space-1: 0.5rem;   /* 8px */
+  --g-space-2: 1rem;     /* 16px */
+  --g-space-3: 1.5rem;   /* 24px */
+  --g-space-4: 2rem;     /* 32px */
+  --g-space-5: 2.5rem;   /* 40px */
 
   /* type scale */
   --g-fs-page-title: clamp(2rem, 1.5rem + 1.2vw, 2.5rem);
@@ -13,20 +13,56 @@
   --g-fs-body: 1rem;
   --g-fs-hint: 0.875rem;
 
-  /* color tokens */
-  --gilaime-ink: #0f172a;
-  --gilaime-lime: #a3e635;
-  --gilaime-lime-soft: #ecfccb;
-  --gilaime-lime-700: #4d7c0f;
-  --gilaime-bg: #f3f6fb;
-  --gilaime-border: #e2e8f0;
-  --gilaime-muted: #64748b;
-  --gilaime-th-bg: #f1f5f9;
-  --gilaime-th-bg-soft: #eef2f7;
-  --gilaime-hover: #f8fafc;
-  --gilaime-danger-soft: #fee2e2;
-  --gilaime-warn-soft: #fef9c3;
-  --gilaime-ok-soft: #ecfccb;
+  /* ---------- Brand (Global) ---------- */
+  --g-brand-primary: #A4E600;        /* Transit Lime */
+  --g-brand-primary-soft: #F3FFD1;   /* 가설: soft bg */
+  --g-brand-primary-press: #86C800;  /* 가설: hover/pressed */
+  --g-brand-deep: #0F1C2E;           /* Deep Base */
+
+  /* ---------- Neutrals (Global) ---------- */
+  --g-neutral-bg: #F5F7FA;
+  --g-neutral-card: #FFFFFF;
+  --g-neutral-border: #E4E7EC;
+  --g-neutral-hover: #F2F4F7;
+  --g-neutral-ink: #101828;
+  --g-neutral-muted: #667085;
+
+  /* ---------- Functional: Issue ---------- */
+  --g-issue-critical: #E03131;
+  --g-issue-warning: #F76707;
+  --g-issue-notice: #FAB005;
+  --g-issue-inactive: #ADB5BD;
+
+  /* ---------- Functional: Transport ---------- */
+  --g-transport-bus: #1C7ED6;
+  --g-transport-subway: #7048E8;
+  --g-transport-shuttle: var(--g-brand-primary);
+
+  /* ---------- Focus / Accessibility ---------- */
+  --g-focus-ring: #E8FF99; /* 가설 */
+
+  /* ---------- Back-compat aliases (기존 코드 보호) ---------- */
+  --gilaime-ink: var(--g-neutral-ink);
+  --gilaime-bg: var(--g-neutral-bg);
+  --gilaime-border: var(--g-neutral-border);
+  --gilaime-hover: var(--g-neutral-hover);
+  --gilaime-muted: var(--g-neutral-muted);
+
+  --gilaime-lime: var(--g-brand-primary);
+  --gilaime-lime-soft: var(--g-brand-primary-soft);
+  --gilaime-lime-700: var(--g-brand-primary-press);
+
+  /* table header backgrounds (기존 유지) */
+  --gilaime-th-bg: #F1F5F9;
+  --gilaime-th-bg-soft: #EEF2F7;
+
+  /* soft states (기존 변수 호환용) */
+  --gilaime-danger-soft: #FEE2E2;
+  --gilaime-warn-soft: #FEF9C3;
+  --gilaime-ok-soft: #ECFCCB;
+
+  /* layout tokens */
+  --g-bottom-nav-h: 54px; /* nav height: sheet와 gap 없이 붙이기 */
 }
 
 body.gilaime-app {
@@ -357,11 +393,21 @@ textarea:focus-visible {
   position: absolute;
   inset: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: rgba(255,255,255,0.85);
+  gap: 1rem;
+  background: var(--gilaime-lime);
   font-size: var(--g-fs-hint);
-  color: var(--gilaime-muted);
+  color: #fff;
+  font-weight: 700;
+}
+.g-route-map-loading .spinner-border {
+  width: 3rem;
+  height: 3rem;
+  border-width: 0.25em;
+  border-color: rgba(255,255,255,0.3);
+  border-right-color: #fff;
 }
 
 /* 네이버 지도 길찾기 레퍼런스 기반 모바일 레이아웃 */
@@ -574,10 +620,15 @@ textarea:focus-visible {
   max-width: 620px;
   margin: 0 auto;
   padding: 0.5rem;
+  height: 100vh;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
 }
 .g-home-map-shell {
   position: relative;
-  height: calc(100vh - 1rem);
+  flex: 1; /* 남은 공간을 모두 채움 */
+  min-height: 0; /* flexbox 축소 오류 방지 */
   border-radius: 22px;
   overflow: hidden;
   border: 1px solid var(--gilaime-border);
@@ -585,7 +636,12 @@ textarea:focus-visible {
 }
 .g-home-map-canvas {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #e2e8f0; /* 지도 로딩 전 배경색 (영역 확인용) */
+  z-index: 0;
 }
 .g-home-map-top {
   position: absolute;
@@ -695,6 +751,16 @@ textarea:focus-visible {
   border-color: #cbd5e1;
   box-shadow: none;
 }
+.g-home-track-cta.is-emphasized {
+  border-color: var(--gilaime-lime-700);
+  color: var(--gilaime-lime-700);
+  animation: g-pulse-green 2s infinite;
+}
+@keyframes g-pulse-green {
+  0% { box-shadow: 0 0 0 0 rgba(77, 124, 15, 0.4); }
+  70% { box-shadow: 0 0 0 8px rgba(77, 124, 15, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(77, 124, 15, 0); }
+}
 .g-home-issue-strip {
   margin-top: 0.55rem;
   display: block;
@@ -734,7 +800,7 @@ textarea:focus-visible {
   position: absolute;
   left: 0.35rem;
   right: 0.35rem;
-  bottom: 3.2rem;
+  bottom: var(--g-bottom-nav-h); /* v1.8: flush to nav */
   z-index: 520;
   background: rgba(255,255,255,0.95);
   backdrop-filter: blur(3px);
@@ -742,21 +808,19 @@ textarea:focus-visible {
   border: 1px solid #e2e8f0;
   border-bottom: 0;
   box-shadow: 0 12px 24px rgba(15, 23, 42, 0.16);
-  padding: 0.85rem;
-  transition: transform 0.22s ease, max-height 0.22s ease;
+  padding: 0.85rem;  
+  /* transform은 JS detents 컨트롤러가 제어 */
+  transform: translateY(var(--g-sheet-ty, 100px));
+  transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
   max-height: 56vh;
   overflow: auto;
 }
-.g-home-bottom-sheet.is-half {
-  transform: translateY(18%);
-}
 .g-home-bottom-sheet.is-full {
-  transform: translateY(-22%);
-  max-height: 78vh;
+  max-height: calc(100vh - var(--g-bottom-nav-h) - 40px); /* 상단 여유 공간 */
 }
 .g-home-bottom-sheet.is-collapsed {
-  transform: translateY(calc(100% - 3.1rem));
-  max-height: 64px;
+  /* transform은 JS detents가 계산 */
+  max-height: 64px; /* 핸들 높이 + 패딩 */
   overflow: hidden;
 }
 .g-home-sheet-handle {
@@ -771,7 +835,7 @@ textarea:focus-visible {
   cursor: grab;
 }
 .g-home-bottom-sheet.is-dragging {
-  transition: none;
+  transition: none; /* 드래그 중에는 transition 제거 */
 }
 .g-home-bottom-sheet.is-dragging .g-home-sheet-handle {
   cursor: grabbing;
@@ -1007,6 +1071,11 @@ textarea:focus-visible {
   background: #fff;
   text-align: left;
   padding: 0.6rem 0.7rem;
+}
+.g-home-route-item.is-selected {
+  border-color: var(--gilaime-lime-700);
+  background-color: var(--gilaime-lime-soft);
+  box-shadow: 0 0 0 1px var(--gilaime-lime-700);
 }
 .g-home-route-item strong {
   display: block;
@@ -1265,6 +1334,73 @@ textarea:focus-visible {
   font-size: 1.1rem;
   font-weight: 600;
   backdrop-filter: blur(4px);
+}
+
+/* Search Overlay */
+.g-search-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 600;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+}
+.g-search-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-bottom: 1px solid var(--gilaime-border);
+}
+.g-search-input-wrap {
+  flex: 1;
+}
+
+/* Issue Banner (Full) */
+.g-issue-banner-full {
+  background: #fff;
+  border-bottom: 1px solid var(--gilaime-border);
+  padding: 1rem;
+}
+.g-issue-content {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+.g-issue-icon-box {
+  width: 40px;
+  height: 40px;
+  background: #fee2e2;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+}
+.g-issue-text strong { display: block; font-size: 0.95rem; color: #0f172a; margin-bottom: 0.1rem; }
+.g-issue-text p { margin: 0; font-size: 0.85rem; color: #64748b; line-height: 1.3; }
+.g-issue-actions { display: flex; gap: 0.5rem; }
+.g-issue-actions .btn { flex: 1; }
+
+/* Mode Toggles */
+.g-mode-toggles {
+  display: flex;
+  gap: 0.5rem;
+}
+.g-mode-btn {
+  flex: 1;
+  border: 1px solid var(--gilaime-border);
+  background: #fff;
+  color: #64748b;
+  padding: 0.5rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.g-mode-btn.active {
+  background: #ecfccb;
+  border-color: #84cc16;
+  color: #3f6212;
 }
 .g-loading-overlay[hidden] { display: none !important; }
 .g-loading-spinner {

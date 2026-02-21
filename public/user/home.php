@@ -99,38 +99,28 @@ function issue_summary(?string $body, int $len = 80): string {
 function h(string $s): string {
   return htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
 }
+
+$pageTitle = 'GILIME - 홈';
+$mainClass = 'g-home-map-page';
+require_once __DIR__ . '/../../app/inc/user/user_layout_start.php';
 ?>
-<!doctype html>
-<html lang="ko">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>GILIME - 홈</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
-  <link rel="stylesheet" href="<?= APP_BASE ?>/public/assets/css/gilaime_ui.css" />
-</head>
-<body class="gilaime-app">
-  <main class="g-home-map-page">
     <div class="g-home-map-shell">
       <div id="g-home-map" class="g-home-map-canvas"></div>
+      <div id="g-home-map-loading" class="g-route-map-loading" style="z-index: 10;">
+        지도를 불러오는 중입니다...
+      </div>
 
       <header class="g-home-map-top">
         <div class="g-home-searchbar-wrap">
-          <a href="<?= $base ?>/route_finder.php" class="g-home-searchbar" aria-label="길찾기 검색으로 이동">
+          <div role="button" id="g-home-search-trigger" class="g-home-searchbar" aria-label="길찾기 검색 시작">
             장소, 버스, 지하철, 주소 검색
-          </a>
+          </div>
           <button type="button" class="g-home-track-cta" id="g-home-track-toggle" aria-pressed="false" aria-label="실시간 위치 추적 끔" title="실시간 위치 추적 끔">
             <svg class="g-icon-svg g-home-cta-icon" viewBox="0 0 24 24" aria-hidden="true">
               <use href="<?= APP_BASE ?>/public/assets/icons/gilaime_nav.svg#icon-locate"></use>
             </svg>
             <span class="visually-hidden">실시간 위치</span>
           </button>
-          <a href="<?= $base ?>/route_finder.php" class="g-home-route-cta" aria-label="길찾기" title="길찾기">
-            <svg class="g-icon-svg g-home-cta-icon" viewBox="0 0 24 24" aria-hidden="true">
-              <use href="<?= APP_BASE ?>/public/assets/icons/gilaime_nav.svg#icon-route"></use>
-            </svg>
-            <span class="visually-hidden">길찾기</span>
-          </a>
         </div>
         <div class="g-home-filter-chips" id="g-home-filter-chips" aria-label="지도 필터">
           <button type="button" class="active" data-chip="issue" data-chip-type="mode">이슈</button>
@@ -152,6 +142,64 @@ function h(string $s): string {
           <?php endif; ?>
         </div>
       </header>
+
+      <!-- Search Overlay (Hidden by default) -->
+      <div id="g-search-overlay" class="g-search-overlay" aria-hidden="true" style="display: none;">
+        <div class="g-search-header">
+          <button type="button" class="btn-close" id="g-search-close" aria-label="닫기"></button>
+          <div class="g-search-input-wrap g-autocomplete-wrap">
+            <input type="search" id="g-search-input" class="form-control" placeholder="장소, 버스, 지하철 검색" autocomplete="off">
+            <div class="g-autocomplete-dropdown"></div>
+          </div>
+          <button type="button" class="btn btn-link text-decoration-none" id="g-search-submit" aria-label="검색">
+            <svg class="g-icon-svg" style="width:20px;height:20px;"><use href="<?= APP_BASE ?>/public/assets/icons/gilaime_nav.svg#icon-search"></use></svg>
+          </button>
+        </div>
+        
+        <!-- Issue Banner (Always visible in Search Overlay) -->
+        <div class="g-issue-banner-full">
+          <div class="g-issue-content">
+            <div class="g-issue-icon-box"><span class="g-issue-emoji">🚧</span></div>
+            <div class="g-issue-text">
+              <strong>긴급 이슈: 지하철 파업</strong>
+              <p>현재 이슈로 인해 대체 경로가 자동 적용됩니다.</p>
+            </div>
+          </div>
+          <div class="g-issue-actions">
+            <button type="button" id="g-shuttle-cta" class="btn btn-sm btn-gilaime-primary">임시셔틀 포함 길찾기</button>
+            <button type="button" id="g-myroute-cta" class="btn btn-sm btn-outline-secondary">마이노선 추가</button>
+          </div>
+          <div id="g-issue-msg" class="mt-2 small text-success" style="display:none;"></div>
+        </div>
+
+        <!-- Mode: Recent / Search Results -->
+        <div id="g-search-content-default">
+          <div class="g-recent-searches">
+            <div class="d-flex justify-content-between align-items-center px-3 py-2">
+              <span class="text-muted small">최근 검색어</span>
+              <button type="button" class="btn btn-link btn-sm text-muted text-decoration-none" id="g-recent-clear">전체 삭제</button>
+            </div>
+            <ul id="g-recent-list" class="list-group list-group-flush"></ul>
+          </div>
+        </div>
+
+        <!-- Mode: Route Input -->
+        <div id="g-route-input-panel" style="display: none;">
+          <div class="p-3">
+            <div class="g-route-finder-form">
+              <div class="g-autocomplete-wrap mb-2">
+                <input type="text" id="g-route-from" class="form-control" placeholder="출발지 입력" autocomplete="off">
+                <div class="g-autocomplete-dropdown"></div>
+              </div>
+              <div class="g-autocomplete-wrap mb-2">
+                <input type="text" id="g-route-to" class="form-control" placeholder="도착지 입력" autocomplete="off">
+                <div class="g-autocomplete-dropdown"></div>
+              </div>
+              <button type="button" id="g-route-submit" class="btn btn-gilaime-primary w-100" disabled>경로 찾기</button>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div class="g-home-bottom-sheet is-half" id="g-home-bottom-sheet">
         <button type="button" class="g-home-sheet-handle" id="g-home-sheet-toggle" aria-label="시트 접기/펼치기"></button>
@@ -205,71 +253,95 @@ function h(string $s): string {
           <div class="d-flex gap-2 mt-2">
             <a href="<?= $base ?>/issues.php" class="btn btn-outline-secondary btn-sm">전체 이슈 보기</a>
             <a href="<?= $base ?>/notices.php" class="btn btn-outline-secondary btn-sm">공지/이벤트</a>
-            <a href="<?= $base ?>/route_finder.php" class="btn btn-gilaime-primary btn-sm">길찾기 시작</a>
+            <a href="<?= $base ?>/route_finder.php" id="g-home-start-route" class="btn btn-gilaime-primary btn-sm">길찾기 시작</a>
           </div>
         </section>
 
         <section class="g-home-panel" data-home-panel="route">
-          <h2>추천 경로</h2>
-          <?php if ($routeRecommendations === []): ?>
-            <p class="g-home-issue-empty">표시할 경로 추천이 없습니다.</p>
-          <?php else: ?>
-            <div class="g-home-route-list">
-              <?php foreach ($routeRecommendations as $r): ?>
-                <button type="button" class="g-home-route-item"
-                  data-map-lat="<?= h((string)$r['to_lat']) ?>"
-                  data-map-lng="<?= h((string)$r['to_lng']) ?>"
-                  data-map-label="<?= h((string)$r['title']) ?>">
-                  <strong><?= h((string)$r['title']) ?></strong>
-                  <span><?= (int)$r['eta_min'] ?>분 · <?= h((string)$r['distance_km']) ?>km</span>
-                </button>
-              <?php endforeach; ?>
+          <!-- Step 1: 입력 (기존 화면) -->
+          <div id="g-route-step-input">
+            <div class="p-2">
+              <h2 class="h5">경로 찾기</h2>
+              <div class="g-route-finder-form">
+                <div class="g-autocomplete-wrap mb-2">
+                  <input type="text" id="from" name="from" class="form-control form-control-sm" placeholder="출발지 입력">
+                  <div class="g-autocomplete-dropdown"></div>
+                </div>
+                <div class="g-autocomplete-wrap mb-2">
+                  <input type="text" id="to" name="to" class="form-control form-control-sm" placeholder="도착지 입력">
+                  <div class="g-autocomplete-dropdown"></div>
+                </div>
+                <button type="button" id="find-route-btn" class="btn btn-gilaime-primary btn-sm w-100">경로 찾기</button>
+              </div>
             </div>
-          <?php endif; ?>
-          <h3 class="g-home-sub-title">저장된 경로 <?= count($savedRoutes) ?></h3>
-          <?php if ($savedRoutes === []): ?>
-            <p class="g-home-issue-empty">저장된 경로가 없습니다.</p>
-          <?php else: ?>
-            <ul class="g-home-saved-route-list">
-              <?php foreach ($savedRoutes as $sr): ?>
-                <li>
-                  <a href="<?= $base ?>/my_routes.php"><?= h((string)$sr['label']) ?></a>
-                  <span><?= h((string)$sr['updated_at']) ?></span>
-                </li>
-              <?php endforeach; ?>
-            </ul>
-          <?php endif; ?>
+            <h2>추천 경로</h2>
+            <?php if ($routeRecommendations === []): ?>
+              <p class="g-home-issue-empty">표시할 경로 추천이 없습니다.</p>
+            <?php else: ?>
+              <div class="g-home-route-list">
+                <?php foreach ($routeRecommendations as $r): ?>
+                  <button type="button" class="g-home-route-item"
+                    data-map-lat="<?= h((string)$r['to_lat']) ?>"
+                    data-map-lng="<?= h((string)$r['to_lng']) ?>"
+                    data-map-label="<?= h((string)$r['title']) ?>">
+                    <strong><?= h((string)$r['title']) ?></strong>
+                    <span><?= (int)$r['eta_min'] ?>분 · <?= h((string)$r['distance_km']) ?>km</span>
+                  </button>
+                <?php endforeach; ?>
+              </div>
+            <?php endif; ?>
+            <h3 class="g-home-sub-title">저장된 경로 <?= count($savedRoutes) ?></h3>
+            <?php if ($savedRoutes === []): ?>
+              <p class="g-home-issue-empty">저장된 경로가 없습니다.</p>
+            <?php else: ?>
+              <ul class="g-home-saved-route-list">
+                <?php foreach ($savedRoutes as $sr): ?>
+                  <li>
+                    <a href="<?= $base ?>/my_routes.php"><?= h((string)$sr['label']) ?></a>
+                    <span><?= h((string)$sr['updated_at']) ?></span>
+                  </li>
+                <?php endforeach; ?>
+              </ul>
+            <?php endif; ?>
+          </div>
+
+          <!-- Step 2: 분석 중 (UX 시각화) -->
+          <div id="g-route-step-analysis" style="display: none; padding: 2rem 1rem; text-align: center;">
+            <h3 class="h6 mb-4 text-muted">최적의 이동 경로를 분석하고 있습니다.</h3>
+            <div class="d-flex flex-column gap-3 align-items-start mx-auto" style="max-width: 240px;">
+              <div class="d-flex align-items-center gap-2 text-muted" id="analysis-step-1">
+                <div class="spinner-border spinner-border-sm" role="status"></div>
+                <span>기본 경로 조회 중...</span>
+              </div>
+              <div class="d-flex align-items-center gap-2 text-muted" id="analysis-step-2" style="opacity: 0.5;">
+                <svg class="g-icon-svg" style="width:1rem; height:1rem;" viewBox="0 0 24 24">
+                  <use href="<?= APP_BASE ?>/public/assets/icons/gilaime_nav.svg#icon-issue"></use>
+                </svg>
+                <span>이슈 영향 분석 중...</span>
+              </div>
+              <div class="d-flex align-items-center gap-2 text-muted" id="analysis-step-3" style="opacity: 0.5;">
+                <svg class="g-icon-svg" style="width:1rem; height:1rem;" viewBox="0 0 24 24">
+                  <use href="<?= APP_BASE ?>/public/assets/icons/gilaime_nav.svg#icon-bus"></use>
+                </svg>
+                <span>임시셔틀 매칭 중...</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 3: 결과 (MVP) -->
+          <div id="g-route-step-result" style="display: none;">
+            <div class="p-2 border-bottom d-flex align-items-center">
+              <button type="button" class="btn btn-sm btn-link text-decoration-none ps-0" id="g-route-result-back">← 다시 검색</button>
+              <span class="ms-auto badge bg-gilaime-primary">임시셔틀 포함</span>
+            </div>
+            <div class="g-home-route-list mt-2" id="g-route-result-list">
+              <!-- JS로 결과 카드가 여기에 렌더링됩니다 -->
+            </div>
+          </div>
         </section>
       </div>
-
-      <nav class="g-bottom-nav g-home-bottom-nav" aria-label="하단 내비게이션">
-        <a class="active" href="<?= $base ?>/home.php">
-          <span class="g-nav-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" class="g-nav-icon-svg"><use href="<?= APP_BASE ?>/public/assets/icons/gilaime_nav.svg#icon-home"></use></svg>
-          </span>
-          <span class="g-nav-label">홈</span>
-        </a>
-        <a href="<?= $base ?>/issues.php">
-          <span class="g-nav-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" class="g-nav-icon-svg"><use href="<?= APP_BASE ?>/public/assets/icons/gilaime_nav.svg#icon-issue"></use></svg>
-          </span>
-          <span class="g-nav-label">이슈</span>
-        </a>
-        <a href="<?= $base ?>/route_finder.php">
-          <span class="g-nav-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" class="g-nav-icon-svg"><use href="<?= APP_BASE ?>/public/assets/icons/gilaime_nav.svg#icon-route"></use></svg>
-          </span>
-          <span class="g-nav-label">길찾기</span>
-        </a>
-        <a href="<?= $base ?>/my_routes.php">
-          <span class="g-nav-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" class="g-nav-icon-svg"><use href="<?= APP_BASE ?>/public/assets/icons/gilaime_nav.svg#icon-star"></use></svg>
-          </span>
-          <span class="g-nav-label">마이노선</span>
-        </a>
-      </nav>
     </div>
-  </main>
+
   <script>
     window.GILAIME_HOME_MAP = {
       lat: <?= json_encode((float)$homeCenter['lat']) ?>,
@@ -277,8 +349,6 @@ function h(string $s): string {
       label: <?= json_encode((string)$homeCenter['label'], JSON_UNESCAPED_UNICODE) ?>
     };
   </script>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin></script>
-  <script src="<?= APP_BASE ?>/public/assets/js/home_map.js"></script>
-</body>
-</html>
+<?php
+require_once __DIR__ . '/../../app/inc/user/user_layout_end.php';
+?>

@@ -41,6 +41,12 @@
 - `icon-star`: 즐겨찾기/마이노선
 - `icon-locate`: 현재 위치 추적
 - `icon-place`: 장소 탭/핀
+- `icon-bus`: 버스/셔틀 (모의 주행 마커 등)
+- `icon-time`: 시간/소요시간
+- `icon-flag`: 도착/목적지
+- `icon-check`: 완료/성공
+- `icon-list`: 목록/상세
+- `icon-play`: 시작/재생
 
 ## 6) 적용 범위 (현재)
 - `public/user/home.php`

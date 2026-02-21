@@ -229,25 +229,13 @@ function format_g1_line_label(?array $row): string {
 function h(string $s): string {
   return htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
 }
-?>
-<!doctype html>
-<html lang="ko">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>GILIME - 경로 찾기</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
-  <link rel="stylesheet" href="<?= APP_BASE ?>/public/assets/css/gilaime_ui.css" />
-</head>
-<body class="gilaime-app">
-  <main class="container-fluid py-4 g-routefinder-page">
-    <nav class="nav g-topnav mb-3">
-      <a class="nav-link" href="<?= $base ?>/home.php">홈</a>
-      <a class="nav-link" href="<?= $base ?>/issues.php">이슈</a>
-      <a class="nav-link active" href="<?= $base ?>/route_finder.php">길찾기</a>
-      <a class="nav-link" href="<?= $base ?>/my_routes.php">마이노선</a>
-    </nav>
 
+$pageTitle = 'GILIME - 경로 찾기';
+// g-routefinder-page 클래스는 모바일 우선 레이아웃 제약을 제공합니다.
+// container-fluid와 py-4는 페이지 패딩을 제공합니다.
+$mainClass = 'container-fluid py-4 g-routefinder-page';
+require_once __DIR__ . '/../../app/inc/user/user_layout_start.php';
+?>
     <div class="g-page-head mb-3">
       <h1>길라임</h1>
       <p class="helper mb-0">출발지와 도착지를 입력해 경로를 찾습니다.</p>
@@ -554,7 +542,6 @@ function h(string $s): string {
       </div>
     </div>
     <?php endif; ?>
-  </main>
   <script>window.GILAIME_API_BASE = '<?= APP_BASE ?>';</script>
   <script>
     window.GILAIME_ROUTE_MAP = {
@@ -569,5 +556,6 @@ function h(string $s): string {
   <script src="<?= APP_BASE ?>/public/assets/js/route_autocomplete.js"></script>
   <script src="<?= APP_BASE ?>/public/assets/js/route_finder_map.js"></script>
   <script src="<?= APP_BASE ?>/public/assets/js/route_finder_ui.js"></script>
-</body>
-</html>
+<?php
+require_once __DIR__ . '/../../app/inc/user/user_layout_end.php';
+?>
