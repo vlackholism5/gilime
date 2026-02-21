@@ -1,0 +1,25 @@
+name: GILIME VERIFY CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  verify:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PowerShell
+        shell: pwsh
+        run: |
+          Write-Host "PowerShell ready"
+
+      - name: Run GILIME VERIFY
+        shell: pwsh
+        run: |
+          powershell -ExecutionPolicy Bypass -File scripts/ps1/run_verify.ps1
